@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.12 — 2026-11-04
+
+- Published as **dsh-linked-workspace** on npm (public).
+- Added the `v*` tag release workflow: it verifies the tag against `package.json`, skips an already-published version, and otherwise publishes to npm with provenance.
+- Added repository metadata, `dsh-plugin` topic, and marketplace submission files.
+
 ## 0.5.11 — 2026-11-04
 
 - Documentation: added an **English README** (`README.en.md`) with language links; refreshed stale Chinese README details (read-only remote directories, bidirectional transfer, local-workspace form, lazy `.local`).
