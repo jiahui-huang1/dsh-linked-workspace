@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-label="Remote workspace">
+  <defs>
+    <linearGradient id="rwGrad" x1="8" y1="4" x2="56" y2="60" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2f6fed"/>
+      <stop offset="1" stop-color="#16408f"/>
+    </linearGradient>
+  </defs>
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="url(#rwGrad)"/>
+  <path d="M14 22a4 4 0 0 1 4-4h8l3.4 4.2H46a4 4 0 0 1 4 4V44a4 4 0 0 1-4 4H18a4 4 0 0 1-4-4V22Z" fill="#fff" opacity="0.94"/>
+  <path d="M24 39.5h16" stroke="#16408f" stroke-width="3" stroke-linecap="round"/>
+  <path d="m36.5 35 4.5 4.5-4.5 4.5" stroke="#16408f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <circle cx="47" cy="17" r="8" fill="#31c48d"/>
+  <circle cx="47" cy="17" r="3" fill="#0d3f2b"/>
+</svg>

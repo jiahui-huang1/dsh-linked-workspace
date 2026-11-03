@@ -1,0 +1,73 @@
+{
+  "name": "dsh-linked-workspace",
+  "version": "0.5.11",
+  "description": "Linked local ⇄ remote workspaces and SSH-backed remote directories for DeepSeek Harness: theme-aware split editor, file-type icons, and an agent tool that edits remote files directly.",
+  "type": "module",
+  "main": "lib/index.js",
+  "icon": "./icon.svg",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib/",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "icon.svg",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "docs/"
+  ],
+  "keywords": [
+    "deepseek-harness",
+    "dsh",
+    "dsh-plugin",
+    "remote",
+    "ssh",
+    "sftp",
+    "workspace",
+    "sidebar",
+    "editor",
+    "linked",
+    "theme",
+    "syntax-highlight"
+  ],
+  "license": "MIT",
+  "author": "Huangjh",
+  "engines": {
+    "node": ">=20",
+    "dsh": ">=0.2.0-rc.2 <0.3.0-0"
+  },
+  "dsh": {
+    "manifestVersion": 1,
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-locale",
+        "dsh-better-sidebar"
+      ]
+    }
+  },
+  "peerDependencies": {
+    "dsh-better-sidebar": ">=0.24.0"
+  },
+  "peerDependenciesMeta": {
+    "dsh-better-sidebar": {
+      "optional": true
+    }
+  },
+  "dependencies": {
+    "ssh2": "^1.17.0"
+  },
+  "scripts": {
+    "build": "node scripts/build-client.mjs",
+    "test": "node --test test/linked.test.mjs test/parts.test.mjs test/git.test.mjs && node test/client-smoke.mjs"
+  }
+}

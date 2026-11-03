@@ -1,0 +1,9 @@
+# dsh-linked-workspace bundle mount
+#
+# The row id is deliberately NOT `dsh-linked-workspace`: that id is already
+# used by the profile's own patch layer for the unrelated
+# `@goodandready/dsh-remote-workspace` SSH tooling row, and reusing it would
+# override that row's config. Keep this bundle's row id unique.
+- insert:
+    - id: linked-workspace-ui
+      name: dsh-linked-workspace
