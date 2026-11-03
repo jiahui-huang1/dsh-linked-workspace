@@ -146,6 +146,13 @@ dsh plugin --profile "$DSH_PROFILE" add "file:$PWD/dsh-linked-workspace"
 
 默认 GitHub 浅色主题；镜像同步默认关闭，开启后每 5 分钟自动检查远端与 `.remote` 差异；右侧栏新增传输按钮、显示/隐藏隐藏文件、右键菜单（传输/下载/记事本/复制粘贴/重命名/删除/权限/新建/属性）与传输队列；多个远端文件可同时以独立标签页打开。详见 [CHANGELOG.md](CHANGELOG.md)。
 
+## 发布与市场更新
+
+- npm 包名 `dsh-linked-workspace`；发布新版本只需提升 `package.json` 的 version，然后推送 `v*` 标签。仓库内的 `.github/workflows/release.yml` 会在标签推送时自动执行 `npm publish --access public`（需要在 GitHub 仓库 Secrets 中配置 `NPM_TOKEN`）。
+- awesome-dsh-plugin（DSH 社区插件市场）读取 npm 的 latest 版本与仓库元数据；已收录后的版本升级会自动反映，无需重新提交条目。本仓库保留了可直接提交的 `market/awesome-dsh-plugin-entry.yml`。
+- dsh-plugin.org（DSH Plugin Hub）会定期扫描带 `dsh-plugin` topic 的公开仓库并读取 npm 包；发布新版本后同样自动刷新，无需重新登记。
+- 发布前可本地执行 `npm run build && npm pack --dry-run` 检查包内容。
+
 ## 安全
 
 - 凭据只存在于 Host 进程；API 只返回主机名、地址和工作区路径。

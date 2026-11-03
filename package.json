@@ -20,8 +20,9 @@
     "README.md",
     "CHANGELOG.md",
     "LICENSE",
-    "docs/",
-    "README.en.md"
+    "README.en.md",
+    "docs/API.md",
+    "docs/VERIFY.md"
   ],
   "keywords": [
     "deepseek-harness",
@@ -35,7 +36,8 @@
     "editor",
     "linked",
     "theme",
-    "syntax-highlight"
+    "syntax-highlight",
+    "remote-development"
   ],
   "license": "MIT",
   "author": "Huangjh",
@@ -69,6 +71,18 @@
   },
   "scripts": {
     "build": "node scripts/build-client.mjs",
-    "test": "node --test test/linked.test.mjs test/parts.test.mjs test/git.test.mjs && node test/client-smoke.mjs"
+    "test": "node --test test/linked.test.mjs test/parts.test.mjs test/git.test.mjs && node test/client-smoke.mjs",
+    "prepack": "node scripts/build-client.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jiahui-huang1/dsh-linked-workspace.git"
+  },
+  "homepage": "https://github.com/jiahui-huang1/dsh-linked-workspace#readme",
+  "bugs": {
+    "url": "https://github.com/jiahui-huang1/dsh-linked-workspace/issues"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

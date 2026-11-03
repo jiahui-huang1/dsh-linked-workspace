@@ -99,6 +99,13 @@ Old “Remote directories” tabs are restored after refresh through hidden lega
 
 See [CHANGELOG.md](CHANGELOG.md) for the full version history.
 
+## Releases and marketplace updates
+
+- The npm package is `dsh-linked-workspace`. To release, bump `package.json` and push a `v*` tag; `.github/workflows/release.yml` runs `npm publish --access public` (set an `NPM_TOKEN` repository secret).
+- awesome-dsh-plugin (the DSH community market) reads the npm latest version and repository metadata, so published upgrades appear automatically without resubmitting the entry. A ready-to-submit entry is kept at `market/awesome-dsh-plugin-entry.yml`.
+- dsh-plugin.org (DSH Plugin Hub) periodically scans public repositories with the `dsh-plugin` topic and their npm packages; new versions refresh automatically after publication.
+- Before releasing, check the package with `npm run build && npm pack --dry-run`.
+
 ## Security
 
 - Credentials live only in the Host process; the API returns only host names, addresses and workspace paths.
