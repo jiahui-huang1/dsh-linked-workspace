@@ -20,7 +20,8 @@
     "README.md",
     "CHANGELOG.md",
     "LICENSE",
-    "docs/"
+    "docs/",
+    "README.en.md"
   ],
   "keywords": [
     "deepseek-harness",

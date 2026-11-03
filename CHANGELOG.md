@@ -2,6 +2,8 @@
 
 ## 0.5.11 — 2026-11-04
 
+- Documentation: added an **English README** (`README.en.md`) with language links; refreshed stale Chinese README details (read-only remote directories, bidirectional transfer, local-workspace form, lazy `.local`).
+
 - **Fixed remote directory file viewing**: read-only tabs now render the file content (gutter, syntax colors, status bar with 只读 chip) instead of only showing a “只读” message. Binary/oversized files still show the read-only notice.
 - **Fixed Settings → 连接 open actions**: “打开工作区” now navigates to the linked workspace and closes settings; remote directory “打开” now opens the remote-directory tab (was opening the linked tab type) and closes settings. Tab metadata pins the requested linked workspace / remote directory.
 - Save keys remain disabled in read-only views.
