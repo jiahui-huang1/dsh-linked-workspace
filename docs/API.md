@@ -16,6 +16,16 @@ Codes: `BAD_REQUEST`, `NOT_FOUND`, `SSH_CONNECT`, `AUTH_FAILED`,
 `HOST_KEY_MISMATCH`, `TIMEOUT`, `FS_NOT_FOUND`, `FS_PERMISSION`, `FS_IS_DIR`,
 `FS_NOT_DIR`, `FS_TOO_LARGE`, `CONFLICT`, `INTERNAL`.
 
+## Document APIs
+
+| Method | Params | Result |
+| --- | --- | --- |
+| `docs.read` | `{ path, linkedId?, workspaceId? }` | kind-specific document model |
+| `docs.write` | `{ path, data, expectedMtime?, linkedId?, workspaceId? }` | `{ kind, path, size, mtime }` |
+| `docs.create` | `{ path, kind?, linkedId?, workspaceId? }` | `{ kind, path, size, mtime }` |
+| `docs.mdPreview` | `{ path, text?, linkedId?, workspaceId? }` | `{ kind, html }` |
+| `docs.mdPdf` | `{ path, text?, linkedId?, workspaceId? }` | `{ kind: "pdf", path, size, mtime }` |
+
 ## Records
 
 ```ts

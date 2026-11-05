@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.6.0 — 2026-11-05
+
+- **Document editing in the content panel** for Markdown, PDF, DOCX, XLSX and PPTX, on both local and remote files.
+  - Markdown: raw editing, rendered preview, export to PDF.
+  - DOCX: paragraph and table text editing (styles are preserved at paragraph level; rich inline formatting may be simplified).
+  - XLSX: sheet tabs and editable cell grid; formulas and untouched styles are preserved.
+  - PPTX: slide navigation and text-frame editing.
+  - PDF: page navigation, rotate/delete page, title/author metadata; page images are rendered by PyMuPDF.
+- New document files can be created from the directory context menu (`.md`, `.pdf`, `.docx`, `.xlsx`, `.pptx`).
+- A small Python bridge (`scripts/doc_tool.py`) implements the format-specific read/write/create operations. Python 3 with `python-docx`, `openpyxl`, `python-pptx` and `PyMuPDF` is required for Office/PDF operations; Markdown works without them.
+- Runs on both local folders and remote linked/directories (remote files are downloaded, processed and uploaded atomically).
+
 ## 0.5.13 — 2026-11-05
 
 - The linked-workspace directory panel can now be resized by dragging the divider; double-click the divider to reset to 300 px. The width is persisted.

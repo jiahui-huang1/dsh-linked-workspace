@@ -28,6 +28,18 @@ The plugin takes over the directory-selection hole used by the DSH sidebar and e
 1. **Local workspace**: enter or browse for a local directory (C:/D:/E: drive chips on Windows), set a workspace name, then create a normal DSH workspace.
 2. **Linked workspace**: SSH host + remote folder + local folder + optional mirror. Creating it also registers the local folder as a DSH workspace. The local directory is **not** pre-populated with `.local`/`.remote`; those are created lazily when mirroring or transfers need them.
 
+### Document editing
+
+The content panel now edits **Markdown / PDF / DOCX / XLSX / PPTX** files on both local and remote sides:
+
+- **Markdown**: raw editing, rendered preview, export to PDF.
+- **DOCX**: edit paragraph and table text; paragraph styles are kept, complex inline formatting may be simplified.
+- **XLSX**: switch sheets and edit a cell grid; untouched formulas and styles are preserved.
+- **PPTX**: navigate slides and edit text frames.
+- **PDF**: page navigation, rotate/delete pages, and title/author metadata; pages are rendered by PyMuPDF.
+- Create blank documents from the directory context menu by using one of these extensions.
+- Office/PDF operations need Python 3 with `python-docx`, `openpyxl`, `python-pptx` and `PyMuPDF`; Markdown does not. Set `DSH_OFFICE_PYTHON` to choose an interpreter.
+
 ### Right-sidebar entries
 
 - **Linked workspace directory**: appears only in sessions of a linked workspace, and opens the linked workspace bound to that session. Remote and local files are editable.
