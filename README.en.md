@@ -90,8 +90,6 @@ The remote side is not modified by mirroring. The `linked_workspace` tool suppor
 
 [![Open a file in the content panel](https://github.com/jiahui-huang1/dsh-linked-workspace/raw/main/docs/screenshots/file-editor.png)](https://github.com/jiahui-huang1/dsh-linked-workspace/blob/main/docs/screenshots/file-editor.png)
 
-[![Read-only remote file with content visible](https://github.com/jiahui-huang1/dsh-linked-workspace/raw/main/docs/screenshots/remote-readonly-view.png)](https://github.com/jiahui-huang1/dsh-linked-workspace/blob/main/docs/screenshots/remote-readonly-view.png)
-
 ## Installation
 
 ```bash
