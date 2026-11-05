@@ -97,3 +97,13 @@ Host code (lib/) reloads live with `plugin_manager set_plugin include:linked-wor
 - SSH Tunnel 面板、其他 better-sidebar 标签、旧 `@goodandready` 的 remote_* 工具仍可用。
 - 安装过程中若再次出现 pnpm 清理旧包，确认 `@goodandready/dsh-remote-workspace` 仍在 profile 依赖中。
 - 普通（非联动）工作区的行图标仍是文件夹，右侧栏旧文件标签/编辑器不受影响。
+
+## 文档编辑
+
+1. 在目录右键「新建文件」输入 `demo.md` / `demo.docx` / `demo.xlsx` / `demo.pptx` / `demo.pdf`，应创建对应空白文档并在内容面板打开。
+2. Markdown：编辑文本 → 保存 → 预览 → 导出 PDF；导出的 PDF 与 Markdown 同目录，中文正常。
+3. DOCX：修改段落/表格文字 → 保存 → 重新打开内容仍在。
+4. XLSX：切换工作表、修改单元格 → 保存 → 重新打开值仍在。
+5. PPTX：切换幻灯片、修改文本框 → 保存 → 重新打开文字仍在。
+6. PDF：翻页、旋转/删除页面、修改标题/作者 → 保存 → 重新打开生效。
+7. 以上操作在本地目录与远端（联动工作区）文件上都应可用；Office/PDF 需要 Python 3 + python-docx/openpyxl/python-pptx/PyMuPDF。
