@@ -99,6 +99,10 @@ Old “Remote directories” tabs are restored after refresh through hidden lega
 
 See [CHANGELOG.md](CHANGELOG.md) for the full version history.
 
+### 0.5.13
+
+The directory panel divider is draggable (double-click resets to 300 px; width persists). The local tree refreshes silently every 4 seconds and on window focus, so new local subdirectories appear without a manual refresh.
+
 ## Releases and marketplace updates
 
 - The npm package is `dsh-linked-workspace`. To release, bump `package.json` and push a `v*` tag; `.github/workflows/release.yml` runs `npm publish --access public` (set an `NPM_TOKEN` repository secret).

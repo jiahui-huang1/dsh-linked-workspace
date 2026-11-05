@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.13 — 2026-11-05
+
+- The linked-workspace directory panel can now be resized by dragging the divider; double-click the divider to reset to 300 px. The width is persisted.
+- The local directory tree now refreshes silently every 4 seconds (and on window focus), so newly created local subdirectories appear without a manual refresh; expanded folders are reloaded in place.
+
 ## 0.5.12 — 2026-11-04
 
 - Published as **dsh-linked-workspace** on npm (public).
