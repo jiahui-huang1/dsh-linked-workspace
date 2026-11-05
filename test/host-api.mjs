@@ -381,10 +381,12 @@ async function main() {
     mkdirSync(docDir, { recursive: true })
     const mdPath = join(docDir, 'note.md')
     await ok('docs.create', { path: mdPath, kind: 'markdown' })
-    await ok('docs.write', { path: mdPath, data: { text: '# Hello' + String.fromCharCode(10) } })
+    await ok('docs.write', { path: mdPath, data: { text: '# Hello ' + String.fromCharCode(8315) + ' 中文' + String.fromCharCode(10) } })
     const mdRead = await ok('docs.read', { path: mdPath })
     assert.equal(mdRead.kind, 'markdown')
     assert.ok(mdRead.text.includes('# Hello'))
+    const mdPreview = await ok('docs.mdPreview', { path: mdPath })
+    assert.ok(mdPreview.html.includes('中文'))
     const mdPdf = await ok('docs.mdPdf', { path: mdPath })
     assert.equal(existsSync(mdPdf.path), true)
     assert.equal(mdPdf.kind, 'pdf')
@@ -415,6 +417,8 @@ async function main() {
     assert.equal(pdfRead.kind, 'pdf')
     assert.equal(pdfRead.pageCount, 1)
     assert.ok(pdfRead.pages[0].png.startsWith('data:image/png;base64,'))
+    const pdfPage = await ok('docs.pdfPage', { path: pdfPath, page: 0 })
+    assert.equal(pdfPage.pages[0].index, 0)
     step('docs create/read/write (md/pdf/docx/xlsx/pptx)', started)
 
     // 13c. Local skills bridge (scan fallback) + running-session flag

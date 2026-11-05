@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.2 — 2026-11-05
+
+- Fixed Markdown/document JSON transport failing with a Windows GBK codec error for characters such as the superscript minus (U+207B); the Python bridge now emits UTF-8/ASCII-safe JSON and configures UTF-8 stdout.
+- PDF files now load lazily: only the current page is rendered; other pages are fetched on demand (`docs.pdfPage`), and a large PDF is downloaded/opened once and cached. This removes the long “加载中” hang on large (30 MB+) PDFs.
+- PDF page navigation, rotation, deletion and metadata remain available.
+
 ## 0.6.1 — 2026-11-05
 
 - Fixed the linked-workspace directory tab disappearing for a new or blank linked-workspace session: the client session store is now consulted for cwd/workspaceId before falling back to session.info, so the tab and the start-page option are registered immediately when the workspace session opens.

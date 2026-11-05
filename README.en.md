@@ -115,6 +115,10 @@ Old “Remote directories” tabs are restored after refresh through hidden lega
 
 See [CHANGELOG.md](CHANGELOG.md) for the full version history.
 
+### 0.6.2
+
+Fix Windows GBK JSON transport errors for Markdown characters such as the superscript minus; PDF pages now load lazily and the source PDF is cached, avoiding long loading hangs on large files.
+
 ### 0.6.1
 
 Fix the linked-workspace directory tab and start-page entry disappearing in a new blank linked-workspace session by consulting the client session store for cwd and workspaceId first.

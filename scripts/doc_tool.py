@@ -13,6 +13,12 @@ import os
 import re
 import sys
 
+try:
+    sys.stdout.reconfigure(encoding="utf-8")
+    sys.stderr.reconfigure(encoding="utf-8")
+except Exception:
+    pass
+
 MAX_PDF_PAGES = 40
 MAX_PDF_WIDTH = 1100
 MAX_SHEET_ROWS = 200
@@ -21,12 +27,12 @@ MAX_PPTX_SLIDES = 80
 
 
 def fail(message):
-    print(json.dumps({"ok": False, "error": str(message)}, ensure_ascii=False))
+    print(json.dumps({"ok": False, "error": str(message)}, ensure_ascii=True))
     sys.exit(1)
 
 
 def emit(data):
-    print(json.dumps({"ok": True, "data": data}, ensure_ascii=False))
+    print(json.dumps({"ok": True, "data": data}, ensure_ascii=True))
 
 
 def json_value(value):
@@ -198,14 +204,16 @@ def write_pptx(source, data, out):
 
 # ── PDF ───────────────────────────────────────────────────────────────────
 
-def read_pdf(path):
+def read_pdf(path, page_index=None):
     import fitz
 
     doc = fitz.open(path)
     pages = []
-    for index, page in enumerate(doc):
-        if index >= MAX_PDF_PAGES:
-            break
+    indexes = [page_index] if isinstance(page_index, int) else [0]
+    for index in indexes:
+        if index < 0 or index >= doc.page_count:
+            continue
+        page = doc[index]
         rect = page.rect
         scale = min(1.5, MAX_PDF_WIDTH / max(rect.width, 1))
         pixmap = page.get_pixmap(matrix=fitz.Matrix(scale, scale), alpha=False)
@@ -226,7 +234,7 @@ def read_pdf(path):
             "subject": metadata.get("subject", ""),
         },
         "pages": pages,
-        "truncated": doc.page_count > MAX_PDF_PAGES,
+        "truncated": doc.page_count > 1,
     })
 
 
@@ -347,6 +355,7 @@ def main():
     read = sub.add_parser("read")
     read.add_argument("--kind", required=True)
     read.add_argument("--file", required=True)
+    read.add_argument("--page", type=int, default=None)
 
     write = sub.add_parser("write")
     write.add_argument("--kind", required=True)
@@ -375,7 +384,7 @@ def main():
             elif args.kind == "pptx":
                 read_pptx(args.file)
             elif args.kind == "pdf":
-                read_pdf(args.file)
+                read_pdf(args.file, args.page)
             else:
                 raise ValueError(f"unsupported kind: {args.kind}")
         elif args.command == "write":
