@@ -115,6 +115,10 @@ Old “Remote directories” tabs are restored after refresh through hidden lega
 
 See [CHANGELOG.md](CHANGELOG.md) for the full version history.
 
+### 0.6.1
+
+Fix the linked-workspace directory tab and start-page entry disappearing in a new blank linked-workspace session by consulting the client session store for cwd and workspaceId first.
+
 ### 0.5.13
 
 The directory panel divider is draggable (double-click resets to 300 px; width persists). The local tree refreshes silently every 4 seconds and on window focus, so new local subdirectories appear without a manual refresh.

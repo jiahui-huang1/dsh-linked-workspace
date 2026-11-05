@@ -107,3 +107,5 @@ Host code (lib/) reloads live with `plugin_manager set_plugin include:linked-wor
 5. PPTX：切换幻灯片、修改文本框 → 保存 → 重新打开文字仍在。
 6. PDF：翻页、旋转/删除页面、修改标题/作者 → 保存 → 重新打开生效。
 7. 以上操作在本地目录与远端（联动工作区）文件上都应可用；Office/PDF 需要 Python 3 + python-docx/openpyxl/python-pptx/PyMuPDF。
+
+- 新建一个空白联动工作区会话：右侧栏开始页应出现「联动工作区目录」，打开后目录面板正常显示。

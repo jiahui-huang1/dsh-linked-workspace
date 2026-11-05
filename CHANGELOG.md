@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.6.1 — 2026-11-05
+
+- Fixed the linked-workspace directory tab disappearing for a new or blank linked-workspace session: the client session store is now consulted for cwd/workspaceId before falling back to session.info, so the tab and the start-page option are registered immediately when the workspace session opens.
+- Availability also matches the linked record workspaceId, not only the local path.
+
 ## 0.6.0 — 2026-11-05
 
 - **Document editing in the content panel** for Markdown, PDF, DOCX, XLSX and PPTX, on both local and remote files.
