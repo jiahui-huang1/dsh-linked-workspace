@@ -82,7 +82,13 @@ The remote side is not modified by mirroring. The `linked_workspace` tool suppor
 
 ## Installation
 
+```bash
+dsh plugin --profile web add dsh-linked-workspace
 ```
+
+Install from source (development):
+
+```bash
 dsh plugin --profile "$DSH_PROFILE" add "file:$PWD/dsh-linked-workspace"
 ```
 
