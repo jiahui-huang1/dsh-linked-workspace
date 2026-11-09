@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.8.1 — 2026-11-09
+
+- **Image zoom**: the image preview gains zoom-out/zoom-in buttons, a percentage readout, “Fit to window” and “1:1” controls, plus `Ctrl/Cmd + wheel` zoom.
+- **HTML preview**: `.html` and `.htm` files now render in a sandboxed iframe in the content panel. Scripts are disabled; the status bar notes this.
+
 ## 0.8.0 — 2026-11-09
 
 - **Image previews**: PNG/JPG/GIF/WebP/BMP/ICO/AVIF/SVG now render in the content panel for both remote and local files (`media.read` / `local.media`, 24 MB cap).

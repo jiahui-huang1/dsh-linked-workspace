@@ -83,6 +83,9 @@ assert.match(bundleSource, /fs\.move/, 'remote move API is part of the client bu
 assert.match(bundleSource, /local\.move/, 'local move API is part of the client bundle')
 assert.match(bundleSource, /rw-csv-table/, 'CSV table preview is part of the client bundle')
 assert.match(bundleSource, /ImagePreview/, 'image preview component is part of the client bundle')
+assert.match(bundleSource, /HtmlPreview/, 'HTML preview component is part of the client bundle')
+assert.match(bundleSource, /rw-image-canvas/, 'image zoom canvas is part of the client bundle')
+assert.match(bundleSource, /htmlScriptsDisabled/, 'HTML preview safety note is part of the client bundle')
 
 assert.ok(captured, 'the bundle registered itself with the module loader')
 assert.equal(captured.id, 'dsh-linked-workspace')
