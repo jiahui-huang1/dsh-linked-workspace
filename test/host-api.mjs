@@ -180,6 +180,11 @@ async function main() {
   await fail('settings.update', { editorTheme: '../nope' }, 400)
   assert.equal((await ok('settings.get', {})).editorTheme, 'dracula')
   assert.equal(defaults.fileOpenMode, 'editor')
+  assert.equal(defaults.autoSave, false)
+  const autoSave = await ok('settings.update', { autoSave: true })
+  assert.equal(autoSave.autoSave, true)
+  assert.equal((await ok('settings.get', {})).autoSave, true)
+  await fail('settings.update', { autoSave: 'yes' }, 400)
   assert.equal(defaults.editorThemeMode, 'system')
   assert.equal(defaults.editorThemeFamily, 'github')
   await ok('settings.update', { editorThemeFamily: 'catppuccin' })
@@ -314,6 +319,24 @@ async function main() {
     assert.equal(existsSync(join(localRoot, '.remote')), false, 'linked.create does not force a .remote directory')
     writeFileSync(join(localRoot, 'local-copy.txt'), 'local copy' + String.fromCharCode(10))
     step('linked.create', started, linked.workspaceId)
+
+    // 14a. Terminal launcher resolves both sides without opening a console
+    started = Date.now()
+    process.env.DSH_LINKED_WORKSPACE_NO_TERMINAL = '1'
+    try {
+      const localTerminal = await ok('terminal.open', { linkedId: link.id, side: 'local' })
+      assert.equal(localTerminal.opened, true)
+      assert.equal(localTerminal.side, 'local')
+      assert.equal(localTerminal.path, localRoot)
+      const remoteTerminal = await ok('terminal.open', { linkedId: link.id, side: 'remote' })
+      assert.equal(remoteTerminal.opened, true)
+      assert.equal(remoteTerminal.side, 'remote')
+      assert.equal(remoteTerminal.path, REMOTE_LINK_DIR)
+      assert.equal(remoteTerminal.host, host.host)
+    } finally {
+      delete process.env.DSH_LINKED_WORKSPACE_NO_TERMINAL
+    }
+    step('terminal.open local/remote', started)
 
     // 13a2. Plain local DSH workspace creation (Ctrl+O local workspace tab)
     started = Date.now()

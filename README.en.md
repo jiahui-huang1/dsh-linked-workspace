@@ -49,18 +49,21 @@ The content panel now edits **Markdown / PDF / DOCX / XLSX / PPTX** files on bot
 ### Right-sidebar linked-workspace directory
 
 - The directory is a fixed panel at the far right of the sidebar: **remote tree on top, local tree below**, both rooted at “All files”. Plugin internals (`.local`/`.remote`) are hidden by default but can be shown with the hidden-files toggle.
-- **Single click selects, double click opens**: a single click highlights a row; double-clicking a folder expands/collapses it; double-clicking a file opens it in the content panel while the directory panel stays visible.
+- **Single click opens, double click pins**: clicking a folder expands/collapses it immediately; clicking a file opens it in the content panel, and clicking another file replaces the current unpinned preview tab. Double-click a file to pin its tab so later single clicks do not replace it; double-clicking a folder only keeps it expanded.
 - **Layout**: conversation → content panel (internal file tabs) → directory panel. The content panel shows “Open a file / Select a file from the workspace directory tree” when nothing is open. A toolbar button shows/hides the directory panel.
 - Toolbar:
   - **Tree switch**: all files / changed files / all changes (git status from remote and local sides).
   - **Search in files**: at least two characters; remote uses `find`, local walks the tree. Results are grouped by remote/local.
   - **Open options menu**: editor / system default app / copy path.
+  - **Open terminal**: the remote button in the remote tree toolbar opens the system terminal and SSHes into the current remote directory; linked workspaces also show a local button that opens a terminal in the local directory. The remote terminal uses the system `ssh` client, so it may ask for a password or host-key confirmation.
   - **Transfer**: bidirectional. Select a remote file/folder to copy it into the local `.remote/` folder; select a local file/folder to copy it to the corresponding relative remote path. Jobs run one at a time through a queue.
   - **Show/hide hidden files**: applies to both trees.
   - **Refresh**: reload roots, git status and search.
 - File-type icons for JS/TS/Python/JSON/Markdown/Shell/YAML/images/archives/config files, etc.
 - Editor: line numbers, syntax highlighting (layered rendering), theme colors, `Ctrl/Cmd+S` save, conflict prompt (reload/force save), read-only protection for binary and >2 MB files, UTF-8/LF/CRLF/line-count status bar. The embedded content panel hides the path/save header; unsaved changes show a gray dot in the file tab. Read-only tabs render the file content but cannot be edited or saved.
-- Multiple files can be open at once (up to 12 slots). Local files use the same internal editor and can be edited and saved.
+- **Shortcuts**: `Ctrl/Cmd+S` saves the current file; `Ctrl/Cmd+W` closes the current tab (with a save/discard/cancel prompt when dirty); `Ctrl+Tab` / `Shift+Ctrl+Tab` cycles tabs; `Ctrl/Cmd+B` toggles the directory panel; `Ctrl/Cmd+Shift+F` opens file search.
+- **Auto save**: enable it under Settings → Connections → Editor behavior. It saves about one second after you stop typing. When off, use `Ctrl+S`. Closing a dirty file always asks first instead of discarding silently.
+- Multiple files can be open at once (up to 12 slots). A single click opens a preview tab and replaces the current unpinned preview; double-click pins the tab; clicking the same file focuses its existing tab. Local files use the same internal editor and can be edited and saved.
 
 ### Running indicator and local skills
 
@@ -114,6 +117,10 @@ Since 0.3.0 the plugin is named `dsh-linked-workspace`. On first start after ins
 Old “Remote directories” tabs are restored after refresh through hidden legacy tab-type aliases; their titles are updated to “Linked workspace directory”, while new tabs use the new type.
 
 See [CHANGELOG.md](CHANGELOG.md) for the full version history.
+
+### 0.7.0
+
+Single-click tree navigation with preview tabs and double-click pinning, remote/local terminal buttons with `cd`, VSCode-like shortcuts, unsaved-close prompts, and an auto-save switch under Settings → Connections.
 
 ### 0.6.2
 

@@ -348,6 +348,26 @@ window.__ModuleLoader__.load({
       openWithSystem: '系统默认应用',
       openWithCopy: '复制路径',
       openModeSaved: '打开方式已保存',
+      autoSaveTitle: '自动保存',
+      autoSaveHint: '编辑停顿约 1 秒后自动保存；关闭后请按 Ctrl+S 手动保存。',
+      autoSaveLabel: '开启自动保存',
+      autoSaveSaved: '自动保存设置已保存',
+      shortcutTitle: '常用快捷键',
+      shortcutHint: '与 VS Code 类似的默认快捷键；macOS 上把 Ctrl 换成 ⌘。',
+      shortcutSave: '保存当前文件',
+      shortcutClose: '关闭当前文件',
+      shortcutSwitch: '切换文件标签',
+      shortcutDirectory: '显示/隐藏目录面板',
+      shortcutSearch: '在文件中搜索',
+      terminalRemote: '打开远程终端',
+      terminalLocal: '打开本地终端',
+      terminalOpened: '已打开终端',
+      terminalOpenFailed: '打开终端失败',
+      dirtyCloseTitle: '文件尚未保存',
+      dirtyCloseMessage: '「{{name}}」有未保存的修改。关闭前要保存吗？',
+      dirtyCloseSave: '保存并关闭',
+      dirtyCloseDiscard: '不保存关闭',
+      saveFailed: '保存失败，文件未关闭',
       noChanges: '没有检测到更改',
       notGitRepo: '该目录不是 Git 仓库',
       changesRemote: '远端更改',
@@ -638,6 +658,26 @@ window.__ModuleLoader__.load({
       openWithSystem: 'System default app',
       openWithCopy: 'Copy path',
       openModeSaved: 'Open mode saved',
+      autoSaveTitle: 'Auto save',
+      autoSaveHint: 'Saves about one second after you stop typing. When off, press Ctrl+S to save.',
+      autoSaveLabel: 'Enable auto save',
+      autoSaveSaved: 'Auto-save setting saved',
+      shortcutTitle: 'Keyboard shortcuts',
+      shortcutHint: 'VS Code-like defaults; use ⌘ instead of Ctrl on macOS.',
+      shortcutSave: 'Save the current file',
+      shortcutClose: 'Close the current file',
+      shortcutSwitch: 'Switch file tabs',
+      shortcutDirectory: 'Show/hide the directory pane',
+      shortcutSearch: 'Search in files',
+      terminalRemote: 'Open remote terminal',
+      terminalLocal: 'Open local terminal',
+      terminalOpened: 'Terminal opened',
+      terminalOpenFailed: 'Could not open terminal',
+      dirtyCloseTitle: 'Unsaved changes',
+      dirtyCloseMessage: '“{{name}}” has unsaved changes. Save before closing?',
+      dirtyCloseSave: 'Save and close',
+      dirtyCloseDiscard: 'Close without saving',
+      saveFailed: 'Save failed; the file was left open',
       noChanges: 'No changes detected',
       notGitRepo: 'Not a Git repository',
       changesRemote: 'Remote changes',
@@ -918,7 +958,7 @@ window.__ModuleLoader__.load({
     };
 
     var runtimeSettings = {
-      value: { editorTheme: DEFAULT_THEME_ID, editorThemeFamily: DEFAULT_THEME_FAMILY, editorThemeMode: 'system', appThemeDark: false, fileOpenMode: 'editor' },
+      value: { editorTheme: DEFAULT_THEME_ID, editorThemeFamily: DEFAULT_THEME_FAMILY, editorThemeMode: 'system', appThemeDark: false, fileOpenMode: 'editor', autoSave: false },
       loaded: false,
       loading: null,
       listeners: new Set(),
@@ -941,7 +981,7 @@ window.__ModuleLoader__.load({
           runtimeSettings.loading = null;
           var openMode = settings && (settings.fileOpenMode === 'system' || settings.fileOpenMode === 'copy') ? settings.fileOpenMode : 'editor';
           var mode = settings && (settings.editorThemeMode === 'light' || settings.editorThemeMode === 'dark') ? settings.editorThemeMode : 'system';
-          runtimeSettings.apply({ editorTheme: settings && settings.editorTheme ? settings.editorTheme : DEFAULT_THEME_ID, editorThemeFamily: themeFamilyFor(settings), editorThemeMode: mode, fileOpenMode: openMode });
+          runtimeSettings.apply({ editorTheme: settings && settings.editorTheme ? settings.editorTheme : DEFAULT_THEME_ID, editorThemeFamily: themeFamilyFor(settings), editorThemeMode: mode, fileOpenMode: openMode, autoSave: Boolean(settings && settings.autoSave) });
           return runtimeSettings.value;
         }).catch(function () {
           runtimeSettings.loaded = true;
@@ -961,6 +1001,13 @@ window.__ModuleLoader__.load({
         return apiCall('settings.update', { editorThemeMode: mode }).then(function (settings) {
           runtimeSettings.loaded = true;
           runtimeSettings.apply({ editorThemeMode: settings && settings.editorThemeMode ? settings.editorThemeMode : mode });
+          return runtimeSettings.value;
+        });
+      },
+      saveAutoSave: function (enabled) {
+        return apiCall('settings.update', { autoSave: Boolean(enabled) }).then(function (settings) {
+          runtimeSettings.loaded = true;
+          runtimeSettings.apply({ autoSave: Boolean(settings && settings.autoSave) });
           return runtimeSettings.value;
         });
       },
@@ -1168,6 +1215,10 @@ window.__ModuleLoader__.load({
       '.rw-option-title{display:flex;align-items:center;gap:8px;font-size:13px;line-height:20px;font-weight:600}',
       '.rw-option-desc{font-size:11.5px;line-height:17px;color:var(--dsw-alias-label-tertiary)}',
       '.rw-warn-box{padding:8px 10px;border-radius:8px;border:1px solid color-mix(in srgb,var(--dsw-alias-state-warn-primary) 45%,transparent);background:color-mix(in srgb,var(--dsw-alias-state-warn-primary) 8%,var(--dsw-alias-bg-layer-1));font-size:12px;line-height:18px}',
+      '.rw-setting-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--dsw-alias-border-l1);border-radius:9px;background:var(--dsw-alias-bg-layer-1)}',
+      '.rw-shortcut-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:4px 16px}',
+      '.rw-shortcut-row{display:flex;align-items:center;gap:10px;min-height:28px;font-size:12px;color:var(--dsw-alias-label-secondary)}',
+      '.rw-kbd{display:inline-flex;align-items:center;justify-content:center;min-width:64px;padding:2px 7px;border:1px solid var(--dsw-alias-border-l2);border-bottom-width:2px;border-radius:5px;background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary);font:11px/16px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;white-space:nowrap}',
       '@media (max-width:720px){.rw-theme-grid{grid-template-columns:repeat(auto-fill,minmax(132px,1fr))}.rw-pair{grid-template-columns:minmax(0,1fr)}}',
       '.rw-linked-toolbar{display:flex;align-items:center;gap:6px;padding:6px 8px;border-bottom:1px solid var(--dsw-alias-border-l1);min-width:0;position:relative;z-index:5}',
       '.rw-menu-wrap{position:relative}',
@@ -1382,6 +1433,12 @@ window.__ModuleLoader__.load({
         h('rect', { key: 'b', x: 2, y: 8.8, width: 12, height: 5, rx: 1.4, stroke: 'currentColor', strokeWidth: 1.2 }),
         h('circle', { key: 'c', cx: 4.6, cy: 4.7, r: 0.8, fill: 'currentColor' }),
         h('circle', { key: 'd', cx: 4.6, cy: 11.3, r: 0.8, fill: 'currentColor' }),
+      ]);
+    }
+    function IconTerminal(size) {
+      return svg(size || 14, [
+        h('rect', { key: 'a', x: 1.8, y: 2.4, width: 12.4, height: 11.2, rx: 1.8, stroke: 'currentColor', strokeWidth: 1.25 }),
+        h('path', { key: 'b', d: 'm4.4 6 2.1 2-2.1 2M8.2 10h3.3', stroke: 'currentColor', strokeWidth: 1.3, strokeLinecap: 'round', strokeLinejoin: 'round' }),
       ]);
     }
     function IconEye(size) {
@@ -1950,11 +2007,11 @@ window.__ModuleLoader__.load({
       }, [dirty, baseTitle]);
 
       function saveFile(force) {
-        if (readOnly || !load.file || load.file.binary || load.file.tooLarge || save.saving) return;
+        if (readOnly || !load.file || load.file.binary || load.file.tooLarge || save.saving) return Promise.resolve(false);
         setSave({ saving: true, conflict: false, error: '', ok: false });
         var payload = local ? { path: filePath, content: content } : Object.assign({ path: filePath, content: content }, params);
         if (!force && load.file && typeof load.file.mtime === 'number') payload.expectedMtime = load.file.mtime;
-        apiCall(local ? 'local.write' : 'fs.write', payload).then(function (result) {
+        return apiCall(local ? 'local.write' : 'fs.write', payload).then(function (result) {
           setLoad(function (previous) {
             if (!previous.file) return previous;
             return { loading: false, error: null, file: Object.assign({}, previous.file, { mtime: result.mtime, size: result.size }) };
@@ -1964,14 +2021,32 @@ window.__ModuleLoader__.load({
           setTimeout(function () {
             setSave(function (previous) { return previous.ok ? { saving: false, conflict: false, error: '', ok: false } : previous; });
           }, 2200);
+          return true;
         }).catch(function (error) {
           if (error && error.code === 'CONFLICT') {
             setSave({ saving: false, conflict: true, error: '', ok: false });
           } else {
             setSave({ saving: false, conflict: false, error: messageOf(error, t, locale), ok: false });
           }
+          return false;
         });
       }
+
+      var saveRef = useRef(null);
+      saveRef.current = saveFile;
+      useEffect(function () {
+        var notify = props.onSaveReady;
+        if (typeof notify === 'function') notify(function () { return saveRef.current(false); });
+        return function () {
+          if (typeof notify === 'function') notify(null);
+        };
+      }, [filePath, local]);
+
+      useEffect(function () {
+        if (!settings.autoSave || !dirty || !editable || save.saving || save.conflict) return undefined;
+        var timer = setTimeout(function () { saveRef.current(false); }, 900);
+        return function () { clearTimeout(timer); };
+      }, [content, dirty, settings.autoSave, editable, save.saving, save.conflict]);
 
       useEffect(function () {
         if (props.visible === false) return undefined;
@@ -2256,6 +2331,7 @@ window.__ModuleLoader__.load({
         state: { entries: cache.entries },
         load: load,
         onSelect: props.onSelect,
+        onPin: props.onPin,
         onSelectPath: props.onSelectPath,
         onContextMenu: props.onContextMenu,
         selectedPath: props.selectedPath || '',
@@ -2342,6 +2418,20 @@ window.__ModuleLoader__.load({
                     });
                   })))
               : null),
+          h('button', {
+            type: 'button',
+            className: 'rw-icon-btn',
+            title: t('terminalRemote'),
+            onClick: function () { props.onOpenTerminal('remote'); },
+          }, IconTerminal(14)),
+          props.localEnabled
+            ? h('button', {
+              type: 'button',
+              className: 'rw-icon-btn',
+              title: t('terminalLocal'),
+              onClick: function () { props.onOpenTerminal('local'); },
+            }, IconTerminal(14))
+            : null,
           h('button', {
             type: 'button',
             className: 'rw-icon-btn' + (props.directoryOpen ? ' is-on' : ''),
@@ -2588,6 +2678,9 @@ window.__ModuleLoader__.load({
         h('div', { className: 'rw-dialog-message' }, props.message),
         h('div', { className: 'rw-dialog-actions' },
           h('button', { type: 'button', className: 'rw-btn rw-btn-sm', onClick: props.onClose }, props.t('cancel')),
+          props.secondaryLabel
+            ? h('button', { type: 'button', className: 'rw-btn rw-btn-sm rw-btn-primary', onClick: props.onSecondary }, props.secondaryLabel)
+            : null,
           h('button', { type: 'button', className: 'rw-btn rw-btn-sm rw-btn-danger', onClick: props.onConfirm }, props.confirmLabel)));
     }
 
@@ -2626,6 +2719,7 @@ window.__ModuleLoader__.load({
       var path = props.path;
       var local = props.local === true;
       var onSaved = props.onSaved;
+      var settings = useRuntimeSettings();
       var kind = documentKindOf(path);
       var stateRef = useState({
         loading: true, error: '', data: null, text: '', dirty: false, saving: false,
@@ -2665,7 +2759,7 @@ window.__ModuleLoader__.load({
       }, [state.dirty]);
 
       function save() {
-        if (state.saving) return;
+        if (state.saving) return Promise.resolve(false);
         patch({ saving: true, error: '', notice: '' });
         var data = {};
         if (kind === 'markdown') data = { text: state.text };
@@ -2679,14 +2773,48 @@ window.__ModuleLoader__.load({
             deleted: Object.keys(state.deleted).filter(function (index) { return state.deleted[index]; }).map(Number),
           };
         }
-        apiCall('docs.write', params({ data: data, expectedMtime: state.data ? state.data.mtime : undefined })).then(function () {
-          patch({ saving: false, dirty: false, notice: t('saved') });
+        return apiCall('docs.write', params({ data: data, expectedMtime: state.data ? state.data.mtime : undefined })).then(function (result) {
+          patch({
+            saving: false,
+            dirty: false,
+            notice: t('saved'),
+            data: state.data ? Object.assign({}, state.data, { mtime: result.mtime, size: result.size }) : state.data,
+          });
           if (onSaved) onSaved();
-          load();
+          return true;
         }).catch(function (error) {
           patch({ saving: false, error: messageOf(error, t, locale) });
+          return false;
         });
       }
+
+      var saveRef = useRef(null);
+      saveRef.current = save;
+      useEffect(function () {
+        var notify = props.onSaveReady;
+        if (typeof notify === 'function') notify(function () { return saveRef.current(); });
+        return function () {
+          if (typeof notify === 'function') notify(null);
+        };
+      }, [path, local]);
+
+      useEffect(function () {
+        if (props.visible === false) return undefined;
+        function onKey(event) {
+          var mod = event.ctrlKey || event.metaKey;
+          if (!mod || String(event.key || '').toLowerCase() !== 's') return;
+          event.preventDefault();
+          saveRef.current();
+        }
+        window.addEventListener('keydown', onKey, true);
+        return function () { window.removeEventListener('keydown', onKey, true); };
+      }, [props.visible]);
+
+      useEffect(function () {
+        if (!settings.autoSave || !state.dirty || state.saving) return undefined;
+        var timer = setTimeout(function () { saveRef.current(); }, 900);
+        return function () { clearTimeout(timer); };
+      }, [settings.autoSave, state.dirty, state.saving, state.text, state.data, state.updates, state.pptxUpdates, state.rotations, state.deleted]);
 
       function showPreview() {
         var next = !state.preview;
@@ -3035,6 +3163,7 @@ window.__ModuleLoader__.load({
       var fileDirtyState = useState({});
       var fileDirty = fileDirtyState[0];
       var setFileDirty = fileDirtyState[1];
+      var saveHandlersRef = useRef({});
       var directoryTabId = props.tab && props.tab.id;
 
       useEffect(function () {
@@ -3117,7 +3246,25 @@ window.__ModuleLoader__.load({
         });
       }
 
-      function openByMode(side, filePath) {
+      function openTerminal(side) {
+        if (!selected) return;
+        var request = { side: side };
+        if (selected.kind === 'linked') request.linkedId = selected.id;
+        else request.workspaceId = selected.id;
+        apiCall('terminal.open', request).then(function () {
+          showNotice('success', t('terminalOpened'));
+        }).catch(function (error) {
+          showNotice('error', t('terminalOpenFailed') + '：' + messageOf(error, t, locale));
+        });
+      }
+
+      function pinByMode(side, filePath) {
+        var mode = settings.fileOpenMode || 'editor';
+        if (mode !== 'editor') return;
+        openByMode(side, filePath, { pinned: true, preview: false });
+      }
+
+      function openByMode(side, filePath, options) {
         if (!selected || !filePath) return;
         var openMode = settings.fileOpenMode || 'editor';
         if (openMode === 'copy') {
@@ -3136,14 +3283,34 @@ window.__ModuleLoader__.load({
           });
           return;
         }
-        openInternalFile(side, filePath);
+        openInternalFile(side, filePath, options || { pinned: true });
       }
 
-      function openInternalFile(side, filePath) {
+      function openInternalFile(side, filePath, options) {
+        var opts = options || { pinned: true };
         var key = side + ':' + (side === 'remote' ? scopeKeyOf(scopeRef) : 'local') + ':' + filePath;
         setOpenFiles(function (previous) {
-          if (previous.some(function (file) { return file.key === key; })) return previous;
-          return previous.concat([{ key: key, side: side, path: filePath, name: basename(filePath) }]);
+          var existing = previous.filter(function (file) { return file.key === key; })[0];
+          if (existing) {
+            if (opts.pinned && !existing.pinned) {
+              return previous.map(function (file) { return file.key === key ? Object.assign({}, file, { pinned: true }) : file; });
+            }
+            return previous;
+          }
+          if (opts.preview === true) {
+            var activeIndex = -1;
+            previous.forEach(function (file, index) { if (file.key === activeFileKey) activeIndex = index; });
+            if (activeIndex >= 0) {
+              var active = previous[activeIndex];
+              if (!active.pinned && !fileDirty[active.key]) {
+                var replaced = previous.slice();
+                replaced[activeIndex] = { key: key, side: side, path: filePath, name: basename(filePath), pinned: false };
+                setFileDirty(function (dirtyMap) { var copy = Object.assign({}, dirtyMap); delete copy[active.key]; return copy; });
+                return replaced;
+              }
+            }
+          }
+          return previous.concat([{ key: key, side: side, path: filePath, name: basename(filePath), pinned: Boolean(opts.pinned) }]);
         });
         setActiveFileKey(key);
         setDirectoryOpen(true);
@@ -3153,10 +3320,66 @@ window.__ModuleLoader__.load({
         setOpenFiles(function (previous) {
           var next = previous.filter(function (file) { return file.key !== key; });
           setFileDirty(function (dirtyMap) { var copy = Object.assign({}, dirtyMap); delete copy[key]; return copy; });
+          delete saveHandlersRef.current[key];
           if (activeFileKey === key) setActiveFileKey(next.length > 0 ? next[next.length - 1].key : '');
           return next;
         });
       }
+
+      function requestCloseInternalFile(key) {
+        if (!fileDirty[key]) { closeInternalFile(key); return; }
+        var file = openFiles.filter(function (entry) { return entry.key === key; })[0];
+        setDialog({ kind: 'closeDirty', key: key, name: file ? file.name : '' });
+      }
+
+      function saveAndCloseInternalFile(key) {
+        var handler = saveHandlersRef.current[key];
+        setDialog(null);
+        if (!handler) { closeInternalFile(key); return; }
+        handler().then(function (ok) {
+          if (ok) closeInternalFile(key);
+          else showNotice('error', t('saveFailed'));
+        });
+      }
+
+      useEffect(function () {
+        function onKey(event) {
+          var mod = event.ctrlKey || event.metaKey;
+          if (!mod) return;
+          var key = String(event.key || '').toLowerCase();
+          if (key === 'w') {
+            if (!activeFileKey) return;
+            event.preventDefault();
+            event.stopPropagation();
+            requestCloseInternalFile(activeFileKey);
+            return;
+          }
+          if (key === 'tab') {
+            if (openFiles.length < 2) return;
+            event.preventDefault();
+            event.stopPropagation();
+            var index = -1;
+            openFiles.forEach(function (file, i) { if (file.key === activeFileKey) index = i; });
+            var step = event.shiftKey ? -1 : 1;
+            var nextIndex = (index + step + openFiles.length) % openFiles.length;
+            setActiveFileKey(openFiles[nextIndex].key);
+            return;
+          }
+          if (key === 'b') {
+            event.preventDefault();
+            event.stopPropagation();
+            setDirectoryOpen(function (open) { return !open; });
+            return;
+          }
+          if (key === 'f' && event.shiftKey) {
+            event.preventDefault();
+            event.stopPropagation();
+            setSearchOpen(true);
+          }
+        }
+        window.addEventListener('keydown', onKey, true);
+        return function () { window.removeEventListener('keydown', onKey, true); };
+      }, [activeFileKey, openFiles, directoryOpen]);
 
       function closeContextMenu() { setCtxMenu(null); }
 
@@ -3427,6 +3650,18 @@ window.__ModuleLoader__.load({
             onConfirm: function () { setDialog(null); confirmDelete(dialog); },
           });
         }
+        if (dialog.kind === 'closeDirty') {
+          return h(ConfirmDialog, {
+            t: t,
+            title: t('dirtyCloseTitle'),
+            message: t('dirtyCloseMessage', { name: dialog.name }),
+            secondaryLabel: t('dirtyCloseSave'),
+            confirmLabel: t('dirtyCloseDiscard'),
+            onClose: function () { setDialog(null); },
+            onSecondary: function () { saveAndCloseInternalFile(dialog.key); },
+            onConfirm: function () { setDialog(null); closeInternalFile(dialog.key); },
+          });
+        }
         return h(PromptDialog, {
           t: t,
           title: dialog.title,
@@ -3540,7 +3775,8 @@ window.__ModuleLoader__.load({
             showHidden: showHidden,
             selectedPath: selectedEntry && selectedEntry.side === 'remote' ? selectedEntry.path : '',
             onSelectPath: function (info) { setSelectedEntry(Object.assign({ side: 'remote' }, info)); },
-            onSelect: function (filePath) { openByMode('remote', filePath); },
+            onSelect: function (filePath) { openByMode('remote', filePath, { pinned: false, preview: true }); },
+            onPin: function (filePath) { pinByMode('remote', filePath); },
             onContextMenu: function (info) { setSelectedEntry(Object.assign({ side: 'remote' }, info)); openContextMenu('remote', info); },
           })),
           selected.kind === 'linked'
@@ -3560,7 +3796,8 @@ window.__ModuleLoader__.load({
               showHidden: showHidden,
               selectedPath: selectedEntry && selectedEntry.side === 'local' ? selectedEntry.path : '',
               onSelectPath: function (info) { setSelectedEntry(Object.assign({ side: 'local' }, info)); },
-              onSelect: function (filePath) { openByMode('local', filePath); },
+              onSelect: function (filePath) { openByMode('local', filePath, { pinned: false, preview: true }); },
+              onPin: function (filePath) { pinByMode('local', filePath); },
               refreshTick: localTick,
               onContextMenu: function (info) { setSelectedEntry(Object.assign({ side: 'local' }, info)); openContextMenu('local', info); },
             }))
@@ -3577,6 +3814,10 @@ window.__ModuleLoader__.load({
             path: activeFile.path,
             local: activeFile.side === 'local',
             onSaved: refreshTree,
+            onSaveReady: function (handler) {
+              if (handler) saveHandlersRef.current[activeFile.key] = handler;
+              else delete saveHandlersRef.current[activeFile.key];
+            },
             onDirtyChange: function (dirty) {
               setFileDirty(function (previous) {
                 if (Boolean(previous[activeFile.key]) === Boolean(dirty)) return previous;
@@ -3593,6 +3834,10 @@ window.__ModuleLoader__.load({
           local: activeFile.side === 'local',
           readOnly: remoteOnly,
           hideHeader: true,
+          onSaveReady: function (handler) {
+            if (handler) saveHandlersRef.current[activeFile.key] = handler;
+            else delete saveHandlersRef.current[activeFile.key];
+          },
           onDirtyChange: function (dirty) {
             setFileDirty(function (previous) {
               if (Boolean(previous[activeFile.key]) === Boolean(dirty)) return previous;
@@ -3616,6 +3861,8 @@ window.__ModuleLoader__.load({
           openMode: settings.fileOpenMode || 'editor',
           directoryOpen: directoryOpen,
           onToggleDirectory: function () { setDirectoryOpen(!directoryOpen); },
+          onOpenTerminal: openTerminal,
+          localEnabled: !remoteOnly && selected.kind === 'linked',
           showHidden: showHidden,
           onToggleHidden: function () { setShowHidden(!showHidden); },
           transferEnabled: !remoteOnly && Boolean(selectedEntry),
@@ -3674,7 +3921,7 @@ window.__ModuleLoader__.load({
                     h('span', { className: 'rw-file-tab-name' }, file.name),
                     h('button', {
                       type: 'button', className: 'rw-file-tab-close', title: t('closeFile'),
-                      onClick: function (event) { event.stopPropagation(); closeInternalFile(file.key); },
+                      onClick: function (event) { event.stopPropagation(); requestCloseInternalFile(file.key); },
                     }, IconClose(10)));
                 }))
               : null,
@@ -3735,6 +3982,7 @@ window.__ModuleLoader__.load({
       var toggle = props.toggle;
       var state = props.state;
       var onSelect = props.onSelect;
+      var onPin = props.onPin;
       var onSelectPath = props.onSelectPath;
       var onContextMenu = props.onContextMenu;
       var selectedPath = props.selectedPath;
@@ -3772,6 +4020,7 @@ window.__ModuleLoader__.load({
                 state: state,
                 load: props.load,
                 onSelect: onSelect,
+                onPin: onPin,
                 onSelectPath: onSelectPath,
                 onContextMenu: onContextMenu,
                 selectedPath: selectedPath,
@@ -3784,10 +4033,11 @@ window.__ModuleLoader__.load({
                 className: 'rw-row' + (active ? ' is-active' : ''),
                 style: { paddingLeft: 6 + (depth + 1) * 12 },
                 title: child.path,
-                onClick: function () {
+                onClick: function (event) {
                   if (onSelectPath) onSelectPath({ path: child.path, name: child.name, isDir: false });
+                  if (event.detail !== 2) onSelect(child.path);
                 },
-                onDoubleClick: function () { onSelect(child.path); },
+                onDoubleClick: function () { if (onPin) onPin(child.path); },
                 onContextMenu: function (event) {
                   if (!onContextMenu) return;
                   event.preventDefault();
@@ -3810,10 +4060,10 @@ window.__ModuleLoader__.load({
           className: 'rw-row' + (selectedPath === path ? ' is-active' : ''),
           style: { paddingLeft: 6 + depth * 12 },
           title: path,
-          onClick: function () {
+          onClick: function (event) {
             if (onSelectPath) onSelectPath({ path: path, name: name, isDir: true });
+            if (event.detail !== 2) toggle(path);
           },
-          onDoubleClick: function () { toggle(path); },
           onContextMenu: function (event) {
             if (!onContextMenu) return;
             event.preventDefault();
@@ -4608,6 +4858,61 @@ window.__ModuleLoader__.load({
           : null);
     }
 
+    function EditorSettingsGroup(props) {
+      var t = props.t;
+      var locale = props.locale;
+      var settings = useRuntimeSettings();
+      var state = useState({ saving: false, message: null });
+      var local = state[0];
+      var setLocal = state[1];
+      var shortcuts = [
+        ['Ctrl+S', t('shortcutSave')],
+        ['Ctrl+W', t('shortcutClose')],
+        ['Ctrl+Tab', t('shortcutSwitch')],
+        ['Ctrl+B', t('shortcutDirectory')],
+        ['Ctrl+Shift+F', t('shortcutSearch')],
+      ];
+
+      function toggleAutoSave(next) {
+        if (local.saving) return;
+        setLocal({ saving: true, message: null });
+        runtimeSettings.saveAutoSave(next).then(function () {
+          setLocal({ saving: false, message: { kind: 'success', text: t('autoSaveSaved') } });
+          bus.emit();
+        }).catch(function (error) {
+          setLocal({ saving: false, message: { kind: 'error', text: messageOf(error, t, locale) } });
+        });
+      }
+
+      return h('div', { className: 'rw-group' },
+        h('div', { className: 'rw-group-head' },
+          h('span', { className: 'rw-group-title' }, t('autoSaveTitle')),
+          h('span', { className: 'rw-group-hint' }, t('autoSaveHint'))),
+        h('div', { className: 'rw-setting-row' },
+          h(Switch, {
+            checked: Boolean(settings.autoSave),
+            onChange: toggleAutoSave,
+            label: t('autoSaveLabel'),
+            text: t('autoSaveLabel'),
+          }),
+          local.saving ? Spinner(12) : null),
+        h('div', { className: 'rw-group-head', style: { marginTop: 14 } },
+          h('span', { className: 'rw-group-title' }, t('shortcutTitle')),
+          h('span', { className: 'rw-group-hint' }, t('shortcutHint'))),
+        h('div', { className: 'rw-shortcut-grid' },
+          shortcuts.map(function (item) {
+            return h('div', { key: item[0], className: 'rw-shortcut-row' },
+              h('kbd', { className: 'rw-kbd' }, item[0]),
+              h('span', null, item[1]));
+          })),
+        local.message
+          ? h(Banner, {
+            kind: local.message.kind === 'success' ? 'success' : 'error',
+            onClose: function () { setLocal({ saving: false, message: null }); },
+          }, local.message.text)
+          : null);
+    }
+
     function ConnectionsPage(props) {
       var ctx = props.ctx;
       var locale = useLocale(ctx);
@@ -4649,6 +4954,7 @@ window.__ModuleLoader__.load({
             }, adding === 'remote' ? IconClose(13) : IconServer(13), t('addRemoteDir')))),
         !sidebarAvailable ? h(Banner, { kind: 'warn' }, t('needsSidebar')) : null,
         h(ThemeGroup, { t: t, locale: locale }),
+        h(EditorSettingsGroup, { t: t, locale: locale }),
         adding !== ''
           ? h(AddWorkspaceFlow, {
             ctx: ctx, t: t, locale: locale, initialMode: adding, lockedMode: adding,

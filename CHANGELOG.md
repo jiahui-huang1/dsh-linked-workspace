@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.7.0 — 2026-11-09
+
+- **VSCode-like tree interaction**: single-click a folder to expand/collapse and single-click a file to open it. A single-click preview tab is replaced by the next file; double-click pins the tab so later single clicks do not overwrite it. Double-clicking a folder keeps it expanded.
+- **Terminal shortcuts in the directory toolbar**: one button opens a system terminal at the current remote directory (via `ssh`), and linked workspaces get a second button for the local directory.
+- **Keyboard shortcuts**: `Ctrl/Cmd+S` save, `Ctrl/Cmd+W` close tab, `Ctrl+Tab` / `Shift+Ctrl+Tab` cycle tabs, `Ctrl/Cmd+B` toggle the directory panel, `Ctrl/Cmd+Shift+F` file search.
+- **Unsaved-close prompt**: closing a dirty tab now offers Save / Discard / Cancel instead of silently losing edits.
+- **Auto save setting**: Settings → Connections → Editor behavior adds an auto-save switch; when enabled, edits are saved about one second after typing stops. Default remains off.
+
 ## 0.6.2 — 2026-11-05
 
 - Fixed Markdown/document JSON transport failing with a Windows GBK codec error for characters such as the superscript minus (U+207B); the Python bridge now emits UTF-8/ASCII-safe JSON and configures UTF-8 stdout.

@@ -8,6 +8,7 @@
  *   node test/client-smoke.mjs
  */
 import assert from 'node:assert/strict'
+import { readFile } from 'node:fs/promises'
 
 const registered = { settings: [], flows: [], tabs: [] }
 let captured = null
@@ -72,6 +73,11 @@ const ctx = {
 }
 
 await import('../lib/client.js')
+
+const bundleSource = await readFile(new URL('../lib/client.js', import.meta.url), 'utf8')
+assert.match(bundleSource, /terminal\.open/, 'terminal API call is part of the client bundle')
+assert.match(bundleSource, /requestCloseInternalFile/, 'dirty-close prompt is part of the client bundle')
+assert.match(bundleSource, /autoSave/, 'auto-save setting is part of the client bundle')
 
 assert.ok(captured, 'the bundle registered itself with the module loader')
 assert.equal(captured.id, 'dsh-linked-workspace')

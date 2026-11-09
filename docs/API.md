@@ -66,8 +66,8 @@ relative to the scope root, or absolute inside it.
 | `fs.rename` | `{ workspaceId?/linkedId?, from, to }` | `{}` |
 | `fs.delete` | `{ workspaceId?/linkedId?, path }` | `{}` |
 | `fs.home` | `{ workspaceId?/linkedId? }` | `{ home }` |
-| `settings.get` | `{}` | `{ editorTheme, editorThemeFamily, editorThemeMode, fileOpenMode }` |
-| `settings.update` | `{ editorTheme?, editorThemeFamily?, editorThemeMode?, fileOpenMode? }` | `{ editorTheme, editorThemeFamily, editorThemeMode, fileOpenMode }` |
+| `settings.get` | `{}` | `{ editorTheme, editorThemeFamily, editorThemeMode, fileOpenMode, autoSave }` |
+| `settings.update` | `{ editorTheme?, editorThemeFamily?, editorThemeMode?, fileOpenMode?, autoSave? }` | `{ editorTheme, editorThemeFamily, editorThemeMode, fileOpenMode, autoSave }` |
 | `local.browse` | `{ path? }` | `{ path, parent, home, entries: [{ name, path }] }` |
 | `local.mkdir` | `{ path, name }` | `{ path }` |
 | `linked.list` | `{}` | `{ links: LinkInfo[] }` (each link carries `running`) |
@@ -79,6 +79,7 @@ relative to the scope root, or absolute inside it.
 | `linked.syncCancel` | `{ id }` | `{ cancelled: boolean }` |
 | `local.list` | `{ path }` | `{ path, entries: [{ name, path, type, size, mtime }] }` |
 | `local.openExternal` | `{ path }` | `{ opened, path }` |
+| `terminal.open` | `{ workspaceId?/linkedId?, side: 'remote'\|'local' }` | `{ opened, side, path, host? }` |
 | `fs.openExternal` | `{ workspaceId?/linkedId?, path }` | `{ opened, localPath, size }` |
 | `localWorkspace.create` | `{ path, name? }` | `{ workspaceId, title, path }` |
 | `session.info` | `{ sessionId }` | `{ sessionId, cwd, running }` |
@@ -112,7 +113,7 @@ Under `$DSH_HOME/linked-workspace/`:
 
 - `workspaces.json` — direct remote directories (no credentials).
 - `linked.json` — linked workspaces (no credentials).
-- `settings.json` — `{ editorTheme, fileOpenMode }`.
+- `settings.json` — `{ editorTheme, editorThemeFamily, editorThemeMode, fileOpenMode, autoSave }`.
 - `known_hosts.json` — trust-on-first-use host key fingerprints.
 - Local linked directories also hold `.local/linked.json` (same binding without
   secrets) and the optional `.remote/` mirror.
