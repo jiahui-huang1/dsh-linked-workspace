@@ -61,6 +61,7 @@ The content panel now edits **Markdown / PDF / DOCX / XLSX / PPTX** files on bot
   - **Refresh**: reload roots, git status and search.
 - File-type icons for JS/TS/Python/JSON/Markdown/Shell/YAML/images/archives/config files, etc.
 - Editor: line numbers, syntax highlighting (layered rendering), theme colors, `Ctrl/Cmd+S` save, conflict prompt (reload/force save), read-only protection for binary and >2 MB files, UTF-8/LF/CRLF/line-count status bar. The embedded content panel hides the path/save header; unsaved changes show a gray dot in the file tab. Read-only tabs render the file content but cannot be edited or saved.
+- **Image and CSV preview**: PNG/JPG/GIF/WebP/BMP/ICO/AVIF/SVG render directly in the content panel (up to 24 MB). CSV/TSV opens as a table by default with a Table/Source toggle; the source view remains editable and saveable. Tables are capped at 1000 rows and 80 columns.
 - **Shortcuts**: `Ctrl/Cmd+S` saves the current file; `Ctrl/Cmd+W` closes the current tab (with a save/discard/cancel prompt when dirty); `Ctrl+Tab` / `Shift+Ctrl+Tab` cycles tabs; `Ctrl/Cmd+B` toggles the directory panel; `Ctrl/Cmd+Shift+F` opens file search.
 - **Auto save**: enable it under Settings → Connections → Editor behavior. It saves about one second after you stop typing. When off, use `Ctrl+S`. Closing a dirty file always asks first instead of discarding silently.
 - Multiple files can be open at once (up to 12 slots). A single click opens a preview tab and replaces the current unpinned preview; double-click pins the tab; clicking the same file focuses its existing tab. Local files use the same internal editor and can be edited and saved.
@@ -72,7 +73,7 @@ The content panel now edits **Markdown / PDF / DOCX / XLSX / PPTX** files on bot
 
 ### Context menu (files, folders, roots)
 
-Transfer (download to `.remote` / upload to remote), download to the default folder, queue, open, edit with Notepad, copy, paste, copy path, rename, delete, change permissions, new folder/file, properties. Remote operations use SFTP; local operations use the local filesystem. The transfer queue runs one job at a time.
+Transfer (download to `.remote` / upload to remote), download to the default folder, queue, open, edit with Notepad, copy, paste, copy path, **Move to…** (only within the same local or remote tree), rename, delete, change permissions, new folder/file, properties. Remote operations use SFTP; local operations use the local filesystem. The transfer queue runs one job at a time.
 
 ### Linked-workspace layout
 

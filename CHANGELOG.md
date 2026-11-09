@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.8.0 — 2026-11-09
+
+- **Image previews**: PNG/JPG/GIF/WebP/BMP/ICO/AVIF/SVG now render in the content panel for both remote and local files (`media.read` / `local.media`, 24 MB cap).
+- **CSV/TSV table view**: CSV and TSV files open in a table by default with a Table/Source toggle. The source view keeps editing, syntax highlighting, and save; tables are capped at 1000 rows and 80 columns.
+- **Move files and folders**: the directory context menu gains "Move to…" for remote and local entries. A directory picker chooses the destination inside the same tree; the plugin rejects collisions, moving a folder into itself, moving the workspace root, and moving a file with unsaved edits.
+- New host APIs `media.read`, `fs.move`, `local.media`, `local.move`; `FS_EXISTS` now maps to HTTP 409.
+
 ## 0.7.0 — 2026-11-09
 
 - **VSCode-like tree interaction**: single-click a folder to expand/collapse and single-click a file to open it. A single-click preview tab is replaced by the next file; double-click pins the tab so later single clicks do not overwrite it. Double-clicking a folder keeps it expanded.

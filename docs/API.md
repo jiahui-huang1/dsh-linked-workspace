@@ -60,10 +60,12 @@ relative to the scope root, or absolute inside it.
 | `workspaces.test` | `{ id }` | `{ ok, latencyMs?, resolvedPath?, error? }` |
 | `fs.list` | `{ workspaceId?/linkedId?, path }` | `{ path, entries: RemoteEntry[] }` |
 | `fs.read` | `{ workspaceId?/linkedId?, path, maxBytes? }` | `FileRead` |
+| `media.read` | `{ workspaceId?/linkedId?, path }` | `{ path, size, mtime, mime, base64 }` (PNG/JPG/GIF/WebP/BMP/ICO/AVIF/SVG, max 24 MB) |
 | `fs.write` | `{ workspaceId?/linkedId?, path, content, expectedMtime? }` | `{ path, size, mtime }` |
 | `fs.stat` | `{ workspaceId?/linkedId?, path }` | `{ path, relative, type, size, mtime, mode }` |
 | `fs.mkdir` | `{ workspaceId?/linkedId?, path }` | `{}` |
 | `fs.rename` | `{ workspaceId?/linkedId?, from, to }` | `{}` |
+| `fs.move` | `{ workspaceId?/linkedId?, path, targetDir? }` | `{ path }` (same remote tree; collision → 409) |
 | `fs.delete` | `{ workspaceId?/linkedId?, path }` | `{}` |
 | `fs.home` | `{ workspaceId?/linkedId? }` | `{ home }` |
 | `settings.get` | `{}` | `{ editorTheme, editorThemeFamily, editorThemeMode, fileOpenMode, autoSave }` |
@@ -93,9 +95,11 @@ relative to the scope root, or absolute inside it.
 | `fs.copy` | `{ workspaceId?/linkedId?, path, targetDir? }` | `{ path, files }` |
 | `fs.chmod` | `{ workspaceId?/linkedId?, path, mode }` | stat |
 | `local.read` | `{ path }` | `{ path, content, size, mtime, truncated, binary, tooLarge, editable }` |
+| `local.media` | `{ path }` | `{ path, size, mtime, mime, base64 }` (max 24 MB) |
 | `local.write` | `{ path, content, expectedMtime? }` | `{ path, size, mtime }` |
 | `local.stat` | `{ path }` | `{ path, type, size, mtime, mode }` |
 | `local.rename` | `{ from, to }` | `{ path }` |
+| `local.move` | `{ path, targetDir?, root? }` | `{ path, type }` (same local tree; collision → 409) |
 | `local.delete` | `{ path, root? }` | `{}` (recursive) |
 | `local.copy` | `{ path, targetDir? }` | `{ path, type }` |
 | `local.newFile` | `{ path }` | `{ path }` |

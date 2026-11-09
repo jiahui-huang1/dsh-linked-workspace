@@ -48,6 +48,13 @@ window.__ModuleLoader__.load({
       return String(cwd || '').replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase();
     }
 
+    function pathInsideOf(root, target) {
+      var base = linkedScopeKey(root);
+      var value = linkedScopeKey(target);
+      if (!base) return true;
+      return value === base || value.indexOf(base + '/') === 0;
+    }
+
     function isLinkedWorkspaceId(workspaceId) {
       return Boolean(workspaceId) && linkedWorkspaceKeys.has(String(workspaceId));
     }
@@ -198,6 +205,19 @@ window.__ModuleLoader__.load({
       tooLarge: '文件过大（{{size}}），暂不支持在侧边栏内编辑。',
       truncated: '内容已截断',
       fileLoadError: '无法打开文件',
+      imageLoadError: '无法预览图片',
+      previewOnly: '图片预览',
+      csvTable: '表格',
+      csvSource: '源码',
+      csvEmpty: '没有可显示的数据',
+      csvTruncated: '仅显示前 1000 行',
+      moveTitle: '移动到…',
+      moveMessage: '选择「{{name}}」要移动到的目录',
+      moveDone: '已移动',
+      moveDirty: '该文件有未保存修改，请先保存或关闭后再移动',
+      moveFailed: '移动失败',
+      moveHint: '进入目标文件夹后点击「使用此目录」',
+      ctxMove: '移动到…',
       noWorkspace: '远程工作区不存在，请重新添加。',
       noTarget: '没有可用的远程目录。先在设置 → 连接中添加，或点击左侧「添加工作区」。',
       treeEmpty: '空目录',
@@ -508,6 +528,19 @@ window.__ModuleLoader__.load({
       tooLarge: 'File too large ({{size}}); editing it in the sidebar is not supported yet.',
       truncated: 'Content truncated',
       fileLoadError: 'Cannot open the file',
+      imageLoadError: 'Cannot preview this image',
+      previewOnly: 'Image preview',
+      csvTable: 'Table',
+      csvSource: 'Source',
+      csvEmpty: 'No rows to show',
+      csvTruncated: 'Showing the first 1000 rows',
+      moveTitle: 'Move to…',
+      moveMessage: 'Choose the destination folder for "{{name}}"',
+      moveDone: 'Moved',
+      moveDirty: 'This file has unsaved changes; save or close it before moving',
+      moveFailed: 'Move failed',
+      moveHint: 'Open the destination folder, then click “Use this directory”',
+      ctxMove: 'Move to…',
       noWorkspace: 'This remote workspace no longer exists. Add it again.',
       noTarget: 'No remote directory is available. Add one in Settings → Connections, or click “Add workspace” on the left.',
       treeEmpty: 'Empty directory',
@@ -879,7 +912,56 @@ window.__ModuleLoader__.load({
       if (value === '.docx') return 'docx';
       if (value === '.xlsx') return 'xlsx';
       if (value === '.pptx') return 'pptx';
+      if (value === '.csv' || value === '.tsv') return 'csv';
+      if (value === '.png' || value === '.jpg' || value === '.jpeg' || value === '.gif'
+        || value === '.webp' || value === '.bmp' || value === '.ico' || value === '.avif'
+        || value === '.svg') return 'image';
       return '';
+    }
+
+    function isCsvPath(path) {
+      var ext = String(path || '').toLowerCase().match(/\.[^./\\]+$/);
+      return Boolean(ext && (ext[0] === '.csv' || ext[0] === '.tsv'));
+    }
+
+    function parseDelimited(text, delimiter) {
+      var rows = [];
+      var row = [];
+      var field = '';
+      var quoted = false;
+      var index = 0;
+      var source = String(text || '');
+      function pushField() { row.push(field); field = ''; }
+      function pushRow() {
+        pushField();
+        rows.push(row);
+        row = [];
+      }
+      while (index < source.length) {
+        var ch = source[index];
+        if (quoted) {
+          if (ch === '"') {
+            if (source[index + 1] === '"') { field += '"'; index += 2; continue; }
+            quoted = false; index += 1; continue;
+          }
+          field += ch; index += 1; continue;
+        }
+        if (ch === '"') { quoted = true; index += 1; continue; }
+        if (ch === delimiter) { pushField(); index += 1; continue; }
+        if (ch === '\r') { index += 1; continue; }
+        if (ch === '\n') { pushRow(); index += 1; continue; }
+        field += ch; index += 1;
+      }
+      if (field !== '' || row.length > 0) pushRow();
+      return rows;
+    }
+
+    function csvDelimiterOf(path, text) {
+      if (/\.tsv$/i.test(String(path || ''))) return '\t';
+      var firstLine = String(text || '').split(/\r?\n/, 1)[0] || '';
+      var commas = (firstLine.match(/,/g) || []).length;
+      var semicolons = (firstLine.match(/;/g) || []).length;
+      return semicolons > commas ? ';' : ',';
     }
 
     function sanitizeDocumentHtml(html) {
@@ -1328,6 +1410,17 @@ window.__ModuleLoader__.load({
       '.rw-props{display:grid;grid-template-columns:70px minmax(0,1fr);gap:5px 9px;font-size:12px;line-height:18px}',
       '.rw-props-key{color:var(--dsw-alias-label-tertiary)}',
       '.rw-props-value{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+      '.rw-image-preview{display:flex;flex-direction:column;height:100%;min-height:0;background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-primary)}',
+      '.rw-image-head{display:flex;align-items:center;gap:8px;padding:6px 10px;border-bottom:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);min-width:0;flex:none}',
+      '.rw-image-head .rw-actions{display:flex;align-items:center;gap:6px;flex:none}',
+      '.rw-image-stage{display:flex;align-items:center;justify-content:center;flex:1 1 auto;min-height:0;overflow:auto;padding:18px;background:repeating-conic-gradient(var(--dsw-alias-bg-layer-1) 0% 25%,var(--dsw-alias-bg-base) 0% 50%) 50%/18px 18px}',
+      '.rw-image{max-width:100%;max-height:100%;object-fit:contain;border-radius:4px;box-shadow:0 2px 16px rgba(0,0,0,.18)}',
+      '.rw-csv-wrap{flex:1 1 auto;min-height:0;overflow:auto;background:var(--dsw-alias-bg-base)}',
+      '.rw-csv-table{border-collapse:collapse;font:12px/18px ui-monospace,"Cascadia Code",Consolas,monospace;min-width:100%}',
+      '.rw-csv-table th{position:sticky;top:0;z-index:1;background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-tertiary);font-weight:600;text-align:left;padding:4px 8px;border:1px solid var(--dsw-alias-border-l1);white-space:nowrap}',
+      '.rw-csv-table td{padding:3px 8px;border:1px solid var(--dsw-alias-border-l1);vertical-align:top;max-width:360px;overflow-wrap:anywhere}',
+      '.rw-csv-table tr:nth-child(even) td{background:color-mix(in srgb,var(--dsw-alias-bg-layer-1) 52%,transparent)}',
+      '.rw-csv-note{padding:5px 9px;font-size:10.5px;color:var(--dsw-alias-label-tertiary);border-top:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1)}',
       '.rw-queue-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--dsw-alias-border-l1);font-size:12px}',
       '.rw-queue-label{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
       '.rw-queue-state{flex:none;font-size:10.5px;color:var(--dsw-alias-label-tertiary)}',
@@ -1684,6 +1777,7 @@ window.__ModuleLoader__.load({
       var t = props.t;
       var locale = props.locale;
       var initialPath = props.initialPath || '';
+      var root = props.root || '';
       var state = useState({ loading: true, listing: null, error: '', input: initialPath, creating: false, folderName: '' });
       var local = state[0];
       var setLocal = state[1];
@@ -1705,6 +1799,7 @@ window.__ModuleLoader__.load({
 
       function navigate(path) {
         if (!path) return;
+        if (root && !pathInsideOf(root, path)) return;
         load(path);
       }
 
@@ -1807,7 +1902,7 @@ window.__ModuleLoader__.load({
           h('div', { className: 'rw-actions' },
             h('button', {
               type: 'button', className: 'rw-btn rw-btn-sm rw-btn-primary',
-              disabled: !listing || local.loading,
+              disabled: !listing || local.loading || (root && !pathInsideOf(root, listing.path)),
               onClick: function () { if (listing && props.onPick) props.onPick(listing.path); },
             }, IconCheck(12), t('useThisDir')))),
         local.creating
@@ -1905,6 +2000,128 @@ window.__ModuleLoader__.load({
           }, IconCheck(12), t('useThisDir'))));
     }
 
+    function ScopePathPicker(props) {
+      var t = props.t;
+      var locale = props.locale;
+      var scope = props.scope;
+      var root = props.root || '';
+      var state = useState({ loading: true, listing: null, error: '' });
+      var view = state[0];
+      var setView = state[1];
+
+      var load = useCallback(function (path) {
+        setView(function (previous) { return Object.assign({}, previous, { loading: true, error: '' }); });
+        var request = Object.assign({ path: path || root }, scopeParams(scope));
+        apiCall('fs.list', request).then(function (result) {
+          setView({ loading: false, listing: result, error: '' });
+        }).catch(function (error) {
+          setView({ loading: false, listing: null, error: messageOf(error, t, locale) });
+        });
+      }, [scopeKeyOf(scope), root]);
+
+      useEffect(function () { load(props.initialPath || root); }, []);
+
+      var listing = view.listing;
+      var dirs = listing ? (listing.entries || []).filter(function (entry) { return entry.type === 'dir'; }) : [];
+      var parent = listing && listing.path !== root
+        ? listing.path.replace(/\/+$/, '').replace(/\/[^/]*$/, '') || '/'
+        : '';
+      return h('div', { className: 'rw-browser rw-move-browser' },
+        h('div', { className: 'rw-browser-head' },
+          h('button', {
+            type: 'button', className: 'rw-icon-btn', title: t('parentDir'),
+            disabled: view.loading || !parent,
+            onClick: function () { if (parent) load(parent); },
+          }, h('span', { style: { transform: 'rotate(180deg)', display: 'inline-flex' } }, IconChevron(13))),
+          h('div', { className: 'rw-breadcrumb rw-input-mono', title: listing ? listing.path : '' },
+            listing ? listing.path : t('loading')),
+          view.loading ? Spinner(13) : null),
+        h('div', { className: 'rw-browser-list', role: 'list' },
+          view.error
+            ? h('div', { className: 'rw-row-msg' }, IconAlert(12), view.error)
+            : dirs.length === 0
+              ? h('div', { className: 'rw-row-msg' }, t('noEntries'))
+              : dirs.map(function (entry) {
+                return h('button', {
+                  key: entry.path, type: 'button', className: 'rw-browser-row', role: 'listitem',
+                  onClick: function () { load(entry.path); },
+                }, h('span', { className: 'rw-dir-icon' }, IconFolder(13, false)), h('span', null, entry.name));
+              })),
+        h('div', { className: 'rw-browser-actions', style: { padding: '8px' } },
+          h('span', { className: 'rw-hint' }, t('moveHint')),
+          h('button', {
+            type: 'button', className: 'rw-btn rw-btn-sm rw-btn-primary',
+            disabled: !listing || view.loading,
+            onClick: function () { if (listing) props.onPick(listing.path); },
+          }, IconCheck(12), t('useThisDir'))));
+    }
+
+    function ImagePreview(props) {
+      var ctx = props.ctx;
+      var t = props.t;
+      var locale = props.locale;
+      var scope = props.scope;
+      var local = props.local === true;
+      var filePath = props.path;
+      var state = useState({ loading: true, error: null, data: null });
+      var view = state[0];
+      var setView = state[1];
+      var params = scopeParams(scope);
+
+      var load = useCallback(function () {
+        if (!filePath || (!local && !scope)) {
+          setView({ loading: false, error: new Error(t('noWorkspace')), data: null });
+          return;
+        }
+        setView({ loading: true, error: null, data: null });
+        var request = local ? { path: filePath } : Object.assign({ path: filePath }, params);
+        apiCall(local ? 'local.media' : 'media.read', request).then(function (result) {
+          setView({ loading: false, error: null, data: result });
+        }).catch(function (error) {
+          setView({ loading: false, error: error, data: null });
+        });
+      }, [scopeKeyOf(scope), filePath, local]);
+
+      useEffect(function () { load(); }, [load]);
+
+      var name = basename(filePath) || t('fileTabTitle');
+      var header = h('div', { className: 'rw-image-head' },
+        h(FileGlyph, { name: name, size: 15 }),
+        h('div', { className: 'rw-editor-title' },
+          h('span', { className: 'rw-editor-name', title: name }, name),
+          h('span', { className: 'rw-editor-path', title: filePath }, filePath)),
+        h('div', { className: 'rw-actions' },
+          h('button', { type: 'button', className: 'rw-btn rw-btn-sm', onClick: load, disabled: view.loading }, IconRefresh(12), t('reload'))));
+
+      if (view.loading) {
+        return h('div', { className: 'rw-image-preview' }, header,
+          h('div', { className: 'rw-editor-message' }, Spinner(14), t('loading')));
+      }
+      if (view.error) {
+        return h('div', { className: 'rw-image-preview' }, header,
+          h('div', { className: 'rw-editor-message' },
+            h(Banner, { kind: 'error' }, t('imageLoadError') + '：' + messageOf(view.error, t, locale)),
+            h('button', { type: 'button', className: 'rw-btn', onClick: load }, IconRefresh(13), t('retry'))));
+      }
+      var data = view.data;
+      return h('div', { className: 'rw-image-preview' },
+        header,
+        h('div', { className: 'rw-image-stage' },
+          h('img', {
+            className: 'rw-image',
+            src: 'data:' + data.mime + ';base64,' + data.base64,
+            alt: name,
+            onError: function () {
+              setView({ loading: false, error: new Error(t('imageLoadError')), data: null });
+            },
+          })),
+        h('div', { className: 'rw-editor-status' },
+          h('span', { className: 'rw-status-chip' }, data.mime || 'image'),
+          h('span', { className: 'rw-status-chip' }, formatBytes(data.size || 0)),
+          h('span', { className: 'rw-fill', style: { flex: '1 1 auto' } }),
+          h('span', { className: 'rw-status-chip' }, t('previewOnly'))));
+    }
+
     // ── editor ─────────────────────────────────────────────────────────────
 
     function colorForToken(colors, type) {
@@ -1956,6 +2173,10 @@ window.__ModuleLoader__.load({
       var settings = useRuntimeSettings();
       var theme = getTheme(resolveEditorTheme(settings));
       var language = languageOf(filePath);
+      var csvMode = isCsvPath(filePath);
+      var csvTableState = useState(true);
+      var showCsvTable = csvTableState[0];
+      var setShowCsvTable = csvTableState[1];
 
       var loadState = useState({ loading: true, error: null, file: null });
       var load = loadState[0];
@@ -2080,6 +2301,14 @@ window.__ModuleLoader__.load({
         return count;
       }, [content]);
       var gutterLines = typeof lineCount === 'number' && lineCount <= 20000;
+      var csvRows = useMemo(function () {
+        if (!csvMode) return [];
+        var text = content.length > 1000000 ? content.slice(0, 1000000) : content;
+        var delimiter = csvDelimiterOf(filePath, text);
+        return parseDelimited(text, delimiter).slice(0, 1000).map(function (row) {
+          return row.slice(0, 80);
+        });
+      }, [content, filePath, csvMode]);
       var highlighted = useMemo(function () {
         if (!editable) return null;
         return highlightNodes(content, language, theme, 180000);
@@ -2110,13 +2339,20 @@ window.__ModuleLoader__.load({
           props.onClose
             ? h('button', { type: 'button', className: 'rw-icon-btn', title: t('closeEditor'), onClick: props.onClose }, IconClose(13))
             : null,
+          csvMode
+            ? h('button', {
+              type: 'button', className: 'rw-btn rw-btn-sm',
+              onClick: function () { setShowCsvTable(function (previous) { return !previous; }); },
+              title: showCsvTable ? t('csvSource') : t('csvTable'),
+            }, showCsvTable ? t('csvSource') : t('csvTable'))
+            : null,
           h('button', {
             type: 'button', className: 'rw-btn rw-btn-sm', onClick: function () { loadFile(); },
             disabled: load.loading || save.saving,
           }, IconRefresh(12), t('reload')),
           h('button', {
             type: 'button', className: 'rw-btn rw-btn-sm rw-btn-primary', onClick: function () { saveFile(false); },
-            disabled: !editable || save.saving,
+            disabled: !editable || save.saving || (csvMode && showCsvTable),
           }, save.saving ? Spinner(12) : IconSave(12), save.saving ? t('saving') : t('save'))));
 
       if (load.loading) {
@@ -2152,46 +2388,66 @@ window.__ModuleLoader__.load({
             : null;
 
       var canView = Boolean(load.file && !load.file.binary && !load.file.tooLarge);
+      var csvColumnCount = 0;
+      csvRows.forEach(function (row) { if (row.length > csvColumnCount) csvColumnCount = row.length; });
+      var csvTable = csvRows.length === 0
+        ? h('div', { className: 'rw-editor-message' }, t('csvEmpty'))
+        : h('div', { className: 'rw-csv-wrap' },
+          h('table', { className: 'rw-csv-table' },
+            h('thead', null, h('tr', null,
+              Array.from({ length: csvColumnCount }, function (_, index) {
+                return h('th', { key: 'h' + index, title: csvRows[0][index] || '' }, csvRows[0][index] || '');
+              }))),
+            h('tbody', null, csvRows.slice(1).map(function (row, rowIndex) {
+              return h('tr', { key: 'r' + rowIndex },
+                Array.from({ length: csvColumnCount }, function (_, columnIndex) {
+                  var value = row[columnIndex] === undefined ? '' : row[columnIndex];
+                  return h('td', { key: 'c' + columnIndex, title: value }, value);
+                }));
+            }))),
+          csvRows.length >= 1000 ? h('div', { className: 'rw-csv-note' }, t('csvTruncated')) : null);
       var body = canView
-        ? h('div', { className: 'rw-editor-body' },
-          h('div', { className: 'rw-code' },
-            h('div', { className: 'rw-gutter', ref: gutterRef },
-              gutterLines
-                ? h('div', { className: 'rw-gutter-inner' }, Array.from({ length: lineCount }, function (_, index) { return index + 1; }).join('\n'))
-                : null),
-            h('div', { className: 'rw-code-area' },
-              h('pre', { className: 'rw-highlight', ref: highlightRef, 'aria-hidden': 'true' },
-                highlighted || content),
-              h('textarea', {
-                ref: textareaRef,
-                className: 'rw-textarea',
-                readOnly: readOnly || !editable,
-                value: content,
-                spellCheck: false,
-                wrap: 'off',
-                onChange: function (event) {
-                  setContent(event.currentTarget.value);
-                  setDirty(true);
-                  setSave({ saving: false, conflict: false, error: '', ok: false });
-                },
-                onScroll: syncScroll,
-                onKeyDown: function (event) {
-                  if (!editable) return;
-                  if (event.key === 'Tab' && !event.ctrlKey && !event.altKey && !event.metaKey) {
-                    event.preventDefault();
-                    var target = event.currentTarget;
-                    var start = target.selectionStart;
-                    var end = target.selectionEnd;
-                    var next = content.slice(0, start) + '    ' + content.slice(end);
-                    setContent(next);
+        ? (csvMode && showCsvTable
+          ? csvTable
+          : h('div', { className: 'rw-editor-body' },
+            h('div', { className: 'rw-code' },
+              h('div', { className: 'rw-gutter', ref: gutterRef },
+                gutterLines
+                  ? h('div', { className: 'rw-gutter-inner' }, Array.from({ length: lineCount }, function (_, index) { return index + 1; }).join('\n'))
+                  : null),
+              h('div', { className: 'rw-code-area' },
+                h('pre', { className: 'rw-highlight', ref: highlightRef, 'aria-hidden': 'true' },
+                  highlighted || content),
+                h('textarea', {
+                  ref: textareaRef,
+                  className: 'rw-textarea',
+                  readOnly: readOnly || !editable,
+                  value: content,
+                  spellCheck: false,
+                  wrap: 'off',
+                  onChange: function (event) {
+                    setContent(event.currentTarget.value);
                     setDirty(true);
-                    requestAnimationFrame(function () {
-                      target.selectionStart = start + 4;
-                      target.selectionEnd = start + 4;
-                    });
-                  }
-                },
-              }))))
+                    setSave({ saving: false, conflict: false, error: '', ok: false });
+                  },
+                  onScroll: syncScroll,
+                  onKeyDown: function (event) {
+                    if (!editable) return;
+                    if (event.key === 'Tab' && !event.ctrlKey && !event.altKey && !event.metaKey) {
+                      event.preventDefault();
+                      var target = event.currentTarget;
+                      var start = target.selectionStart;
+                      var end = target.selectionEnd;
+                      var next = content.slice(0, start) + '    ' + content.slice(end);
+                      setContent(next);
+                      setDirty(true);
+                      requestAnimationFrame(function () {
+                        target.selectionStart = start + 4;
+                        target.selectionEnd = start + 4;
+                      });
+                    }
+                  },
+                })))))
         : h('div', { className: 'rw-editor-message' }, notice, h('span', { className: 'rw-muted' }, t('readOnly')));
 
       return h('div', { className: 'rw-editor', style: containerStyle },
@@ -2693,6 +2949,23 @@ window.__ModuleLoader__.load({
         })),
         h('div', { className: 'rw-dialog-actions' },
           h('button', { type: 'button', className: 'rw-btn rw-btn-sm', onClick: props.onClose }, props.t('close'))));
+    }
+
+    function MoveDialog(props) {
+      var picker = props.side === 'local'
+        ? h(LocalPathPicker, {
+          t: props.t, locale: props.locale, initialPath: props.initialPath, root: props.root,
+          onPick: props.onPick,
+        })
+        : h(ScopePathPicker, {
+          t: props.t, locale: props.locale, scope: props.scope, root: props.root,
+          initialPath: props.initialPath, onPick: props.onPick,
+        });
+      return h(DialogShell, { title: props.title, onClose: props.onClose },
+        h('div', { className: 'rw-dialog-message' }, props.message),
+        picker,
+        h('div', { className: 'rw-dialog-actions' },
+          h('button', { type: 'button', className: 'rw-btn rw-btn-sm', onClick: props.onClose }, props.t('cancel'))));
     }
 
     function QueueDialog(props) {
@@ -3520,6 +3793,56 @@ window.__ModuleLoader__.load({
         }).catch(noticeError);
       }
 
+      function pathUnder(filePath, parentPath) {
+        if (!filePath || !parentPath) return false;
+        var normalized = String(filePath).replace(/\\/g, '/').replace(/\/+$/, '');
+        var parent = String(parentPath).replace(/\\/g, '/').replace(/\/+$/, '');
+        return normalized === parent || normalized.indexOf(parent + '/') === 0 || normalized.indexOf(parent + '\\') === 0;
+      }
+
+      function moveEntry(side, oldPath, targetDir) {
+        var blocked = openFiles.some(function (file) {
+          return file.side === side && pathUnder(file.path, oldPath) && fileDirty[file.key];
+        });
+        if (blocked) {
+          showNotice('error', t('moveDirty'));
+          return;
+        }
+        var method = side === 'remote' ? 'fs.move' : 'local.move';
+        var params = side === 'remote'
+          ? Object.assign({ path: oldPath, targetDir: targetDir }, scopeParams(scopeRef))
+          : { path: oldPath, targetDir: targetDir, root: selected.localPath };
+        apiCall(method, params).then(function (result) {
+          var nextPath = result && result.path ? result.path : oldPath;
+          setOpenFiles(function (previous) {
+            return previous.filter(function (file) {
+              return !(file.side === side && pathUnder(file.path, oldPath));
+            });
+          });
+          setActiveFileKey(function (activeKey) {
+            var stillOpen = openFiles.filter(function (file) {
+              return file.key === activeKey && !(file.side === side && pathUnder(file.path, oldPath));
+            });
+            if (stillOpen.length > 0) return activeKey;
+            var remaining = openFiles.filter(function (file) {
+              return !(file.side === side && pathUnder(file.path, oldPath));
+            });
+            return remaining.length > 0 ? remaining[remaining.length - 1].key : null;
+          });
+          setFileDirty(function (previous) {
+            var next = Object.assign({}, previous);
+            openFiles.forEach(function (file) {
+              if (file.side === side && pathUnder(file.path, oldPath)) delete next[file.key];
+            });
+            return next;
+          });
+          setDialog(null);
+          showNotice('success', t('moveDone'));
+          refreshTree();
+          if (nextPath !== oldPath) refreshTree();
+        }).catch(noticeError);
+      }
+
       function submitNew(side, dirPath, name, isDir) {
         var target = joinChildPath(dirPath, name, side);
         var docKind = documentKindOf(name);
@@ -3599,6 +3922,15 @@ window.__ModuleLoader__.load({
         items.push({ separator: true });
         items.push({ label: t('ctxCopyPath'), onSelect: function () { copyPathToClipboard(menu.path); } });
         items.push({ separator: true });
+        var rootPath = menu.side === 'remote' ? selected.remotePath : selected.localPath;
+        if (menu.path !== rootPath) {
+          items.push({ label: t('ctxMove'), onSelect: function () {
+            setDialog({
+              kind: 'move', side: menu.side, path: menu.path, name: menu.name, isDir: menu.isDir,
+              initialPath: parentPathOf(menu.path, menu.side),
+            });
+          } });
+        }
         items.push({ label: t('ctxRename'), onSelect: function () {
           setDialog({ kind: 'rename', side: menu.side, path: menu.path, value: menu.name, title: t('renameTitle'), label: t('renameLabel') });
         } });
@@ -3648,6 +3980,19 @@ window.__ModuleLoader__.load({
             confirmLabel: t('deleteConfirm'),
             onClose: function () { setDialog(null); },
             onConfirm: function () { setDialog(null); confirmDelete(dialog); },
+          });
+        }
+        if (dialog.kind === 'move') {
+          return h(MoveDialog, {
+            t: t, locale: locale,
+            title: t('moveTitle'),
+            message: t('moveMessage', { name: dialog.name }),
+            side: dialog.side,
+            scope: dialog.side === 'remote' ? sourceScopeOf(selected) : null,
+            root: dialog.side === 'remote' ? selected.remotePath : selected.localPath,
+            initialPath: dialog.initialPath,
+            onClose: function () { setDialog(null); },
+            onPick: function (targetDir) { moveEntry(dialog.side, dialog.path, targetDir); },
           });
         }
         if (dialog.kind === 'closeDirty') {
@@ -3807,7 +4152,14 @@ window.__ModuleLoader__.load({
       var activeFile = openFiles.filter(function (file) { return file.key === activeFileKey; })[0] || null;
       var activeDocKind = activeFile ? documentKindOf(activeFile.name) : '';
       var contentArea = activeFile
-        ? (activeDocKind
+        ? (activeDocKind === 'image'
+          ? h(ImagePreview, {
+            ctx: ctx, t: t, locale: locale,
+            scope: activeFile.side === 'remote' ? sourceScopeOf(selected) : undefined,
+            path: activeFile.path,
+            local: activeFile.side === 'local',
+          })
+          : activeDocKind && activeDocKind !== 'csv'
           ? h(DocumentPane, {
             ctx: ctx, t: t, locale: locale,
             scope: activeFile.side === 'remote' ? sourceScopeOf(selected) : undefined,
