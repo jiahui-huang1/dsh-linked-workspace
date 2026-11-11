@@ -8,6 +8,7 @@ import assert from 'node:assert/strict'
 import { DEFAULT_THEME_ID, EDITOR_THEMES, getTheme } from '../src/parts/themes.js'
 import { languageOf, tokenize } from '../src/parts/highlight.js'
 import { fileIconSpec } from '../src/parts/file-icons.js'
+import { normalizeUrlValue, urlAttributeViolation, urlSchemeOf } from '../src/parts/url-safety.js'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // themes.js
@@ -852,3 +853,69 @@ test('file icons: unknown and odd input falls back to the plain file spec', () =
   }
   assert.deepEqual(fileIconSpec('foo.js'), fileIconSpec('foo.js'))
 })
+
+// ═══════════════════════════════════════════════════════════════════════════
+// url-safety.js — the document preview sanitizer's URL gate
+// ═══════════════════════════════════════════════════════════════════════════
+
+test('url safety: control characters are stripped before the scheme check', () => {
+  // Browsers drop tab/newline inside a scheme, so these all resolve to
+  // javascript: after URL parsing even though they do not start with it.
+  assert.equal(normalizeUrlValue('jav\tascript:alert(1)'), 'javascript:alert(1)')
+  assert.equal(normalizeUrlValue('java\nscript:alert(1)'), 'javascript:alert(1)')
+  assert.equal(normalizeUrlValue(' \u0000javascript:alert(1)'), 'javascript:alert(1)')
+  assert.equal(urlSchemeOf('jav\tascript:alert(1)'), 'javascript')
+  assert.equal(urlSchemeOf('HTTPS://example.com'), 'https')
+  assert.equal(urlSchemeOf('/relative/path.md'), '')
+})
+
+test('url safety: script schemes are rejected in every attribute that navigates', () => {
+  const attacks = [
+    'javascript:alert(1)',
+    'JaVaScRiPt:alert(1)',
+    'jav\tascript:alert(1)',
+    'java\nscript:alert(1)',
+    ' javascript:alert(1)',
+    'jav\u0000ascript:alert(1)',
+    'vbscript:msgbox(1)',
+    'file:///C:/Windows/system32/calc.exe',
+    'data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==',
+    'blob:https://example.com/uuid',
+  ]
+  for (const value of attacks) {
+    assert.ok(urlAttributeViolation('href', value, 'a'), `href should reject ${JSON.stringify(value)}`)
+    assert.ok(urlAttributeViolation('src', value, 'img'), `src should reject ${JSON.stringify(value)}`)
+    assert.ok(urlAttributeViolation('xlink:href', value, 'use'), `xlink:href should reject ${JSON.stringify(value)}`)
+  }
+  assert.ok(urlAttributeViolation('onclick', 'alert(1)', 'a'))
+  assert.ok(urlAttributeViolation('onerror', 'alert(1)', 'img'))
+})
+
+test('url safety: ordinary links, anchors and image data URLs survive', () => {
+  const safe = [
+    'https://example.com/a?b=1#c',
+    'http://example.com',
+    'mailto:someone@example.com',
+    'tel:+123456',
+    '/docs/readme.md',
+    './notes.txt',
+    '../up/one level.md',
+    '#section-2',
+    '//cdn.example.com/x.png',
+    '',
+  ]
+  for (const value of safe) {
+    assert.equal(urlAttributeViolation('href', value, 'a'), '', `href should keep ${JSON.stringify(value)}`)
+  }
+  assert.equal(
+    urlAttributeViolation('src', 'data:image/png;base64,iVBORw0KGgo=', 'img'),
+    '',
+  )
+  assert.ok(
+    urlAttributeViolation('src', 'data:image/svg+xml,<svg onload=alert(1)>', 'img'),
+    'svg data URLs stay blocked',
+  )
+  assert.equal(urlAttributeViolation('title', 'javascript:alert(1)', 'a'), '')
+  assert.equal(urlAttributeViolation('alt', 'javascript:alert(1)', 'img'), '')
+})
+

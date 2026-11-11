@@ -119,6 +119,21 @@ Old “Remote directories” tabs are restored after refresh through hidden lega
 
 See [CHANGELOG.md](CHANGELOG.md) for the full version history.
 
+### 0.8.2
+
+Security, data-integrity and large-directory fixes from the three-day review round:
+
+- The document-preview sanitizer normalizes control characters, whitespace and zero-width characters before checking a URL scheme, so `jav\tascript:`, `vbscript:`, `file:` and `data:text/html` links no longer run in the GUI; only `http(s)`, `mailto`, `tel`, relative URLs and bitmap `data:image` sources are kept.
+- Windows junctions can no longer escape the `.remote` containment check (`realpathSync.native`); linked `.local`/`.remote` entries are removed as links, never followed.
+- Copying a remote file over 64 MB, or reading one incompletely, now fails loudly instead of writing a truncated copy; the read tool no longer mirrors truncated payloads.
+- `local.read` reads only the requested head instead of loading the whole file into memory.
+- The `linked_workspace` `delete` action removes non-empty directories recursively.
+- Directory listings are paged (500 by default, 5000 max, with `total`/`hasMore`) and both trees render a “Load more” row, so a 20,000-entry folder no longer freezes the UI.
+- Mirror sync marks a job truncated at the depth limit instead of reporting success with files missing.
+- Accessibility: `:focus-visible` rings, `treeitem`/`aria-level`/`aria-expanded` semantics, `←`/`→` collapse and expand, and an add-workspace dialog that focuses its first field, traps Tab and closes on Escape.
+- Excel previews report `totalRow`/`totalCol`/`truncated` and note when the grid shows only the first 200 rows × 40 columns or the first 20 worksheets.
+- The client build fails when a `src/parts/*` file is missing; the dead `linked.update` branch is gone; `HostPool` reuses one in-flight connection per host.
+
 ### 0.7.0
 
 Single-click tree navigation with preview tabs and double-click pinning, remote/local terminal buttons with `cd`, VSCode-like shortcuts, unsaved-close prompts, and an auto-save switch under Settings → Connections.

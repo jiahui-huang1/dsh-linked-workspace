@@ -1,6 +1,6 @@
 {
   "name": "dsh-linked-workspace",
-  "version": "0.8.1",
+  "version": "0.8.2",
   "description": "Linked local ⇄ remote workspaces and SSH-backed remote directories for DeepSeek Harness: theme-aware split editor, file-type icons, and an agent tool that edits remote files directly.",
   "type": "module",
   "main": "lib/index.js",

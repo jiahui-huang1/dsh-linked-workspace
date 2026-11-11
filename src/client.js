@@ -37,6 +37,8 @@ window.__ModuleLoader__.load({
 
     var TREE_TAB_TYPE = 'dsh-linked-workspace';
     var REMOTE_TAB_TYPE = 'dsh-linked-workspace:remote';
+    // One tree page; a folder with 20k entries must not render 20k rows.
+    var TREE_PAGE_SIZE = 500;
     var linkedLocalKeys = new Set();
     var linkedWorkspaceKeys = new Set();
     var hasRemoteDirectories = false;
@@ -250,6 +252,10 @@ window.__ModuleLoader__.load({
       latency: '延迟',
       countSuffix: ' 个',
       noEntries: '空目录',
+      loadMore: '加载更多（剩余 {{count}} 项）',
+      loadMoreShort: '加载更多',
+      sheetTruncated: '仅显示前 {{rows}} 行 × {{cols}} 列',
+      sheetMore: '工作表较多，仅显示前 20 个',
       noCredential: '缺少凭据',
       sourceManagerShort: 'SSH',
       remoteGroup: '远程目录',
@@ -579,6 +585,10 @@ window.__ModuleLoader__.load({
       latency: 'Latency',
       countSuffix: '',
       noEntries: 'Empty directory',
+      loadMore: 'Load more ({{count}} left)',
+      loadMoreShort: 'Load more',
+      sheetTruncated: 'Showing the first {{rows}} rows × {{cols}} columns',
+      sheetMore: 'Showing the first 20 worksheets only',
       noCredential: 'No credentials',
       sourceManagerShort: 'SSH',
       remoteGroup: 'Remote directories',
@@ -985,7 +995,7 @@ window.__ModuleLoader__.load({
         parsed.querySelectorAll('script,style,iframe,object,embed,link,meta,base,form').forEach(function (node) { node.remove(); });
         parsed.querySelectorAll('*').forEach(function (element) {
           Array.from(element.attributes).forEach(function (attribute) {
-            if (/^on/i.test(attribute.name) || /^javascript:/i.test(attribute.value) || /^data:text\/html/i.test(attribute.value)) {
+            if (urlAttributeViolation(attribute.name, attribute.value, element.tagName)) {
               element.removeAttribute(attribute.name);
             }
           });
@@ -1251,6 +1261,9 @@ window.__ModuleLoader__.load({
       '.rw-tree-body{padding:2px 4px 6px;border-top:1px solid var(--dsw-alias-border-l1)}',
       '.rw-row{display:flex;align-items:center;gap:5px;width:100%;min-width:0;height:23px;padding:0 6px;border:0;border-radius:5px;background:transparent;color:var(--dsw-alias-label-primary);font:inherit;font-size:12.5px;cursor:pointer;text-align:left;box-sizing:border-box}',
       '.rw-row:hover{background:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.12))}',
+      '.rw-row:focus-visible{outline:var(--dsw-focus-ring-width,2px) solid var(--dsw-focus-ring-color,var(--dsw-alias-brand-primary,#4176e6));outline-offset:-1px}',
+      '.rw-input:focus-visible,.rw-textarea:focus-visible{outline:var(--dsw-focus-ring-width,2px) solid var(--dsw-focus-ring-color,var(--dsw-alias-brand-primary,#4176e6));outline-offset:-1px}',
+      '.rw-btn:focus-visible,.rw-doc-tab:focus-visible,.rw-icon-btn:focus-visible{outline:var(--dsw-focus-ring-width,2px) solid var(--dsw-focus-ring-color,var(--dsw-alias-brand-primary,#4176e6));outline-offset:1px}',
       '.rw-row.is-active{background:color-mix(in srgb,var(--dsw-alias-brand-primary) 14%,transparent)}',
       '.rw-row-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1 1 auto;min-width:0}',
       '.rw-row-size{flex:none;font-size:10.5px;color:var(--dsw-alias-label-tertiary);font-variant-numeric:tabular-nums}',
@@ -1378,6 +1391,10 @@ window.__ModuleLoader__.load({
       '.rw-doc-table td{border:1px solid var(--dsw-alias-border-l2);padding:0}',
       '.rw-doc-table input{width:100%;border:0;background:transparent;padding:4px 5px;font:inherit;color:var(--dsw-alias-label-primary);outline:none;box-sizing:border-box}',
       '.rw-doc-tabs{display:flex;gap:3px;padding:5px;border-bottom:1px solid var(--dsw-alias-border-l1);overflow:auto;flex:none}',
+      '.rw-doc-note{padding:3px 10px;font-size:11px;color:var(--dsw-alias-label-tertiary);border-bottom:1px solid var(--dsw-alias-border-l1)}',
+      '.rw-load-more{width:100%;border:0;background:transparent;cursor:pointer;text-align:left;font:inherit;font-size:11.5px;color:var(--dsw-alias-brand-primary)}',
+      '.rw-load-more:hover{text-decoration:underline}',
+      '.rw-load-more:disabled{opacity:.6;cursor:default}',
       '.rw-doc-tab{padding:2px 8px;border:1px solid transparent;border-radius:5px;background:transparent;color:var(--dsw-alias-label-secondary);font:inherit;font-size:11.5px;cursor:pointer;white-space:nowrap}',
       '.rw-doc-tab.is-on{background:var(--dsw-alias-bg-layer-2);border-color:var(--dsw-alias-border-l2);color:var(--dsw-alias-label-primary)}',
       '.rw-doc-grid{width:100%;border-collapse:collapse;font-size:11.5px}',
@@ -2709,6 +2726,19 @@ window.__ModuleLoader__.load({
         });
       }
 
+      function listRequest(path, offset) {
+        var params = { path: path, limit: TREE_PAGE_SIZE, offset: offset };
+        return props.kind === 'local'
+          ? apiCall('local.list', params)
+          : apiCall('fs.list', Object.assign(params, scopeParams(props.scope)));
+      }
+
+      function applyEntries(list) {
+        return props.showHidden ? list : list.filter(function (entry) {
+          return String(entry.name || '').charAt(0) !== '.';
+        });
+      }
+
       function load(path, silent) {
         if (pending.current.has(path)) return;
         pending.current.add(path);
@@ -2718,18 +2748,18 @@ window.__ModuleLoader__.load({
           entries.set(path, { loading: !silent, error: null, entries: existing.entries || [], loaded: existing.loaded });
           return { entries: entries };
         });
-        var request = props.kind === 'local'
-          ? apiCall('local.list', { path: path })
-          : apiCall('fs.list', Object.assign({ path: path }, scopeParams(props.scope)));
-        request.then(function (result) {
+        listRequest(path, 0).then(function (result) {
           pending.current.delete(path);
-          var entries = result.entries || [];
-          if (!props.showHidden) {
-            entries = entries.filter(function (entry) { return String(entry.name || '').charAt(0) !== '.'; });
-          }
           setCache(function (previous) {
             var next = new Map(previous.entries);
-            next.set(path, { loading: false, error: null, loaded: true, entries: entries });
+            next.set(path, {
+              loading: false,
+              error: null,
+              loaded: true,
+              entries: applyEntries(result.entries || []),
+              total: Number(result.total) || (result.entries || []).length,
+              hasMore: Boolean(result.hasMore),
+            });
             return { entries: next };
           });
           setExpanded(function (previous) {
@@ -2747,7 +2777,39 @@ window.__ModuleLoader__.load({
         });
       }
 
-      return h(TreeDirectory, {
+      function loadMore(path) {
+        var record = cache.entries.get(path);
+        if (!record || record.loadingMore || !record.hasMore) return;
+        setCache(function (previous) {
+          var next = new Map(previous.entries);
+          var current = next.get(path);
+          if (current) next.set(path, Object.assign({}, current, { loadingMore: true }));
+          return { entries: next };
+        });
+        listRequest(path, (record.entries || []).length).then(function (result) {
+          setCache(function (previous) {
+            var next = new Map(previous.entries);
+            var current = next.get(path) || { entries: [] };
+            next.set(path, Object.assign({}, current, {
+              loadingMore: false,
+              loaded: true,
+              entries: current.entries.concat(applyEntries(result.entries || [])),
+              total: Number(result.total) || current.total,
+              hasMore: Boolean(result.hasMore),
+            }));
+            return { entries: next };
+          });
+        }).catch(function (error) {
+          setCache(function (previous) {
+            var next = new Map(previous.entries);
+            var current = next.get(path);
+            if (current) next.set(path, Object.assign({}, current, { loadingMore: false, moreError: error }));
+            return { entries: next };
+          });
+        });
+      }
+
+      return h('div', { className: 'rw-tree', role: 'tree', 'aria-label': t('allFiles') }, h(TreeDirectory, {
         path: rootPath,
         name: props.rootName || t('allFiles'),
         depth: 0,
@@ -2758,12 +2820,13 @@ window.__ModuleLoader__.load({
         toggle: toggle,
         state: { entries: cache.entries },
         load: load,
+        loadMore: loadMore,
         onSelect: props.onSelect,
         onPin: props.onPin,
         onSelectPath: props.onSelectPath,
         onContextMenu: props.onContextMenu,
         selectedPath: props.selectedPath || '',
-      });
+      }));
     }
 
     function TreeSection(props) {
@@ -3453,6 +3516,12 @@ window.__ModuleLoader__.load({
           h('div', { className: 'rw-doc-tabs' }, sheets.map(function (sheet, index) {
             return h('button', { key: sheet.name, type: 'button', className: 'rw-doc-tab' + (index === state.sheet ? ' is-on' : ''), onClick: function () { patch({ sheet: index }); } }, sheet.name);
           })),
+          active.truncated
+            ? h('div', { className: 'rw-doc-note' }, t('sheetTruncated', { rows: active.maxRow || 0, cols: active.maxCol || 0 }))
+            : null,
+          (state.data.sheetCount || sheets.length) > sheets.length
+            ? h('div', { className: 'rw-doc-note' }, t('sheetMore'))
+            : null,
           h('div', { style: { flex: '1 1 auto', overflow: 'auto', padding: 8 } },
             h('table', { className: 'rw-doc-grid' },
               h('thead', null, header),
@@ -4557,6 +4626,7 @@ window.__ModuleLoader__.load({
                 toggle: toggle,
                 state: state,
                 load: props.load,
+                loadMore: props.loadMore,
                 onSelect: onSelect,
                 onPin: onPin,
                 onSelectPath: onSelectPath,
@@ -4568,6 +4638,9 @@ window.__ModuleLoader__.load({
               children.push(h('button', {
                 key: child.path,
                 type: 'button',
+                role: 'treeitem',
+                'aria-level': depth + 1,
+                'aria-selected': active,
                 className: 'rw-row' + (active ? ' is-active' : ''),
                 style: { paddingLeft: 6 + (depth + 1) * 12 },
                 title: child.path,
@@ -4589,12 +4662,28 @@ window.__ModuleLoader__.load({
                 h('span', { className: 'rw-row-size' }, formatBytes(child.size))));
             }
           });
+          if (entry.hasMore) {
+            children.push(h('button', {
+              key: 'more',
+              type: 'button',
+              className: 'rw-row-msg rw-load-more',
+              style: { paddingLeft: 6 + (depth + 1) * 12 },
+              disabled: Boolean(entry.loadingMore),
+              onClick: function () { if (props.loadMore) props.loadMore(path); },
+            }, entry.loadingMore ? Spinner(12) : null,
+            entry.moreError
+              ? messageOf(entry.moreError, t, locale)
+              : t('loadMore', { count: Math.max((entry.total || 0) - entry.entries.length, 0) })));
+          }
         }
       }
 
       return h(React.Fragment, null,
         h('button', {
           type: 'button',
+          role: 'treeitem',
+          'aria-level': depth + 1,
+          'aria-expanded': isOpen,
           className: 'rw-row' + (selectedPath === path ? ' is-active' : ''),
           style: { paddingLeft: 6 + depth * 12 },
           title: path,
@@ -4602,13 +4691,16 @@ window.__ModuleLoader__.load({
             if (onSelectPath) onSelectPath({ path: path, name: name, isDir: true });
             if (event.detail !== 2) toggle(path);
           },
+          onKeyDown: function (event) {
+            if (event.key === 'ArrowRight' && !isOpen) { event.preventDefault(); toggle(path); }
+            else if (event.key === 'ArrowLeft' && isOpen) { event.preventDefault(); toggle(path); }
+          },
           onContextMenu: function (event) {
             if (!onContextMenu) return;
             event.preventDefault();
             event.stopPropagation();
             onContextMenu({ path: path, name: name, isDir: true, event: event });
           },
-          'aria-expanded': isOpen,
         },
           h('span', { className: 'rw-chevron' + (isOpen ? ' is-open' : '') }, IconChevron(12)),
           h(FileGlyph, { name: name, dir: true, open: isOpen, size: 13 }),
@@ -4639,6 +4731,11 @@ window.__ModuleLoader__.load({
         });
       }
 
+      function listRequest(path, offset) {
+        return Object.assign({ path: path, limit: TREE_PAGE_SIZE, offset: offset },
+          source.kind === 'linked' ? { linkedId: source.id } : { workspaceId: source.id });
+      }
+
       function load(path) {
         setCache(function (previous) {
           var record = previous.entries.get(path);
@@ -4648,13 +4745,17 @@ window.__ModuleLoader__.load({
           entries.set(path, { loading: true, error: null, entries: existing.entries || [], loaded: existing.loaded });
           return { entries: entries };
         });
-        var request = source.kind === 'linked'
-          ? { linkedId: source.id, path: path }
-          : { workspaceId: source.id, path: path };
-        apiCall('fs.list', request).then(function (result) {
+        apiCall('fs.list', listRequest(path, 0)).then(function (result) {
           setCache(function (previous) {
             var entries = new Map(previous.entries);
-            entries.set(path, { loading: false, error: null, loaded: true, entries: result.entries || [] });
+            entries.set(path, {
+              loading: false,
+              error: null,
+              loaded: true,
+              entries: result.entries || [],
+              total: Number(result.total) || (result.entries || []).length,
+              hasMore: Boolean(result.hasMore),
+            });
             return { entries: entries };
           });
           setExpanded(function (previous) {
@@ -4666,6 +4767,38 @@ window.__ModuleLoader__.load({
           setCache(function (previous) {
             var entries = new Map(previous.entries);
             entries.set(path, { loading: false, error: error, loaded: false, entries: [] });
+            return { entries: entries };
+          });
+        });
+      }
+
+      function loadMore(path) {
+        var record = cache.entries.get(path);
+        if (!record || record.loadingMore || !record.hasMore) return;
+        setCache(function (previous) {
+          var entries = new Map(previous.entries);
+          var current = entries.get(path);
+          if (current) entries.set(path, Object.assign({}, current, { loadingMore: true }));
+          return { entries: entries };
+        });
+        apiCall('fs.list', listRequest(path, (record.entries || []).length)).then(function (result) {
+          setCache(function (previous) {
+            var entries = new Map(previous.entries);
+            var current = entries.get(path) || { entries: [] };
+            entries.set(path, Object.assign({}, current, {
+              loadingMore: false,
+              loaded: true,
+              entries: current.entries.concat(result.entries || []),
+              total: Number(result.total) || current.total,
+              hasMore: Boolean(result.hasMore),
+            }));
+            return { entries: entries };
+          });
+        }).catch(function (error) {
+          setCache(function (previous) {
+            var entries = new Map(previous.entries);
+            var current = entries.get(path);
+            if (current) entries.set(path, Object.assign({}, current, { loadingMore: false, moreError: error }));
             return { entries: entries };
           });
         });
@@ -4699,7 +4832,7 @@ window.__ModuleLoader__.load({
             h('span', { className: 'rw-tree-ws-sub' }, source.username + '@' + source.host + (source.kind === 'linked' ? ' · ' + t('linkedChip') : ''))),
           h(StatusPill, { status: source.status, t: t })),
         open
-          ? h('div', { className: 'rw-tree-body' },
+          ? h('div', { className: 'rw-tree-body', role: 'tree', 'aria-label': source.name },
             h(TreeDirectory, {
               path: source.remotePath,
               name: '/',
@@ -4711,6 +4844,7 @@ window.__ModuleLoader__.load({
               toggle: toggle,
               state: { entries: cache.entries },
               load: load,
+              loadMore: loadMore,
               onSelect: props.onSelect,
               selectedPath: props.selectedPath,
             }))
@@ -4987,10 +5121,58 @@ window.__ModuleLoader__.load({
         });
       }
 
+      var modalRef = useRef(null);
+      var focusablesOf = function () {
+        var node = modalRef.current;
+        if (!node) return [];
+        return Array.prototype.filter.call(
+          node.querySelectorAll('button, input, select, textarea, a[href], [tabindex]:not([tabindex="-1"])'),
+          function (element) { return !element.disabled && element.offsetParent !== null; });
+      };
+
+      useEffect(function () {
+        if (!props.open) return;
+        var node = modalRef.current;
+        if (!node) return;
+        // Focus the first real field, not the tab strip, so typing works at once.
+        var target = node.querySelector('.rw-modal-body input, .rw-modal-body textarea') || focusablesOf()[0];
+        if (target && typeof target.focus === 'function') target.focus();
+      }, [props.open, flow]);
+
+      function onModalKeyDown(event) {
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          event.stopPropagation();
+          if (props.onCancel) props.onCancel();
+          return;
+        }
+        if (event.key !== 'Tab') return;
+        // Keep Tab inside the dialog: without this the focus escapes to the
+        // page behind the backdrop.
+        var focusables = focusablesOf();
+        if (focusables.length === 0) return;
+        var first = focusables[0];
+        var last = focusables[focusables.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        }
+      }
+
       if (!props.open) return null;
 
       return h('div', { className: 'rw-modal-backdrop', role: 'presentation' },
-        h('div', { className: 'rw-modal', role: 'dialog', 'aria-modal': 'true', 'aria-label': t('flowTitle') },
+        h('div', {
+          ref: modalRef,
+          className: 'rw-modal',
+          role: 'dialog',
+          'aria-modal': 'true',
+          'aria-label': t('flowTitle'),
+          onKeyDown: onModalKeyDown,
+        },
           h('div', { className: 'rw-modal-head' },
             h('span', { className: 'rw-icon-chip' }, IconLink(16)),
             h('span', { className: 'rw-modal-title' }, t('flowTitle')),

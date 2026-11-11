@@ -15,12 +15,14 @@ import { dirname, join } from 'node:path'
 const here = dirname(fileURLToPath(import.meta.url))
 const root = join(here, '..')
 
-const PART_FILES = ['themes.js', 'highlight.js', 'file-icons.js', 'file-creation.js']
+const PART_FILES = ['themes.js', 'highlight.js', 'file-icons.js', 'file-creation.js', 'url-safety.js']
 
 function partCode(name) {
   const file = join(root, 'src', 'parts', name)
+  // A missing part used to be inlined as a comment, which still produced a
+  // "successful" build that only failed later at runtime.
   if (!fs.existsSync(file)) {
-    return `// ${name}: missing in this checkout\n`
+    throw new Error(`src/parts/${name} is missing; the client bundle would break at runtime`)
   }
   const code = fs.readFileSync(file, 'utf8')
   const stripped = code.replace(/^export\s+/gm, '')

@@ -106,18 +106,25 @@ def read_xlsx(path):
     sheets = []
     for sheet in workbook.worksheets[:20]:
         rows = []
-        max_row = min(sheet.max_row or 0, MAX_SHEET_ROWS)
-        max_col = min(sheet.max_column or 0, MAX_SHEET_COLS)
+        total_row = sheet.max_row or 0
+        total_col = sheet.max_column or 0
+        max_row = min(total_row, MAX_SHEET_ROWS)
+        max_col = min(total_col, MAX_SHEET_COLS)
         for row in sheet.iter_rows(min_row=1, max_row=max_row, min_col=1, max_col=max_col):
             rows.append([json_value(cell.value) for cell in row])
         sheets.append({
             "name": sheet.title,
             "rows": rows,
+            # maxRow/maxCol stay the rendered window so the client can size the
+            # grid; totalRow/totalCol/truncated tell it the sheet is larger.
             "maxRow": max_row,
             "maxCol": max_col,
+            "totalRow": total_row,
+            "totalCol": total_col,
+            "truncated": total_row > max_row or total_col > max_col,
             "frozen": bool(sheet.freeze_panes),
         })
-    emit({"kind": "xlsx", "sheets": sheets, "sheetCount": len(workbook.worksheets)})
+    emit({"kind": "xlsx", "sheets": sheets, "sheetCount": len(workbook.worksheets), "sheetLimit": 20})
 
 
 def write_xlsx(source, data, out):

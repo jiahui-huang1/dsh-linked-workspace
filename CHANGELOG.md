@@ -1,6 +1,21 @@
 # Changelog
 
-## Unreleased
+## 0.8.2 — 2026-11-11
+
+Three-day review round: security, data-integrity and large-directory fixes.
+
+- **Document preview XSS (high)**: the preview sanitizer now normalizes control characters, whitespace and zero-width characters before checking a URL scheme, so `jav\tascript:` links (and `vbscript:`, `file:`, `blob:`, `data:text/html`) can no longer run in the GUI. Only `http(s)`, `mailto`, `tel`, relative URLs and bitmap `data:image/*` sources are kept; SVG data URLs stay blocked.
+- **Mirror containment on Windows**: `realpathSync.native` is used for the containment check, so a directory junction can no longer make `.remote` (or a mirrored file) point outside the workspace. Linked `.local`/`.remote` entries that are themselves links are removed as links, never followed.
+- **No silent truncation when copying**: copying a remote file larger than 64 MB, or reading one incompletely, now fails with an explicit error instead of writing a truncated copy. The `linked_workspace` read tool no longer mirrors a truncated payload into `.remote`.
+- **Large local files**: `local.read` reads only the requested head of the file instead of loading the whole thing into memory, so peeking at multi-gigabyte files no longer allocates them (or fails with `ERR_FS_FILE_TOO_LARGE`).
+- **Non-empty directory delete from the tool**: `linked_workspace` `delete` now removes directories recursively, matching the UI, instead of failing on SFTP `rmdir`.
+- **Paged directory listings**: `fs.list` and `local.list` return `limit`/`offset` with `total` and `hasMore` (default 500, max 5000); both trees render a “Load more (N left)” row. A 20,000-entry folder no longer freezes the UI (it used to render all 20,012 rows).
+- **Deep sync trees**: the mirror sync marks a job truncated when it stops at the depth limit, instead of reporting success with missing files.
+- **Accessibility**: visible `:focus-visible` rings for tree rows, inputs, buttons and tabs; `role="treeitem"`/`aria-level`/`aria-selected`/`aria-expanded` on tree rows with ←/→ collapse/expand; the add-workspace dialog focuses its first field, traps Tab, and closes on Escape.
+- **Excel preview honesty**: `read_xlsx` reports `totalRow`/`totalCol`/`truncated`, and the grid notes when it shows only the first 200 rows × 40 columns or the first 20 worksheets.
+- **Build and host fixes**: the client build fails loudly when a `src/parts/*` file is missing; the dead branch in `linked.update` is gone; `HostPool` reuses one in-flight connection per host instead of leaking a duplicate on concurrent first connects.
+
+Earlier unreleased work included in this version:
 
 - Fixed linked-directory context-menu creation on both the remote and local trees: New folder and New file are direct menu actions, so the scrollable menu no longer clips the creation submenu.
 - CSV, HTML, SVG and other preview formats now create ordinary empty files; only Markdown, PDF, DOCX, XLSX and PPTX use document templates.

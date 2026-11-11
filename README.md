@@ -114,6 +114,21 @@ dsh plugin --profile "$DSH_PROFILE" add "file:$PWD/dsh-linked-workspace"
 
 已打开的旧右侧栏「远程目录」标签页会在刷新后自动恢复（插件保留了两个隐藏的旧 tab 类型别名），标签标题也会自动改成「联动工作区目录」，新开的标签使用新的 `dsh-linked-workspace` 类型。
 
+### 0.8.2 变化
+
+安全、数据完整性与大目录体验修复（三日评审轮）：
+
+- 文档预览净化器先归一控制字符/空白/零宽字符再判 scheme，`jav\tascript:`、`vbscript:`、`file:`、`data:text/html` 不再可执行；只保留 http(s)/mailto/tel、相对链接与位图 `data:image`。
+- Windows junction 不再能绕过 `.remote` 包含性校验（改用 `realpathSync.native`）；链接目录只删链接本身。
+- 远端复制 >64 MB 或读取不完整时直接报错，不再静默写入截断副本；工具读文件只在未截断时同步到 `.remote`。
+- `local.read` 只读取所需头部，不再把超大文件整体读入内存。
+- 工具 `delete` 可递归删除非空远端目录。
+- 目录列表分页（默认 500、最大 5000，返回 `total`/`hasMore`），树底「加载更多」；2 万项目录不再卡死。
+- 同步深度超限会标记为截断，不再把漏文件当成功。
+- 可访问性：`:focus-visible` 焦点环、树行 `treeitem`/`aria-level`/`aria-expanded`、`←`/`→` 折叠展开、添加工作区弹窗聚焦首字段 + Tab 循环 + Esc 关闭。
+- Excel 预览返回 `totalRow`/`totalCol`/`truncated`，并提示「仅显示前 200 行 × 40 列」「仅显示前 20 个工作表」。
+- 客户端构建缺 `src/parts/*` 文件时直接失败；移除 `linked.update` 死分支；`HostPool` 并发首连复用同一连接。
+
 ### 0.5.11 变化
 
 远程目录的只读文件现在能看到代码内容；设置里「打开工作区」会跳转并关闭设置，远程目录「打开」会打开对应远程标签。

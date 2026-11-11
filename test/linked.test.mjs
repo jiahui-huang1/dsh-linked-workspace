@@ -15,6 +15,7 @@ import {
   mkdtempSync,
   readFileSync,
   readdirSync,
+  realpathSync,
   rmSync,
   statSync,
   symlinkSync,
@@ -65,12 +66,32 @@ function tryDirectoryLink(target, linkPath) {
   for (const type of types) {
     try {
       symlinkSync(target, linkPath, type)
-      return linkPath
+      // Node reports a Windows junction as a directory, so verify by resolving:
+      // only accept the link when it actually redirects somewhere else.
+      if (looksLikeLink(linkPath)) return linkPath
+      rmSync(linkPath, { recursive: true, force: true })
     } catch {
       /* try the next link type */
     }
   }
   return undefined
+}
+
+/** True for POSIX symlinks and for Windows junctions lstat calls directories. */
+function looksLikeLink(target) {
+  let stats
+  try {
+    stats = lstatSync(target)
+  } catch {
+    return false
+  }
+  if (stats.isSymbolicLink()) return true
+  if (!isWindows) return false
+  try {
+    return realpathSync.native(target) !== resolve(target)
+  } catch {
+    return false
+  }
 }
 
 // ===========================================================================
@@ -482,7 +503,7 @@ test('removeLinkedLayout never deletes through a symlinked .local', async (t) =>
     t.skip('this platform cannot create a directory symlink without extra privileges')
     return
   }
-  assert.equal(lstatSync(join(workspace, LINKED_DIR)).isSymbolicLink(), true)
+  assert.equal(looksLikeLink(join(workspace, LINKED_DIR)), true)
 
   await removeLinkedLayout(workspace)
 
