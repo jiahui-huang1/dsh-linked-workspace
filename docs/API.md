@@ -81,14 +81,17 @@ relative to the scope root, or absolute inside it.
 | `linked.syncCancel` | `{ id }` | `{ cancelled: boolean }` |
 | `local.list` | `{ path, limit?, offset? }` | `{ path, entries: [{ name, path, type, size, mtime }], total, offset, limit, hasMore }` |
 | `local.openExternal` | `{ path }` | `{ opened, path }` |
-| `terminal.open` | `{ workspaceId?/linkedId?, side: 'remote'\|'local' }` | `{ opened, side, path, host? }` |
+| `terminal.open` | `{ workspaceId?/linkedId?, side: 'remote'\|'local', path? }` | `{ opened, side, path, host? }` (`path` must stay inside the linked workspace) |
 | `fs.openExternal` | `{ workspaceId?/linkedId?, path }` | `{ opened, localPath, size }` |
 | `localWorkspace.create` | `{ path, name? }` | `{ workspaceId, title, path }` |
 | `session.info` | `{ sessionId }` | `{ sessionId, cwd, running }` |
 | `skills.list` | `{ linkedId }` | `{ localPath, skills: [{ name, description, whenToUse, path, source }] }` |
 | `skills.read` | `{ linkedId, name }` | `{ name, description, content, path }` |
 | `git.status` | `{ workspaceId?/linkedId?, side: 'remote'|'local' }` | `{ ok, repo, root, branch, changes, error? }` |
-| `fs.search` | `{ workspaceId?/linkedId?, side, query, maxResults? }` | `{ ok, query, entries, truncated }` |
+| `fs.search` | `{ workspaceId?/linkedId?, side, query, maxResults? }` | `{ ok, query, entries, truncated }` (matches file names, not contents) |
+| `fs.compare` | `{ workspaceId?/linkedId?, path? }` | `{ path, relative, localPath, localMissing, counts: { onlyLocal, onlyRemote, changed, same }, onlyLocal, onlyRemote, changed, truncated }` (linked workspaces only; excludes `.git`, `node_modules`, `.local`, `.remote`; max 4000 files, depth 12, 200 rows per group) |
+| `fs.pullToLocal` | `{ workspaceId?/linkedId?, path, targetDir? }` | `{ path, relative, size, mtime }` (single file, ≤64 MB; `targetDir` must stay inside the local root) |
+| `fs.upload` | `{ workspaceId?/linkedId?, path, paths }` | `{ side: 'remote', target, files, bytes, skipped }` (≤50 local files, 64 MB each) |
 | `fs.transfer` | `{ workspaceId?/linkedId?, path }` | `{ files, bytes, skipped, truncated, dest }` |
 | `fs.download` | `{ workspaceId?/linkedId?, path }` | `{ path, files, bytes, skipped, truncated }` |
 | `fs.edit` | `{ workspaceId?/linkedId?, path, app? }` | `{ localPath, size }` (opens Notepad/default app) |
@@ -98,6 +101,7 @@ relative to the scope root, or absolute inside it.
 | `local.media` | `{ path }` | `{ path, size, mtime, mime, base64 }` (max 24 MB) |
 | `local.write` | `{ path, content, expectedMtime? }` | `{ path, size, mtime }` |
 | `local.stat` | `{ path }` | `{ path, type, size, mtime, mode }` |
+| `local.import` | `{ dir, paths }` | `{ dir, copied, skipped }` (copies OS files into `dir`, ≤50 files, 64 MB each) |
 | `local.rename` | `{ from, to }` | `{ path }` |
 | `local.move` | `{ path, targetDir?, root? }` | `{ path, type }` (same local tree; collision → 409) |
 | `local.delete` | `{ path, root? }` | `{}` (recursive) |

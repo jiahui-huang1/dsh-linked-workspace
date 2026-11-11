@@ -119,6 +119,23 @@ Old “Remote directories” tabs are restored after refresh through hidden lega
 
 See [CHANGELOG.md](CHANGELOG.md) for the full version history.
 
+### 0.9.0
+
+In-editor find/replace, local↔remote comparison, multi-select and drag-and-drop, plus refresh fixes (third review round):
+
+- **Find and replace**: `Ctrl/Cmd + F` opens a find bar with a case-sensitive toggle, previous/next, a match counter, replace and replace all. Matching stops at 5000 hits and the counter shows `5000+`; replace-all still edits the whole document (6000 replacements verified).
+- **Open a terminal in a directory**: the folder context menu offers “Open terminal here”; `terminal.open` accepts a validated `path` and starts the shell there (verified as a real `ssh -t … "cd <dir> && exec bash -l"` process).
+- **Picker filtering**: the local and remote directory pickers filter already-loaded entries as you type, with an empty-state hint.
+- **Local/remote comparison**: `fs.compare` reports only-local / only-remote / changed entries (size differs or mtime differs by more than 2 s), capped at 4000 files, depth 12 and 200 rows per group with a truncation flag; clicking a row opens it.
+- **Multi-select and batch actions**: Ctrl/Cmd-click toggles, Shift-click extends; the context menu offers “Transfer selected (N)” and “Delete selected (N)” with confirmation, and per-item errors are aggregated.
+- **Drag and drop**: drag rows between the two trees (remote files via `fs.pullToLocal`, local files via `fs.upload`) and drop OS files onto either tree (`fs.upload` / `local.import`; up to 50 files, 64 MB each). Clear notices cover browsers that hide file paths and remote folders dropped onto the local tree.
+- **Refresh throttling**: each directory refreshes at most every 15 seconds and not at all while the page is hidden (measured 18–19 s), instead of re-listing on every 4-second tick.
+- **Unsaved-changes guard**: a dirty editor registers `beforeunload`, so reloading or closing the window asks for confirmation.
+- **Refresh keeps loaded rows**: a silent refresh merges the first page with the rows already loaded instead of truncating back to 500 (or 5000); a 5500-entry directory stayed at 5522 rendered rows.
+- **Search truncation**: more than 200 matches now shows “showing the first 200 matches” instead of dropping the flag.
+- **Load-more and counter fixes**: “Load more (0 left)” disappears when everything is loaded; the find counter reports `5000+` when the limit is hit.
+- Review note: two earlier findings (no context menu in the sidebar tree, hidden-file toggle not refreshing) could not be reproduced and were not changed.
+
 ### 0.8.3
 
 Follow-up fixes to the 0.8.2 paging and preview work (second review round):

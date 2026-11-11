@@ -40,6 +40,10 @@ window.__ModuleLoader__.load({
     // One tree page; a folder with 20k entries must not render 20k rows.
     var TREE_PAGE_SIZE = 500;
     var TREE_PAGE_MAX = 5000;
+    // Background tree refresh interval per directory. The app ticks every 4 s,
+    // but a full remote listing on a huge folder is expensive; 15 s keeps the
+    // tree fresh without hammering the SSH channel.
+    var REFRESH_MIN_INTERVAL_MS = 15000;
     var linkedLocalKeys = new Set();
     var linkedWorkspaceKeys = new Set();
     var hasRemoteDirectories = false;
@@ -256,6 +260,34 @@ window.__ModuleLoader__.load({
       loadMore: '加载更多（剩余 {{count}} 项）',
       loadMoreShort: '加载更多',
       pickerTruncated: '目录项过多，仅显示前 {{count}} 项；可直接在输入框中输入路径',
+      filterPlaceholder: '按名称过滤…',
+      filterEmpty: '没有匹配当前过滤条件的条目',
+      searchTruncated: '结果过多，仅显示前 200 条；请输入更精确的关键词',
+      findPlaceholder: '查找…',
+      replacePlaceholder: '替换为…',
+      findCounter: '第 {{index}} / {{total}} 个',
+      findNoMatch: '无匹配',
+      findNext: '下一个',
+      findPrev: '上一个',
+      replaceOne: '替换',
+      replaceAll: '全部替换',
+      compareTitle: '本地与远端对比',
+      compareOnlyLocal: '仅本地存在',
+      compareOnlyRemote: '仅远端存在',
+      compareChanged: '大小或时间不同',
+      compareNone: '无',
+      compareTruncated: '文件过多，对比结果已截断（最多 4000 个文件 / 12 层）',
+      compareFailed: '对比失败',
+      ctxCompare: '与本地对比…',
+      ctxTerminalHere: '在此打开终端',
+      ctxTransferSelected: '传输所选的 {{count}} 项',
+      ctxDeleteSelected: '删除所选的 {{count}} 项',
+      deleteManyTitle: '批量删除',
+      deleteManyMessage: '确定删除所选的 {{count}} 个项目吗？此操作不可撤销。',
+      dropNeedsDesktop: '当前浏览器无法读取被拖入文件的路径，请在 DSH 桌面窗口中拖拽',
+      dropImported: '已导入 {{count}} 个文件',
+      dropSkipped: '{{count}} 个文件被跳过（过大或不是普通文件）',
+      dropDirUnsupported: '暂不支持把远程目录拖拽到本地，请使用右键「传输」',
       sheetTruncated: '仅显示前 {{rows}} 行 × {{cols}} 列',
       sheetMore: '工作表较多，仅显示前 20 个',
       noCredential: '缺少凭据',
@@ -590,6 +622,34 @@ window.__ModuleLoader__.load({
       loadMore: 'Load more ({{count}} left)',
       loadMoreShort: 'Load more',
       pickerTruncated: 'Too many entries; only the first {{count}} are shown. Type a path directly.',
+      filterPlaceholder: 'Filter by name…',
+      filterEmpty: 'No entries match the current filter',
+      searchTruncated: 'Too many results; showing the first 200. Narrow the query.',
+      findPlaceholder: 'Find…',
+      replacePlaceholder: 'Replace with…',
+      findCounter: '{{index}} / {{total}}',
+      findNoMatch: 'No match',
+      findNext: 'Next match',
+      findPrev: 'Previous match',
+      replaceOne: 'Replace',
+      replaceAll: 'Replace all',
+      compareTitle: 'Local vs remote comparison',
+      compareOnlyLocal: 'Local only',
+      compareOnlyRemote: 'Remote only',
+      compareChanged: 'Different size or time',
+      compareNone: 'None',
+      compareTruncated: 'Too many files; the comparison was truncated (4000 files / 12 levels).',
+      compareFailed: 'Comparison failed',
+      ctxCompare: 'Compare with local…',
+      ctxTerminalHere: 'Open terminal here',
+      ctxTransferSelected: 'Transfer selected ({{count}})',
+      ctxDeleteSelected: 'Delete selected ({{count}})',
+      deleteManyTitle: 'Delete multiple',
+      deleteManyMessage: 'Delete the {{count}} selected items? This cannot be undone.',
+      dropNeedsDesktop: 'This browser cannot read dropped file paths; drag files in the DSH desktop window',
+      dropImported: 'Imported {{count}} file(s)',
+      dropSkipped: '{{count}} file(s) skipped (too large or not a regular file)',
+      dropDirUnsupported: 'Dropping a remote folder onto local is not supported yet; use Transfer instead',
       sheetTruncated: 'Showing the first {{rows}} rows × {{cols}} columns',
       sheetMore: 'Showing the first 20 worksheets only',
       noCredential: 'No credentials',
@@ -1398,6 +1458,22 @@ window.__ModuleLoader__.load({
       '.rw-load-more{width:100%;border:0;background:transparent;cursor:pointer;text-align:left;font:inherit;font-size:11.5px;color:var(--dsw-alias-brand-primary)}',
       '.rw-load-more:hover{text-decoration:underline}',
       '.rw-load-more:disabled{opacity:.6;cursor:default}',
+      '.rw-filter-row{padding:4px 8px;border-bottom:1px solid var(--dsw-alias-border-l1)}',
+      '.rw-filter-row .rw-input{width:100%}',
+      '.rw-find-bar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:6px 10px;border-bottom:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-l1)}',
+      '.rw-find-bar .rw-input{height:26px;font-size:11.5px;min-width:120px;flex:0 1 160px}',
+      '.rw-find-counter{font-size:11px;color:var(--dsw-alias-label-tertiary);white-space:nowrap}',
+      '.rw-compare-root{font-family:ui-monospace,Consolas,monospace;font-size:11px}',
+      '.rw-compare-section{margin:0 0 8px}',
+      '.rw-compare-title{font-size:11.5px;font-weight:600;padding:2px 0}',
+      '.rw-compare-empty{font-size:11px;color:var(--dsw-alias-label-tertiary);padding-left:8px}',
+      '.rw-compare-row{display:flex;width:100%;gap:8px;align-items:center;border:0;background:transparent;cursor:pointer;text-align:left;font:inherit;font-size:11px;padding:3px 6px;border-radius:4px}',
+      '.rw-compare-row:hover{background:var(--dsw-alias-interactive-bg-hover)}',
+      '.rw-compare-path{flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+      '.rw-compare-size{flex:0 0 auto;color:var(--dsw-alias-label-tertiary)}',
+      '.rw-dialog-note{font-size:11px;color:var(--dsw-alias-label-tertiary);padding:2px 0}',
+      '.rw-dialog-error{color:var(--dsw-alias-state-error-primary)}',
+      '.rw-row.is-drop-target{outline:1px dashed var(--dsw-alias-brand-primary);outline-offset:-1px}',
       '.rw-doc-tab{padding:2px 8px;border:1px solid transparent;border-radius:5px;background:transparent;color:var(--dsw-alias-label-secondary);font:inherit;font-size:11.5px;cursor:pointer;white-space:nowrap}',
       '.rw-doc-tab.is-on{background:var(--dsw-alias-bg-layer-2);border-color:var(--dsw-alias-border-l2);color:var(--dsw-alias-label-primary)}',
       '.rw-doc-grid{width:100%;border-collapse:collapse;font-size:11.5px}',
@@ -1819,7 +1895,7 @@ window.__ModuleLoader__.load({
       var locale = props.locale;
       var initialPath = props.initialPath || '';
       var root = props.root || '';
-      var state = useState({ loading: true, listing: null, error: '', input: initialPath, creating: false, folderName: '' });
+      var state = useState({ loading: true, listing: null, error: '', input: initialPath, creating: false, folderName: '', filter: '' });
       var local = state[0];
       var setLocal = state[1];
 
@@ -1827,7 +1903,7 @@ window.__ModuleLoader__.load({
         setLocal(function (previous) { return Object.assign({}, previous, { loading: true, error: '', input: path || previous.input }); });
         apiCall('local.browse', path ? { path: path } : {}).then(function (result) {
           setLocal(function (previous) {
-            return Object.assign({}, previous, { loading: false, listing: result, error: '', input: result.path });
+            return Object.assign({}, previous, { loading: false, listing: result, error: '', input: result.path, filter: '' });
           });
         }).catch(function (error) {
           setLocal(function (previous) {
@@ -1868,7 +1944,11 @@ window.__ModuleLoader__.load({
       // A folder with thousands of sub-folders must not build thousands of DOM
       // rows; the input box below still accepts any path.
       var PICKER_LIMIT = 500;
-      var shownEntries = entries.slice(0, PICKER_LIMIT);
+      var filterText = String(local.filter || '').trim().toLowerCase();
+      var matchedEntries = filterText === '' ? entries : entries.filter(function (entry) {
+        return String(entry.name || '').toLowerCase().indexOf(filterText) !== -1;
+      });
+      var shownEntries = matchedEntries.slice(0, PICKER_LIMIT);
       var crumbs = useMemo(function () {
         if (!listing || !listing.path) return [];
         var path = listing.path;
@@ -1916,18 +1996,29 @@ window.__ModuleLoader__.load({
               }, drive.name);
             }))
           : null,
+        h('div', { className: 'rw-filter-row' },
+          h('input', {
+            className: 'rw-input', style: { height: 26, fontSize: 11.5 },
+            value: local.filter,
+            placeholder: t('filterPlaceholder'),
+            'aria-label': t('filterPlaceholder'),
+            spellCheck: false,
+            onChange: function (event) { setLocal(function (previous) { return Object.assign({}, previous, { filter: event.currentTarget.value }); }); },
+          })),
         h('div', { className: 'rw-browser-list', role: 'list' },
           local.error
             ? h('div', { className: 'rw-row-msg' }, IconAlert(12), local.error)
             : entries.length === 0
               ? h('div', { className: 'rw-row-msg' }, t('emptyFolder'))
-              : shownEntries.map(function (entry) {
+              : matchedEntries.length === 0
+                ? h('div', { className: 'rw-row-msg' }, t('filterEmpty'))
+                : shownEntries.map(function (entry) {
                 return h('button', {
                   key: entry.path, type: 'button', className: 'rw-browser-row', role: 'listitem',
                   onClick: function () { navigate(entry.path); },
                 }, h('span', { className: 'rw-dir-icon' }, IconFolder(13, false)), h('span', null, entry.name));
               }),
-          entries.length > PICKER_LIMIT
+          matchedEntries.length > PICKER_LIMIT
             ? h('div', { className: 'rw-row-msg' }, t('pickerTruncated', { count: PICKER_LIMIT }))
             : null),
         h('div', { className: 'rw-browser-actions', style: { padding: '8px', gap: 8 } },
@@ -1973,7 +2064,7 @@ window.__ModuleLoader__.load({
       var t = props.t;
       var locale = props.locale;
       var hostId = props.hostId;
-      var state = useState({ loading: true, listing: null, error: '', input: props.initialPath || '' });
+      var state = useState({ loading: true, listing: null, error: '', input: props.initialPath || '', filter: '' });
       var remote = state[0];
       var setRemote = state[1];
 
@@ -1985,7 +2076,7 @@ window.__ModuleLoader__.load({
         setRemote(function (previous) { return Object.assign({}, previous, { loading: true, error: '' }); });
         apiCall('hosts.browse', { hostId: hostId, path: path || undefined }).then(function (result) {
           setRemote(function (previous) {
-            return Object.assign({}, previous, { loading: false, listing: result, error: '', input: result.path });
+            return Object.assign({}, previous, { loading: false, listing: result, error: '', input: result.path, filter: '' });
           });
         }).catch(function (error) {
           setRemote(function (previous) { return Object.assign({}, previous, { loading: false, error: messageOf(error, t, locale) }); });
@@ -2002,8 +2093,12 @@ window.__ModuleLoader__.load({
       var listing = remote.listing;
       var dirs = listing ? (listing.entries || []).filter(function (entry) { return entry.type === 'dir'; }) : [];
       var PICKER_LIMIT = 500;
-      var shownDirs = dirs.slice(0, PICKER_LIMIT);
-      var pickerTruncated = dirs.length > PICKER_LIMIT || Boolean(listing && listing.hasMore);
+      var filterText = String(remote.filter || '').trim().toLowerCase();
+      var matchedDirs = filterText === '' ? dirs : dirs.filter(function (entry) {
+        return String(entry.name || '').toLowerCase().indexOf(filterText) !== -1;
+      });
+      var shownDirs = matchedDirs.slice(0, PICKER_LIMIT);
+      var pickerTruncated = matchedDirs.length > PICKER_LIMIT || Boolean(listing && listing.hasMore);
       var crumbs = useMemo(function () {
         if (!listing || !listing.path) return [];
         var pieces = listing.path.split('/').filter(function (piece) { return piece !== ''; });
@@ -2030,12 +2125,23 @@ window.__ModuleLoader__.load({
                 h('button', { type: 'button', className: 'rw-crumb', title: crumb.path, onClick: function () { navigate(crumb.path); } }, crumb.label));
             })),
           remote.loading ? Spinner(13) : null),
+        h('div', { className: 'rw-filter-row' },
+          h('input', {
+            className: 'rw-input', style: { height: 26, fontSize: 11.5 },
+            value: remote.filter,
+            placeholder: t('filterPlaceholder'),
+            'aria-label': t('filterPlaceholder'),
+            spellCheck: false,
+            onChange: function (event) { setRemote(function (previous) { return Object.assign({}, previous, { filter: event.currentTarget.value }); }); },
+          })),
         h('div', { className: 'rw-browser-list', role: 'list' },
           remote.error
             ? h('div', { className: 'rw-row-msg' }, IconAlert(12), remote.error)
             : dirs.length === 0
               ? h('div', { className: 'rw-row-msg' }, t('noEntries'))
-              : shownDirs.map(function (entry) {
+              : matchedDirs.length === 0
+                ? h('div', { className: 'rw-row-msg' }, t('filterEmpty'))
+                : shownDirs.map(function (entry) {
                 return h('button', {
                   key: entry.path, type: 'button', className: 'rw-browser-row', role: 'listitem',
                   onClick: function () { navigate(entry.path); },
@@ -2482,6 +2588,12 @@ window.__ModuleLoader__.load({
             event.preventDefault();
             saveFile(false);
           }
+          if (mod && (event.key === 'f' || event.key === 'F') && !event.shiftKey) {
+            // Ctrl+F inside the editor opens the in-file find bar; the browser
+            // find dialog cannot see textarea content anyway.
+            event.preventDefault();
+            openFind();
+          }
         }
         window.addEventListener('keydown', onKey, true);
         return function () { window.removeEventListener('keydown', onKey, true); };
@@ -2494,6 +2606,129 @@ window.__ModuleLoader__.load({
           highlightRef.current.scrollLeft = target.scrollLeft;
         }
         if (gutterRef.current) gutterRef.current.scrollTop = target.scrollTop;
+      }
+
+      // ── in-file find / replace ──────────────────────────────────────────
+      var findInputRef = useRef(null);
+      var findState = useState({ open: false, query: '', replace: '', caseSensitive: false, index: 0 });
+      var find = findState[0];
+      var setFind = findState[1];
+      var FIND_MATCH_LIMIT = 5000;
+      var findResult = useMemo(function () {
+        if (!find.open || find.query === '') return { list: [], truncated: false };
+        var text = content;
+        var needle = find.caseSensitive ? find.query : find.query.toLowerCase();
+        var haystack = find.caseSensitive ? text : text.toLowerCase();
+        var list = [];
+        var from = 0;
+        while (list.length < FIND_MATCH_LIMIT) {
+          var at = haystack.indexOf(needle, from);
+          if (at === -1) break;
+          list.push(at);
+          from = at + Math.max(needle.length, 1);
+        }
+        // The list is capped so a huge file cannot freeze the editor, but the
+        // counter must not pretend the cap is the real number of matches.
+        var truncated = list.length === FIND_MATCH_LIMIT && haystack.indexOf(needle, from) !== -1;
+        return { list: list, truncated: truncated };
+      }, [content, find.open, find.query, find.caseSensitive]);
+      var findMatches = findResult.list;
+      var findIndex = findMatches.length === 0 ? -1 : Math.min(Math.max(find.index, 0), findMatches.length - 1);
+
+      function focusMatch(index) {
+        var target = textareaRef.current;
+        var at = findMatches.length === 0 ? -1 : findMatches[Math.min(Math.max(index, 0), findMatches.length - 1)];
+        if (!target || at < 0) return;
+        target.focus();
+        target.selectionStart = at;
+        target.selectionEnd = at + find.query.length;
+        // Re-focusing makes the textarea scroll the selection into view.
+        target.blur();
+        target.focus();
+      }
+
+      function stepMatch(delta) {
+        if (findMatches.length === 0) return;
+        var next = (findIndex + delta + findMatches.length) % findMatches.length;
+        setFind(function (previous) { return Object.assign({}, previous, { index: next }); });
+        focusMatch(next);
+      }
+
+      function openFind() {
+        setFind(function (previous) { return Object.assign({}, previous, { open: true }); });
+        requestAnimationFrame(function () {
+          if (findInputRef.current) {
+            findInputRef.current.focus();
+            findInputRef.current.select();
+          }
+        });
+      }
+
+      function closeFind() {
+        setFind({ open: false, query: '', replace: '', caseSensitive: false, index: 0 });
+      }
+
+      function replaceCurrent() {
+        if (findMatches.length === 0 || !editable) return;
+        var at = findMatches[findIndex];
+        var next = content.slice(0, at) + find.replace + content.slice(at + find.query.length);
+        setContent(next);
+        setDirty(true);
+        setSave({ saving: false, conflict: false, error: '', ok: false });
+        setFind(function (previous) { return Object.assign({}, previous, { index: Math.min(previous.index, Math.max(findMatches.length - 1, 0)) }); });
+      }
+
+      function replaceAll() {
+        if (findMatches.length === 0 || !editable || find.query === '') return;
+        var escaped = find.query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        var pattern = new RegExp(escaped, find.caseSensitive ? 'g' : 'gi');
+        var next = content.replace(pattern, function () { return find.replace; });
+        setContent(next);
+        setDirty(true);
+        setSave({ saving: false, conflict: false, error: '', ok: false });
+        setFind(function (previous) { return Object.assign({}, previous, { index: 0 }); });
+      }
+
+      function renderFindBar() {
+        if (!find.open) return null;
+        var counterTotal = findResult.truncated ? String(findMatches.length) + '+' : findMatches.length;
+        var counter = findMatches.length === 0 ? t('findNoMatch') : t('findCounter', { index: findIndex + 1, total: counterTotal });
+        return h('div', { className: 'rw-find-bar', role: 'search' },
+          h('input', {
+            ref: findInputRef,
+            className: 'rw-input',
+            value: find.query,
+            placeholder: t('findPlaceholder'),
+            'aria-label': t('findPlaceholder'),
+            spellCheck: false,
+            onChange: function (event) {
+              var value = event.currentTarget.value;
+              setFind(function (previous) { return Object.assign({}, previous, { query: value, index: 0 }); });
+            },
+            onKeyDown: function (event) {
+              if (event.key === 'Enter') { event.preventDefault(); stepMatch(event.shiftKey ? -1 : 1); }
+              if (event.key === 'Escape') { event.preventDefault(); closeFind(); }
+            },
+          }),
+          h('span', { className: 'rw-find-counter' }, counter),
+          h('button', { type: 'button', className: 'rw-btn rw-btn-sm', title: t('findNext'), disabled: findMatches.length === 0, onClick: function () { stepMatch(1); } }, IconChevron(12)),
+          h('button', { type: 'button', className: 'rw-btn rw-btn-sm', title: t('findPrev'), disabled: findMatches.length === 0, onClick: function () { stepMatch(-1); } }, h('span', { style: { display: 'inline-flex', transform: 'rotate(180deg)' } }, IconChevron(12))),
+          h('input', {
+            className: 'rw-input',
+            value: find.replace,
+            placeholder: t('replacePlaceholder'),
+            'aria-label': t('replacePlaceholder'),
+            spellCheck: false,
+            disabled: !editable,
+            onChange: function (event) {
+              var value = event.currentTarget.value;
+              setFind(function (previous) { return Object.assign({}, previous, { replace: value }); });
+            },
+            onKeyDown: function (event) { if (event.key === 'Enter') { event.preventDefault(); replaceCurrent(); } },
+          }),
+          h('button', { type: 'button', className: 'rw-btn rw-btn-sm', disabled: !editable || findMatches.length === 0, onClick: replaceCurrent }, t('replaceOne')),
+          h('button', { type: 'button', className: 'rw-btn rw-btn-sm', disabled: !editable || findMatches.length === 0, onClick: replaceAll }, t('replaceAll')),
+          h('button', { type: 'button', className: 'rw-icon-btn', title: t('close'), onClick: closeFind }, IconClose(12)));
       }
 
       var file = load.file;
@@ -2658,6 +2893,7 @@ window.__ModuleLoader__.load({
       return h('div', { className: 'rw-editor', style: containerStyle },
         header,
         banner ? h('div', { style: { padding: '8px 10px 0' } }, banner) : null,
+        renderFindBar(),
         body,
         h('div', { className: 'rw-editor-status' },
           h('span', { className: 'rw-status-chip' }, 'UTF-8'),
@@ -2727,10 +2963,20 @@ window.__ModuleLoader__.load({
       var cache = cacheState[0];
       var setCache = cacheState[1];
       var pending = useRef(new Set());
+      var lastRefreshAt = useRef(new Map());
 
       useEffect(function () {
         if (!props.refreshTick) return;
-        Array.from(expanded).forEach(function (path) { load(path, true); });
+        // A background refresh costs one full listing per expanded directory, so
+        // it stays quiet while the tab is hidden and never runs more often than
+        // REFRESH_MIN_INTERVAL_MS per directory.
+        if (typeof document !== 'undefined' && document.hidden) return;
+        var now = Date.now();
+        Array.from(expanded).forEach(function (path) {
+          var at = lastRefreshAt.current.get(path) || 0;
+          if (now - at < REFRESH_MIN_INTERVAL_MS) return;
+          load(path, true);
+        });
       }, [props.refreshTick]);
 
       function toggle(path) {
@@ -2758,10 +3004,12 @@ window.__ModuleLoader__.load({
       function load(path, silent) {
         if (pending.current.has(path)) return;
         pending.current.add(path);
+        lastRefreshAt.current.set(path, Date.now());
         var previousRecord = cache.entries.get(path) || {};
         // A silent refresh keeps as many rows as the user already loaded:
         // re-reading only the first page would drop everything past it.
-        var keep = silent ? Math.min(Math.max(Number(previousRecord.raw) || 0, TREE_PAGE_SIZE), TREE_PAGE_MAX) : TREE_PAGE_SIZE;
+        var keep = silent ? Math.max(Number(previousRecord.raw) || 0, TREE_PAGE_SIZE) : TREE_PAGE_SIZE;
+        keep = Math.min(keep, TREE_PAGE_MAX);
         setCache(function (previous) {
           var entries = new Map(previous.entries);
           var existing = entries.get(path) || {};
@@ -2772,14 +3020,28 @@ window.__ModuleLoader__.load({
           pending.current.delete(path);
           setCache(function (previous) {
             var next = new Map(previous.entries);
+            var existing = next.get(path) || {};
+            var fresh = applyEntries(result.entries || []);
+            var freshPaths = new Set(fresh.map(function (entry) { return entry.path; }));
+            // Keep rows beyond the refreshed page so a silent refresh cannot
+            // shrink a list the user scrolled many pages into.
+            var retained = silent
+              ? (existing.entries || []).filter(function (entry) { return !freshPaths.has(entry.path); })
+              : [];
+            var pageRaw = (result.entries || []).length;
+            var raw = silent ? Math.max(Number(existing.raw) || 0, pageRaw) : pageRaw;
+            var total = Number(result.total) || pageRaw + retained.length;
             next.set(path, {
               loading: false,
               error: null,
               loaded: true,
-              entries: applyEntries(result.entries || []),
-              raw: (result.entries || []).length,
-              total: Number(result.total) || (result.entries || []).length,
-              hasMore: Boolean(result.hasMore),
+              entries: fresh.concat(retained),
+              raw: raw,
+              total: total,
+              // A silent refresh asks for `keep` rows; when everything is already
+              // loaded the server still reports hasMore for the page it did not
+              // return, so trust the row counts instead of the flag alone.
+              hasMore: Boolean(result.hasMore) && raw < total,
             });
             return { entries: next };
           });
@@ -2836,7 +3098,19 @@ window.__ModuleLoader__.load({
         });
       }
 
-      return h('div', { className: 'rw-tree', role: 'tree', 'aria-label': t('allFiles') }, h(TreeDirectory, {
+      return h('div', {
+        className: 'rw-tree',
+        role: 'tree',
+        'aria-label': t('allFiles'),
+        onDragOver: function (event) {
+          if (!props.onDropOnPath) return;
+          event.preventDefault();
+          try { event.dataTransfer.dropEffect = 'copy'; } catch (error) { /* ignore */ }
+        },
+        onDrop: function (event) {
+          if (props.onDropOnPath) props.onDropOnPath(rootPath, event);
+        },
+      }, h(TreeDirectory, {
         path: rootPath,
         name: props.rootName || t('allFiles'),
         depth: 0,
@@ -2852,7 +3126,14 @@ window.__ModuleLoader__.load({
         onPin: props.onPin,
         onSelectPath: props.onSelectPath,
         onContextMenu: props.onContextMenu,
+        onDragStart: props.onDragStartRow
+          ? function (event, info) { props.onDragStartRow(props.kind, event, info); }
+          : null,
+        onDropOnPath: props.onDropOnPath
+          ? function (path, event) { props.onDropOnPath(props.kind, path, event); }
+          : null,
         selectedPath: props.selectedPath || '',
+        selectedSet: props.selectedPaths && props.selectedPaths.length > 0 ? new Set(props.selectedPaths) : null,
       }));
     }
 
@@ -3003,6 +3284,7 @@ window.__ModuleLoader__.load({
         state.error ? h(Banner, { kind: 'error' }, state.error) : null,
         state.loading ? h('div', { className: 'rw-hint-row' }, Spinner(12), t('loading')) : null,
         !state.loading && total === 0 ? h('div', { className: 'rw-hint-row' }, t('searchEmpty')) : null,
+        !state.loading && state.truncated ? h('div', { className: 'rw-hint-row' }, t('searchTruncated')) : null,
         groups.map(function (group) {
           if (group.entries.length === 0) return null;
           return h('div', { key: group.side, className: 'rw-change-group' },
@@ -3237,6 +3519,37 @@ window.__ModuleLoader__.load({
         })),
         h('div', { className: 'rw-dialog-actions' },
           h('button', { type: 'button', className: 'rw-btn rw-btn-sm', onClick: props.onClose }, props.t('close'))));
+    }
+
+    function CompareDialog(props) {
+      var t = props.t;
+      var data = props.data;
+      function section(key, title, rows, count, side) {
+        return h('div', { key: key, className: 'rw-compare-section' },
+          h('div', { className: 'rw-compare-title' }, title + ' (' + count + ')'),
+          count === 0
+            ? h('div', { className: 'rw-compare-empty' }, t('compareNone'))
+            : rows.map(function (row) {
+              var size = row.size != null ? row.size : row.localSize;
+              return h('button', {
+                key: row.path,
+                type: 'button',
+                className: 'rw-compare-row',
+                title: row.path,
+                onClick: function () { props.onOpen(side, row.path); },
+              },
+              h('span', { className: 'rw-compare-path' }, row.path),
+              h('span', { className: 'rw-compare-size' }, typeof size === 'number' ? formatBytes(size) : ''));
+            }));
+      }
+      return h(DialogShell, { title: props.title, onClose: props.onClose },
+        h('div', { className: 'rw-dialog-message rw-compare-root', title: data.localPath }, data.localPath),
+        section('onlyLocal', t('compareOnlyLocal'), data.onlyLocal || [], data.counts.onlyLocal, 'local'),
+        section('onlyRemote', t('compareOnlyRemote'), data.onlyRemote || [], data.counts.onlyRemote, 'remote'),
+        section('changed', t('compareChanged'), data.changed || [], data.counts.changed, 'remote'),
+        data.truncated ? h('div', { className: 'rw-dialog-note' }, t('compareTruncated')) : null,
+        h('div', { className: 'rw-dialog-actions' },
+          h('button', { type: 'button', className: 'rw-btn rw-btn-sm', onClick: props.onClose }, t('close'))));
     }
 
     function MoveDialog(props) {
@@ -3630,6 +3943,9 @@ window.__ModuleLoader__.load({
       var selectedEntryState = useState(null);
       var selectedEntry = selectedEntryState[0];
       var setSelectedEntry = selectedEntryState[1];
+      var multiState = useState([]);
+      var multi = multiState[0];
+      var setMulti = multiState[1];
       var showHiddenState = useState(true);
       var showHidden = showHiddenState[0];
       var setShowHidden = showHiddenState[1];
@@ -3730,6 +4046,20 @@ window.__ModuleLoader__.load({
       var fileDirtyState = useState({});
       var fileDirty = fileDirtyState[0];
       var setFileDirty = fileDirtyState[1];
+
+      // Closing the browser tab or reloading the page would silently drop
+      // unsaved edits: ask for confirmation while any open file is dirty.
+      useEffect(function () {
+        var dirty = openFiles.some(function (file) { return Boolean(fileDirty[file.key]); });
+        if (!dirty) return undefined;
+        function onBeforeUnload(event) {
+          event.preventDefault();
+          event.returnValue = '';
+          return '';
+        }
+        window.addEventListener('beforeunload', onBeforeUnload);
+        return function () { window.removeEventListener('beforeunload', onBeforeUnload); };
+      }, [openFiles, fileDirty]);
       var saveHandlersRef = useRef({});
       var directoryTabId = props.tab && props.tab.id;
 
@@ -3804,6 +4134,19 @@ window.__ModuleLoader__.load({
         data.reload();
       }
 
+      function openCompare(path) {
+        if (!selected) return;
+        setDialog({ kind: 'compare', loading: true, error: '', data: null });
+        apiCall('fs.compare', Object.assign({ path: path }, scopeParams(scopeRef))).then(function (result) {
+          setDialog({
+            kind: 'compare', loading: false, error: '',
+            data: result, root: result.path, localPath: result.localPath,
+          });
+        }).catch(function (error) {
+          setDialog({ kind: 'compare', loading: false, error: t('compareFailed') + '：' + messageOf(error, t, locale), data: null });
+        });
+      }
+
       function updateOpenMode(next) {
         apiCall('settings.update', { fileOpenMode: next }).then(function (result) {
           runtimeSettings.apply({ fileOpenMode: result && result.fileOpenMode ? result.fileOpenMode : next });
@@ -3813,9 +4156,10 @@ window.__ModuleLoader__.load({
         });
       }
 
-      function openTerminal(side) {
+      function openTerminal(side, atPath) {
         if (!selected) return;
         var request = { side: side };
+        if (typeof atPath === 'string' && atPath !== '') request.path = atPath;
         if (selected.kind === 'linked') request.linkedId = selected.id;
         else request.workspaceId = selected.id;
         apiCall('terminal.open', request).then(function () {
@@ -3965,6 +4309,49 @@ window.__ModuleLoader__.load({
         showNotice('error', t('actionFailed') + '：' + messageOf(error, t, locale));
       }
 
+      // Ctrl/Cmd-click toggles an entry in the multi-selection; a plain click
+      // collapses the selection to that entry (Shift extends it).
+      function updateSelection(side, info) {
+        if (!info || typeof info.path !== 'string') return;
+        var event = info.event;
+        var entry = { side: side, path: info.path, name: info.name, isDir: Boolean(info.isDir) };
+        setSelectedEntry(entry);
+        var toggle = Boolean(event && (event.ctrlKey || event.metaKey));
+        var extend = Boolean(event && event.shiftKey);
+        setMulti(function (previous) {
+          var exists = previous.some(function (item) { return item.side === side && item.path === entry.path; });
+          if (extend) return exists ? previous : previous.concat([entry]);
+          if (toggle) {
+            return exists
+              ? previous.filter(function (item) { return !(item.side === side && item.path === entry.path); })
+              : previous.concat([entry]);
+          }
+          return [entry];
+        });
+      }
+
+      function selectedOn(side) {
+        return multi.filter(function (item) { return item.side === side; });
+      }
+
+      function selectionFor(side) {
+        var list = selectedOn(side);
+        if (list.length > 0) return list;
+        if (selectedEntry && selectedEntry.side === side) return [selectedEntry];
+        return [];
+      }
+
+      function transferSelection() {
+        var list = multi.length > 0 ? multi : (selectedEntry ? [selectedEntry] : []);
+        list.forEach(function (item) { enqueueTransfer(item.side, item.path, item.name); });
+      }
+
+      function deleteSelection() {
+        var list = multi.length > 0 ? multi : (selectedEntry ? [selectedEntry] : []);
+        if (list.length === 0) return;
+        setDialog({ kind: 'deleteMany', entries: list });
+      }
+
       function copyPathToClipboard(text) {
         try {
           if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -4074,6 +4461,94 @@ window.__ModuleLoader__.load({
         }).catch(noticeError);
       }
 
+      function confirmDeleteMany(entries) {
+        var list = Array.isArray(entries) ? entries : [];
+        var failures = [];
+        var chain = Promise.resolve();
+        list.forEach(function (entry) {
+          chain = chain.then(function () {
+            var method = entry.side === 'remote' ? 'fs.delete' : 'local.delete';
+            var params = entry.side === 'remote'
+              ? Object.assign({ path: entry.path }, scopeParams(scopeRef))
+              : { path: entry.path, root: selected.localPath };
+            return apiCall(method, params).then(function () {
+              setMulti(function (previous) {
+                return previous.filter(function (item) { return !(item.side === entry.side && item.path === entry.path); });
+              });
+            }).catch(function (error) { failures.push(error); });
+          });
+        });
+        chain.then(function () {
+          if (failures.length > 0) showNotice('error', messageOf(failures[0], t, locale));
+          else showNotice('success', t('deleteDone'));
+          refreshTree();
+        });
+      }
+
+      var DRAG_MIME = 'application/x-dsh-linked-entry';
+
+      function beginDragRow(side, event, info) {
+        if (!event.dataTransfer || !info) return;
+        try {
+          event.dataTransfer.setData(DRAG_MIME, JSON.stringify({
+            side: side, path: info.path, name: info.name, isDir: Boolean(info.isDir),
+          }));
+          event.dataTransfer.effectAllowed = 'copy';
+        } catch (error) { /* drag payload unsupported */ }
+      }
+
+      // Drop target handling for both trees: OS files are imported into the
+      // target directory, while an entry dragged from the other tree is pushed
+      // across the boundary (remote→local or local→remote).
+      function dropOnPath(side, targetDir, event) {
+        event.preventDefault();
+        event.stopPropagation();
+        var transfer = event.dataTransfer;
+        if (!transfer || typeof targetDir !== 'string' || targetDir === '') return;
+        var files = Array.prototype.slice.call(transfer.files || []);
+        var osPaths = files.map(function (file) {
+          return file && typeof file.path === 'string' ? file.path : '';
+        }).filter(Boolean);
+        if (files.length > 0 && osPaths.length === 0) {
+          showNotice('error', t('dropNeedsDesktop'));
+          return;
+        }
+        if (osPaths.length > 0) {
+          var payload = side === 'remote'
+            ? Object.assign({ path: targetDir, paths: osPaths }, scopeParams(scopeRef))
+            : { dir: targetDir, paths: osPaths };
+          apiCall(side === 'remote' ? 'fs.upload' : 'local.import', payload).then(function (result) {
+            var count = side === 'remote' ? Number(result.files) || 0 : Number(result.copied) || 0;
+            showNotice('success', t('dropImported', { count: count }));
+            if (Number(result.skipped) > 0) showNotice('warn', t('dropSkipped', { count: result.skipped }));
+            refreshTree();
+          }).catch(noticeError);
+          return;
+        }
+        var raw = '';
+        try { raw = transfer.getData(DRAG_MIME); } catch (error) { raw = ''; }
+        if (!raw) return;
+        var entry;
+        try { entry = JSON.parse(raw); } catch (error) { return; }
+        if (!entry || typeof entry.path !== 'string' || entry.side === side) return;
+        if (entry.side === 'remote') {
+          if (entry.isDir) {
+            showNotice('error', t('dropDirUnsupported'));
+            return;
+          }
+          apiCall('fs.pullToLocal', Object.assign({ path: entry.path, targetDir: targetDir }, scopeParams(scopeRef))).then(function () {
+            showNotice('success', t('dropImported', { count: 1 }));
+            refreshTree();
+          }).catch(noticeError);
+          return;
+        }
+        apiCall('fs.upload', Object.assign({ path: targetDir, paths: [entry.path] }, scopeParams(scopeRef))).then(function (result) {
+          if (Number(result.skipped) > 0) showNotice('warn', t('dropSkipped', { count: result.skipped }));
+          else showNotice('success', t('dropImported', { count: Number(result.files) || 1 }));
+          refreshTree();
+        }).catch(noticeError);
+      }
+
       function submitRenamed(side, oldPath, name) {
         var target = joinChildPath(parentPathOf(oldPath, side), name, side);
         if (target === oldPath) return;
@@ -4179,6 +4654,14 @@ window.__ModuleLoader__.load({
         }
         var canPaste = clipboard !== null && clipboard.side === menu.side && menu.isDir;
         var items = [];
+        var batch = multi.filter(function (item) { return item.side === menu.side; });
+        if (batch.length > 1) {
+          items.push({ label: t('ctxTransferSelected', { count: batch.length }), onSelect: function () {
+            batch.forEach(function (item) { enqueueTransfer(item.side, item.path, item.name); });
+          } });
+          items.push({ label: t('ctxDeleteSelected', { count: batch.length }), onSelect: deleteSelection });
+          items.push({ separator: true });
+        }
         if (isRemote) {
           items.push({ label: t('ctxTransfer'), onSelect: function () { enqueueTransfer('remote', menu.path, menu.name); } });
           items.push({ label: t('ctxDownload'), onSelect: function () { downloadEntry(menu); } });
@@ -4222,7 +4705,11 @@ window.__ModuleLoader__.load({
         } });
         if (menu.isDir) {
           items.push({ separator: true });
+          items.push({ label: t('ctxTerminalHere'), onSelect: function () { openTerminal(menu.side, menu.path); } });
           items = items.concat(newEntryMenuItems(menu, t, setDialog));
+        }
+        if (menu.isDir && menu.side === 'remote' && selected && selected.kind === 'linked') {
+          items.push({ label: t('ctxCompare'), onSelect: function () { openCompare(menu.path); } });
         }
         items.push({ separator: true });
         items.push({ label: t('ctxProperties'), onSelect: function () { showProperties(menu.side, menu.path); } });
@@ -4231,6 +4718,27 @@ window.__ModuleLoader__.load({
 
       function renderDialog() {
         if (!dialog) return null;
+        if (dialog.kind === 'compare') {
+          return dialog.loading
+            ? h(DialogShell, { title: t('compareTitle'), onClose: function () { setDialog(null); } },
+              h('div', { className: 'rw-dialog-message' }, Spinner(13), t('loading')))
+            : dialog.error
+              ? h(DialogShell, { title: t('compareTitle'), onClose: function () { setDialog(null); } },
+                h('div', { className: 'rw-dialog-message rw-dialog-error' }, dialog.error),
+                h('div', { className: 'rw-dialog-actions' },
+                  h('button', { type: 'button', className: 'rw-btn rw-btn-sm', onClick: function () { setDialog(null); } }, t('close'))))
+              : h(CompareDialog, {
+                t: t,
+                title: t('compareTitle'),
+                data: dialog.data,
+                onClose: function () { setDialog(null); },
+                onOpen: function (side, relative) {
+                  var root = dialog.root;
+                  var target = side === 'local' ? dialog.localPath : root;
+                  openInternalFile(side === 'local' ? 'local' : 'remote', target + (target.endsWith('/') || target.endsWith('\\') ? '' : side === 'local' ? '\\' : '/') + relative.split('/').join(side === 'local' ? '\\' : '/'));
+                },
+              });
+        }
         if (dialog.kind === 'props') {
           return h(PropertiesDialog, { t: t, title: dialog.title, rows: dialog.rows, onClose: function () { setDialog(null); } });
         }
@@ -4254,6 +4762,16 @@ window.__ModuleLoader__.load({
             confirmLabel: t('deleteConfirm'),
             onClose: function () { setDialog(null); },
             onConfirm: function () { setDialog(null); confirmDelete(dialog); },
+          });
+        }
+        if (dialog.kind === 'deleteMany') {
+          return h(ConfirmDialog, {
+            t: t,
+            title: t('deleteManyTitle'),
+            message: t('deleteManyMessage', { count: dialog.entries.length }),
+            confirmLabel: t('deleteConfirm'),
+            onClose: function () { setDialog(null); },
+            onConfirm: function () { setDialog(null); confirmDeleteMany(dialog.entries); },
           });
         }
         if (dialog.kind === 'move') {
@@ -4327,7 +4845,7 @@ window.__ModuleLoader__.load({
         }
         var alive = true;
         var timer = setTimeout(function () {
-          setSearch(function (previous) { return { loading: true, remote: previous.remote, local: previous.local, error: null }; });
+          setSearch(function (previous) { return { loading: true, remote: previous.remote, local: previous.local, truncated: false, error: null }; });
           var scopeNow = sourceScopeOf(selected);
           var jobs = [apiCall('fs.search', Object.assign({ side: 'remote', query: query, maxResults: 200 }, scopeParams(scopeNow))).catch(function (error) {
             return { ok: false, entries: [], error: messageOf(error, t, locale) };
@@ -4345,6 +4863,7 @@ window.__ModuleLoader__.load({
               loading: false,
               remote: results[0] && results[0].entries ? results[0].entries : [],
               local: results[1] && results[1].entries ? results[1].entries : [],
+              truncated: Boolean((results[0] && results[0].truncated) || (results[1] && results[1].truncated)),
               error: (results[0] && results[0].error) || (results[1] && results[1].error) || null,
             });
           });
@@ -4394,7 +4913,10 @@ window.__ModuleLoader__.load({
             locale: locale,
             showHidden: showHidden,
             selectedPath: selectedEntry && selectedEntry.side === 'remote' ? selectedEntry.path : '',
-            onSelectPath: function (info) { setSelectedEntry(Object.assign({ side: 'remote' }, info)); },
+            selectedPaths: selectionFor('remote').map(function (item) { return item.path; }),
+            onSelectPath: function (info) { updateSelection('remote', info); },
+            onDragStartRow: beginDragRow,
+            onDropOnPath: dropOnPath,
             onSelect: function (filePath) { openByMode('remote', filePath, { pinned: false, preview: true }); },
             onPin: function (filePath) { pinByMode('remote', filePath); },
             onContextMenu: function (info) { setSelectedEntry(Object.assign({ side: 'remote' }, info)); openContextMenu('remote', info); },
@@ -4415,7 +4937,10 @@ window.__ModuleLoader__.load({
               locale: locale,
               showHidden: showHidden,
               selectedPath: selectedEntry && selectedEntry.side === 'local' ? selectedEntry.path : '',
-              onSelectPath: function (info) { setSelectedEntry(Object.assign({ side: 'local' }, info)); },
+              selectedPaths: selectionFor('local').map(function (item) { return item.path; }),
+              onSelectPath: function (info) { updateSelection('local', info); },
+              onDragStartRow: beginDragRow,
+              onDropOnPath: dropOnPath,
               onSelect: function (filePath) { openByMode('local', filePath, { pinned: false, preview: true }); },
               onPin: function (filePath) { pinByMode('local', filePath); },
               refreshTick: localTick,
@@ -4499,13 +5024,13 @@ window.__ModuleLoader__.load({
           localEnabled: !remoteOnly && selected.kind === 'linked',
           showHidden: showHidden,
           onToggleHidden: function () { setShowHidden(!showHidden); },
-          transferEnabled: !remoteOnly && Boolean(selectedEntry),
+          transferEnabled: !remoteOnly && (multi.length > 0 || Boolean(selectedEntry)),
           transferSelected: function () {
-            if (!selectedEntry) {
+            if (multi.length === 0 && !selectedEntry) {
               showNotice('info', t('selectFirst'));
               return;
             }
-            enqueueTransfer(selectedEntry.side, selectedEntry.path, selectedEntry.name);
+            transferSelection();
           },
           onMode: function (next) { setMode(next); },
           onToggleSearch: function () { setSearchOpen(!searchOpen); },
@@ -4658,10 +5183,13 @@ window.__ModuleLoader__.load({
                 onPin: onPin,
                 onSelectPath: onSelectPath,
                 onContextMenu: onContextMenu,
+                onDragStart: props.onDragStart,
+                onDropOnPath: props.onDropOnPath,
                 selectedPath: selectedPath,
+                selectedSet: props.selectedSet,
               }));
             } else if (child.type === 'file' || child.type === 'symlink') {
-              var active = selectedPath === child.path;
+              var active = selectedPath === child.path || Boolean(props.selectedSet && props.selectedSet.has(child.path));
               children.push(h('button', {
                 key: child.path,
                 type: 'button',
@@ -4671,8 +5199,12 @@ window.__ModuleLoader__.load({
                 className: 'rw-row' + (active ? ' is-active' : ''),
                 style: { paddingLeft: 6 + (depth + 1) * 12 },
                 title: child.path,
+                draggable: Boolean(props.onDragStart),
+                onDragStart: function (event) {
+                  if (props.onDragStart) props.onDragStart(event, { path: child.path, name: child.name, isDir: false });
+                },
                 onClick: function (event) {
-                  if (onSelectPath) onSelectPath({ path: child.path, name: child.name, isDir: false });
+                  if (onSelectPath) onSelectPath({ path: child.path, name: child.name, isDir: false, event: event });
                   if (event.detail !== 2) onSelect(child.path);
                 },
                 onDoubleClick: function () { if (onPin) onPin(child.path); },
@@ -4711,16 +5243,32 @@ window.__ModuleLoader__.load({
           role: 'treeitem',
           'aria-level': depth + 1,
           'aria-expanded': isOpen,
-          className: 'rw-row' + (selectedPath === path ? ' is-active' : ''),
+          className: 'rw-row' + (selectedPath === path || (props.selectedSet && props.selectedSet.has(path)) ? ' is-active' : ''),
           style: { paddingLeft: 6 + depth * 12 },
           title: path,
+          draggable: Boolean(props.onDragStart),
+          onDragStart: function (event) {
+            if (props.onDragStart) props.onDragStart(event, { path: path, name: name, isDir: true });
+          },
           onClick: function (event) {
-            if (onSelectPath) onSelectPath({ path: path, name: name, isDir: true });
+            if (onSelectPath) onSelectPath({ path: path, name: name, isDir: true, event: event });
             if (event.detail !== 2) toggle(path);
           },
           onKeyDown: function (event) {
             if (event.key === 'ArrowRight' && !isOpen) { event.preventDefault(); toggle(path); }
             else if (event.key === 'ArrowLeft' && isOpen) { event.preventDefault(); toggle(path); }
+          },
+          onDragOver: function (event) {
+            if (!props.onDropOnPath) return;
+            event.preventDefault();
+            event.stopPropagation();
+            try { event.dataTransfer.dropEffect = 'copy'; } catch (error) { /* ignore */ }
+            event.currentTarget.classList.add('is-drop-target');
+          },
+          onDragLeave: function (event) { event.currentTarget.classList.remove('is-drop-target'); },
+          onDrop: function (event) {
+            event.currentTarget.classList.remove('is-drop-target');
+            if (props.onDropOnPath) props.onDropOnPath(path, event);
           },
           onContextMenu: function (event) {
             if (!onContextMenu) return;

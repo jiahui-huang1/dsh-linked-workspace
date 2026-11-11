@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.9.0 — 2026-11-12
+
+Third review round: in-editor editing, local/remote comparison and drag-and-drop, plus refresh behaviour.
+
+- **Find and replace (feature)**: `Ctrl/Cmd + F` opens an in-editor bar with a case-sensitive toggle, previous/next, a match counter, replace and replace all. Matching stops at 5000 hits and the counter shows `5000+` when more exist; replace-all still edits the whole document (6000 replacements verified).
+- **Terminal in a directory (feature)**: the tree context menu gains “Open terminal here” for folders. `terminal.open` accepts an optional `path`, validated to stay inside the linked workspace, and starts the shell in that directory (verified with a real `ssh -t … "cd <dir> && exec bash -l"` process).
+- **Filter in the path pickers (feature)**: the local and remote directory pickers filter already-loaded entries while typing, with an empty-state hint.
+- **Local/remote comparison (feature)**: `fs.compare` compares a remote directory with its local counterpart and returns only-local / only-remote / changed entries (size differs, or mtime differs by more than 2 s), capped at 4000 files, depth 12 and 200 rows per group with a `truncated` flag. The dialog lists the three groups; clicking a row opens it.
+- **Multi-select and batch actions (feature)**: Ctrl/Cmd-click toggles a row, Shift-click extends the selection; the context menu offers “Transfer selected (N)” and “Delete selected (N)” with a confirmation dialog, and per-item errors are aggregated (a file deleted outside the app reports “path does not exist” while the others are removed).
+- **Drag and drop (feature)**: drag rows between the local and remote trees (a remote file is copied through `fs.pullToLocal`, a local file through `fs.upload`), and drop OS files onto either tree (`fs.upload` / `local.import`; up to 50 files, 64 MB each). If the browser hides file paths, or a remote folder is dropped onto the local tree, a notice explains the limitation instead of failing silently.
+- **Refresh throttling**: the 4-second tick now refreshes each directory at most every 15 seconds and pauses while the page is hidden (measured intervals 18–19 s), so a large tree no longer re-lists on every tick.
+- **Unsaved-changes guard**: a dirty editor registers `beforeunload`, so reloading or closing the window asks for confirmation.
+- **Refresh keeps loaded rows**: a silent refresh merges the first page with already-loaded rows instead of truncating back to 500 (or 5000); a 5500-entry directory stayed at 5522 rendered rows across refresh cycles.
+- **Search truncation**: results over the 200-row cap now show “showing the first 200 matches” instead of dropping the flag.
+- **Load-more and counter fixes**: “Load more (0 left)” disappears once everything is loaded; the find counter reports `5000+` instead of pretending the document has exactly 5000 matches.
+- Review note: two previously reported issues (no context menu in the right-sidebar tree, hidden-file toggle not refreshing expanded folders) were re-tested and could not be reproduced; neither was changed.
+
 ## 0.8.3 — 2026-11-11
 
 Second review round: follow-ups to the 0.8.2 paging and preview work.
