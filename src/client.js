@@ -889,6 +889,7 @@ window.__ModuleLoader__.load({
         FS_IS_DIR: '目标是目录',
         FS_NOT_DIR: '目标不是目录',
         FS_TOO_LARGE: '文件过大',
+        FS_EXISTS: '目标已存在，请使用其他名称',
         CONFLICT: '远端文件已被修改',
         BAD_REQUEST: '请求参数无效',
       },
@@ -903,6 +904,7 @@ window.__ModuleLoader__.load({
         FS_IS_DIR: 'That path is a directory',
         FS_NOT_DIR: 'That path is not a directory',
         FS_TOO_LARGE: 'The file is too large',
+        FS_EXISTS: 'The target already exists; choose another name',
         CONFLICT: 'The remote file changed',
         BAD_REQUEST: 'Invalid request',
       },
@@ -3083,20 +3085,46 @@ window.__ModuleLoader__.load({
       var state = useState(props.value || '');
       var value = state[0];
       var setValue = state[1];
-      function submit() { if (value.trim() !== '') props.onSubmit(value.trim()); }
-      return h(DialogShell, { title: props.title, onClose: props.onClose },
+      var statusState = useState({ busy: false, error: '' });
+      var status = statusState[0];
+      var setStatus = statusState[1];
+      var pendingRef = useRef(false);
+      var mountedRef = useRef(true);
+      useEffect(function () {
+        mountedRef.current = true;
+        return function () { mountedRef.current = false; };
+      }, []);
+      function close() { if (!pendingRef.current) props.onClose(); }
+      function submit() {
+        if (value.trim() === '' || pendingRef.current) return;
+        pendingRef.current = true;
+        setStatus({ busy: true, error: '' });
+        Promise.resolve().then(function () { return props.onSubmit(value.trim()); }).then(function () {
+          pendingRef.current = false;
+          if (mountedRef.current) setStatus({ busy: false, error: '' });
+        }).catch(function (error) {
+          pendingRef.current = false;
+          if (mountedRef.current) setStatus({ busy: false, error: messageOf(error, props.t, props.locale) });
+        });
+      }
+      return h(DialogShell, { title: props.title, onClose: close },
         h('label', { className: 'rw-dialog-label' }, props.label),
         h('input', {
           className: 'rw-dialog-input',
           value: value,
+          disabled: status.busy,
           autoFocus: true,
           spellCheck: false,
           onChange: function (event) { setValue(event.currentTarget.value); },
-          onKeyDown: function (event) { if (event.key === 'Enter') submit(); },
+          onKeyDown: function (event) {
+            if (event.key === 'Enter' && (!event.nativeEvent || !event.nativeEvent.isComposing)) { event.preventDefault(); submit(); }
+            else if (event.key === 'Escape') close();
+          },
         }),
+        status.error ? h(Banner, { kind: 'error' }, status.error) : null,
         h('div', { className: 'rw-dialog-actions' },
-          h('button', { type: 'button', className: 'rw-btn rw-btn-sm', onClick: props.onClose }, props.t('cancel')),
-          h('button', { type: 'button', className: 'rw-btn rw-btn-sm rw-btn-primary', onClick: submit }, props.t('confirm'))));
+          h('button', { type: 'button', className: 'rw-btn rw-btn-sm', disabled: status.busy, onClick: close }, props.t('cancel')),
+          h('button', { type: 'button', className: 'rw-btn rw-btn-sm rw-btn-primary', disabled: status.busy || value.trim() === '', onClick: submit }, props.t(status.busy ? 'loading' : 'confirm'))));
     }
 
     function ConfirmDialog(props) {
@@ -4014,27 +4042,13 @@ window.__ModuleLoader__.load({
       }
 
       function submitNew(side, dirPath, name, isDir) {
-        var target = joinChildPath(dirPath, name, side);
-        var docKind = documentKindOf(name);
-        var promise;
-        if (isDir) {
-          promise = side === 'remote'
-            ? apiCall('fs.mkdir', Object.assign({ path: target }, scopeParams(scopeRef)))
-            : apiCall('local.mkdir', { path: dirPath, name: name });
-        } else if (docKind) {
-          promise = side === 'remote'
-            ? apiCall('docs.create', Object.assign({ path: target, kind: docKind }, scopeParams(scopeRef)))
-            : apiCall('docs.create', { path: target, kind: docKind });
-        } else {
-          promise = side === 'remote'
-            ? apiCall('fs.write', Object.assign({ path: target, content: '' }, scopeParams(scopeRef)))
-            : apiCall('local.newFile', { path: target });
-        }
-        promise.then(function () {
+        var request = newEntryRequest(side, dirPath, name, isDir, scopeParams(scopeRef));
+        return apiCall(request.method, request.params).then(function () {
+          setDialog(null);
           showNotice('success', t('newDone'));
           refreshTree();
-          if (!isDir && docKind) openInternalFile(side, target);
-        }).catch(noticeError);
+          if (!isDir && request.kind) openInternalFile(side, request.path);
+        });
       }
 
       function submitChmod(side, targetPath, mode) {
@@ -4049,9 +4063,9 @@ window.__ModuleLoader__.load({
       }
 
       function submitDialog(current, value) {
+        if (current.kind === 'new') return submitNew(current.side, current.dir, value, current.isDir);
         setDialog(null);
         if (current.kind === 'rename') submitRenamed(current.side, current.path, value);
-        else if (current.kind === 'new') submitNew(current.side, current.dir, value, current.isDir);
         else if (current.kind === 'chmod') submitChmod(current.side, current.path, value);
       }
 
@@ -4111,14 +4125,8 @@ window.__ModuleLoader__.load({
           setDialog({ kind: 'chmod', side: menu.side, path: menu.path, title: t('chmodTitle'), label: t('chmodLabel'), value: '644' });
         } });
         if (menu.isDir) {
-          items.push({ label: t('ctxNew'), sub: [
-            { label: t('ctxNewFolder'), onSelect: function () {
-              setDialog({ kind: 'new', side: menu.side, dir: menu.path, isDir: true, title: t('newFolderTitle'), label: t('nameLabel'), value: t('newFolderTitle') });
-            } },
-            { label: t('ctxNewFile'), onSelect: function () {
-              setDialog({ kind: 'new', side: menu.side, dir: menu.path, isDir: false, title: t('newFileTitle'), label: t('nameLabel'), value: t('newFileTitle') });
-            } },
-          ] });
+          items.push({ separator: true });
+          items = items.concat(newEntryMenuItems(menu, t, setDialog));
         }
         items.push({ separator: true });
         items.push({ label: t('ctxProperties'), onSelect: function () { showProperties(menu.side, menu.path); } });
@@ -4179,11 +4187,12 @@ window.__ModuleLoader__.load({
         }
         return h(PromptDialog, {
           t: t,
+          locale: locale,
           title: dialog.title,
           label: dialog.label,
           value: dialog.value,
           onClose: function () { setDialog(null); },
-          onSubmit: function (value) { submitDialog(dialog, value); },
+          onSubmit: function (value) { return submitDialog(dialog, value); },
         });
       }
 

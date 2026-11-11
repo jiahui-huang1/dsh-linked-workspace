@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Fixed linked-directory context-menu creation on both the remote and local trees: New folder and New file are direct menu actions, so the scrollable menu no longer clips the creation submenu.
+- CSV, HTML, SVG and other preview formats now create ordinary empty files; only Markdown, PDF, DOCX, XLSX and PPTX use document templates.
+- Creation keeps the name dialog open on failure, displays the error and prevents repeated submissions while pending. New files and folders reject existing names with HTTP 409 instead of replacing or silently reusing them, on both remote and local trees.
+
 ## 0.8.1 — 2026-11-09
 
 - **Image zoom**: the image preview gains zoom-out/zoom-in buttons, a percentage readout, “Fit to window” and “1:1” controls, plus `Ctrl/Cmd + wheel` zoom.

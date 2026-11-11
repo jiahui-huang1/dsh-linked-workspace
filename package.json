@@ -72,7 +72,7 @@
   },
   "scripts": {
     "build": "node scripts/build-client.mjs",
-    "test": "node --test test/linked.test.mjs test/parts.test.mjs test/git.test.mjs && node test/client-smoke.mjs",
+    "test": "node --test test/linked.test.mjs test/parts.test.mjs test/git.test.mjs test/file-creation.test.mjs && node test/client-smoke.mjs",
     "prepack": "node scripts/build-client.mjs"
   },
   "repository": {

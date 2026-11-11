@@ -86,6 +86,8 @@ assert.match(bundleSource, /ImagePreview/, 'image preview component is part of t
 assert.match(bundleSource, /HtmlPreview/, 'HTML preview component is part of the client bundle')
 assert.match(bundleSource, /rw-image-canvas/, 'image zoom canvas is part of the client bundle')
 assert.match(bundleSource, /htmlScriptsDisabled/, 'HTML preview safety note is part of the client bundle')
+assert.match(bundleSource, /newEntryMenuItems/, 'direct new-entry menu actions are part of the client bundle')
+assert.match(bundleSource, /createOnly: true/, 'remote new files are created without overwriting existing targets')
 
 assert.ok(captured, 'the bundle registered itself with the module loader')
 assert.equal(captured.id, 'dsh-linked-workspace')

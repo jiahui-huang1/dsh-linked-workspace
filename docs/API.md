@@ -61,9 +61,9 @@ relative to the scope root, or absolute inside it.
 | `fs.list` | `{ workspaceId?/linkedId?, path }` | `{ path, entries: RemoteEntry[] }` |
 | `fs.read` | `{ workspaceId?/linkedId?, path, maxBytes? }` | `FileRead` |
 | `media.read` | `{ workspaceId?/linkedId?, path }` | `{ path, size, mtime, mime, base64 }` (PNG/JPG/GIF/WebP/BMP/ICO/AVIF/SVG, max 24 MB) |
-| `fs.write` | `{ workspaceId?/linkedId?, path, content, expectedMtime? }` | `{ path, size, mtime }` |
+| `fs.write` | `{ workspaceId?/linkedId?, path, content, expectedMtime?, createOnly? }` | `{ path, size, mtime }` (`createOnly: true`: existing target → 409) |
 | `fs.stat` | `{ workspaceId?/linkedId?, path }` | `{ path, relative, type, size, mtime, mode }` |
-| `fs.mkdir` | `{ workspaceId?/linkedId?, path }` | `{}` |
+| `fs.mkdir` | `{ workspaceId?/linkedId?, path, createOnly? }` | `{}` (`createOnly: true`: existing target → 409) |
 | `fs.rename` | `{ workspaceId?/linkedId?, from, to }` | `{}` |
 | `fs.move` | `{ workspaceId?/linkedId?, path, targetDir? }` | `{ path }` (same remote tree; collision → 409) |
 | `fs.delete` | `{ workspaceId?/linkedId?, path }` | `{}` |
@@ -71,7 +71,7 @@ relative to the scope root, or absolute inside it.
 | `settings.get` | `{}` | `{ editorTheme, editorThemeFamily, editorThemeMode, fileOpenMode, autoSave }` |
 | `settings.update` | `{ editorTheme?, editorThemeFamily?, editorThemeMode?, fileOpenMode?, autoSave? }` | `{ editorTheme, editorThemeFamily, editorThemeMode, fileOpenMode, autoSave }` |
 | `local.browse` | `{ path? }` | `{ path, parent, home, entries: [{ name, path }] }` |
-| `local.mkdir` | `{ path, name }` | `{ path }` |
+| `local.mkdir` | `{ path, name }` | `{ path }` (existing target → 409) |
 | `linked.list` | `{}` | `{ links: LinkInfo[] }` (each link carries `running`) |
 | `linked.create` | `{ hostId, remotePath, localPath, name?, mirror? }` | `{ link, workspaceId: string|null }` |
 | `linked.update` | `{ id, name?, mirror? }` | `{ link }` |
@@ -102,7 +102,7 @@ relative to the scope root, or absolute inside it.
 | `local.move` | `{ path, targetDir?, root? }` | `{ path, type }` (same local tree; collision → 409) |
 | `local.delete` | `{ path, root? }` | `{}` (recursive) |
 | `local.copy` | `{ path, targetDir? }` | `{ path, type }` |
-| `local.newFile` | `{ path }` | `{ path }` |
+| `local.newFile` | `{ path }` | `{ path }` (existing target → 409) |
 | `local.chmod` | `{ path, mode }` | `{ path, mode }` |
 | `local.edit` | `{ path, app? }` | `{ path }` (opens Notepad) |
 

@@ -15,7 +15,7 @@ import { dirname, join } from 'node:path'
 const here = dirname(fileURLToPath(import.meta.url))
 const root = join(here, '..')
 
-const PART_FILES = ['themes.js', 'highlight.js', 'file-icons.js']
+const PART_FILES = ['themes.js', 'highlight.js', 'file-icons.js', 'file-creation.js']
 
 function partCode(name) {
   const file = join(root, 'src', 'parts', name)
