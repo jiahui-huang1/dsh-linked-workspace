@@ -220,6 +220,9 @@ async function main() {
   const localNewFolder = await ok('local.mkdir', { path: localRoot, name: '新建文件夹' })
   assert.equal(existsSync(localNewFolder.path), true)
   await fail('local.mkdir', { path: localRoot, name: '新建文件夹' }, 409)
+  // Later steps create the same folder again, so the duplicate check above must
+  // not leave it behind (it used to make step 13b fail with a 409).
+  await ok('local.delete', { path: localNewFolder.path, root: localRoot })
   step('local.browse/mkdir/new', started)
 
   // 5. Add a direct remote workspace
@@ -408,7 +411,8 @@ async function main() {
     const localNewFolder = await ok('local.mkdir', { path: localRoot, name: '新建文件夹' })
     assert.equal(existsSync(localNewFolder.path), true)
     await fail('local.mkdir', { path: localRoot, name: '新建文件夹' }, 409)
-    await fail('local.mkdir', { path: localRoot, name: '新建文件夹' }, 400)
+    // 400 is for a malformed name, not for an existing one (same name would 409).
+    await fail('local.mkdir', { path: localRoot, name: 'bad/name' }, 400)
     await ok('local.delete', { path: localNewFolder.path, root: localRoot })
     await ok('local.delete', { path: localRenamed.path, root: localRoot })
     assert.equal(existsSync(localRenamed.path), false)

@@ -119,6 +119,20 @@ Old “Remote directories” tabs are restored after refresh through hidden lega
 
 See [CHANGELOG.md](CHANGELOG.md) for the full version history.
 
+### 0.8.3
+
+Follow-up fixes to the 0.8.2 paging and preview work (second review round):
+
+- Document previews now also drop inline `style` attributes, so a `position:fixed` overlay can no longer cover the whole app and impersonate a login page (click-jacking/phishing surface).
+- Tree refreshes (the local tree every 4 s) re-request only the entries already loaded, so “Load more” results are no longer reset to the first page.
+- With hidden files toggled, “Load more” uses the true server offset: entries are neither duplicated nor skipped, and the “N left” label is computed from that offset.
+- `fs.list` gained a 5-second listing cache: paging reads the directory once, and any write, mkdir, rename, move, delete, copy or transfer invalidates it.
+- A directory copy that fails midway removes the partial copy and reports `FS_INCOMPLETE`; `FS_TOO_LARGE` is now reserved for real size limits.
+- Concurrent first connects are keyed by host *and* address, so an address change cannot hand the old connection to the new request, and replaced connections are released.
+- The right-sidebar tree source de-duplicates in-flight loads instead of issuing the same request twice.
+- Directory pickers render at most 500 entries and suggest typing the path; PDF export stops after 999 name suffixes with an explicit error instead of looping forever.
+- Tests: two self-inconsistent assertions in `test/host-api.mjs` were fixed (a leftover folder made a later create return 409, and an existing name was expected to return 400); all 28 steps now pass.
+
 ### 0.8.2
 
 Security, data-integrity and large-directory fixes from the three-day review round:

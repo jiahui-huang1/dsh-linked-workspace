@@ -8,7 +8,7 @@ import assert from 'node:assert/strict'
 import { DEFAULT_THEME_ID, EDITOR_THEMES, getTheme } from '../src/parts/themes.js'
 import { languageOf, tokenize } from '../src/parts/highlight.js'
 import { fileIconSpec } from '../src/parts/file-icons.js'
-import { normalizeUrlValue, urlAttributeViolation, urlSchemeOf } from '../src/parts/url-safety.js'
+import { attributeViolation, normalizeUrlValue, urlAttributeViolation, urlSchemeOf } from '../src/parts/url-safety.js'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // themes.js
@@ -917,5 +917,16 @@ test('url safety: ordinary links, anchors and image data URLs survive', () => {
   )
   assert.equal(urlAttributeViolation('title', 'javascript:alert(1)', 'a'), '')
   assert.equal(urlAttributeViolation('alt', 'javascript:alert(1)', 'img'), '')
+})
+
+test('url safety: inline styles are stripped from previews', () => {
+  // A stylesheet-free overlay is enough for clickjacking or a fake login page,
+  // so the preview drops every style attribute instead of only script URLs.
+  assert.equal(attributeViolation('style', 'color:red', 'p'), 'inline style')
+  assert.equal(attributeViolation('STYLE', 'position:fixed;inset:0', 'div'), 'inline style')
+  assert.equal(attributeViolation('style', '', 'div'), 'inline style')
+  assert.equal(attributeViolation('href', 'https://example.com', 'a'), '')
+  assert.ok(attributeViolation('href', 'javascript:alert(1)', 'a'))
+  assert.ok(attributeViolation('onclick', 'alert(1)', 'a'))
 })
 

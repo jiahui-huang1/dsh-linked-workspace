@@ -58,7 +58,7 @@ relative to the scope root, or absolute inside it.
 | `workspaces.remove` | `{ id }` | `{}` |
 | `workspaces.rename` | `{ id, name }` | `{ workspace }` |
 | `workspaces.test` | `{ id }` | `{ ok, latencyMs?, resolvedPath?, error? }` |
-| `fs.list` | `{ workspaceId?/linkedId?, path, limit?, offset? }` | `{ path, entries: RemoteEntry[], total, offset, limit, hasMore }` (default 500, max 5000) |
+| `fs.list` | `{ workspaceId?/linkedId?, path, limit?, offset? }` | `{ path, entries: RemoteEntry[], total, offset, limit, hasMore }` (default 500, max 5000). Listings are cached for 5 s for `offset > 0`; writes, mkdir, rename, move, delete, copy and transfers invalidate the cache. |
 | `fs.read` | `{ workspaceId?/linkedId?, path, maxBytes? }` | `FileRead` |
 | `media.read` | `{ workspaceId?/linkedId?, path }` | `{ path, size, mtime, mime, base64 }` (PNG/JPG/GIF/WebP/BMP/ICO/AVIF/SVG, max 24 MB) |
 | `fs.write` | `{ workspaceId?/linkedId?, path, content, expectedMtime?, createOnly? }` | `{ path, size, mtime }` (`createOnly: true`: existing target → 409) |

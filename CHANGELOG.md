@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.8.3 — 2026-11-11
+
+Second review round: follow-ups to the 0.8.2 paging and preview work.
+
+- **Preview overlay (medium)**: the sanitizer now strips inline `style` attributes as well. A document containing `<div style="position:fixed;inset:0;z-index:99999;background:#fff">` used to cover the whole DSH window and could impersonate a login page (click-jacking / phishing without any script).
+- **Paging survives refresh (medium)**: the local tree refreshes every 4 seconds; it now re-requests only the number of entries already loaded instead of resetting to the first page, so “Load more” results no longer disappear after up to 4 s.
+- **Paging offset with hidden files (medium)**: “Load more” uses the raw server offset, so with hidden files toggled off entries are neither duplicated (200 duplicates before) nor skipped; the remaining count follows the same offset.
+- **Directory listing cache (medium)**: `fs.list` caches a listing for 5 seconds, so paging a huge directory reads it once instead of re-running a full `listDir` (20,000 entries: ~10.4 s per call). Writes, mkdir, rename, move, delete, copy and transfers invalidate the cache, and `limit` is clamped server-side to 1..5000.
+- **Partial copy cleanup (low)**: if a directory copy fails midway (for example on a >64 MB file), the partial target is removed and the error is `FS_INCOMPLETE`; `FS_TOO_LARGE` now only means an actual size cap.
+- **Connection reuse (low)**: `HostPool` keys in-flight connects by host *and* authority, so an address change cannot attach an old connection to a new request; a connection replaced while connecting is disposed instead of leaked, and `setHosts` clears stale pending entries.
+- **Right-sidebar requests (low)**: the linked-workspace tree source de-duplicates in-flight loads instead of sending the same request twice.
+- **Large pickers and PDF export (low)**: the local/remote directory pickers render at most 500 entries plus a “type the path directly” note; markdown-to-PDF export stops after 999 name suffixes with an explicit error instead of looping forever.
+- **Tests**: fixed two self-inconsistent assertions in `test/host-api.mjs` (a folder left behind made a later create return 409, and an already-existing folder was expected to answer 400); the suite now passes all 28 steps.
+
 ## 0.8.2 — 2026-11-11
 
 Three-day review round: security, data-integrity and large-directory fixes.

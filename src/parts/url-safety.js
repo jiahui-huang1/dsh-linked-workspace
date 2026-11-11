@@ -50,3 +50,12 @@ export function urlAttributeViolation(name, value, tagName) {
   if (scheme === 'data' && String(tagName || '').toLowerCase() === 'img' && IMAGE_DATA.test(text)) return '';
   return scheme + ': URL';
 }
+
+// Complete attribute policy for the document preview. Inline styles are dropped
+// as well: `position:fixed; inset:0; z-index:99999` can cover the whole Harness
+// window, which turns a preview into a clickjacking / phishing surface without
+// a single line of script.
+export function attributeViolation(name, value, tagName) {
+  if (String(name || '').toLowerCase() === 'style') return 'inline style';
+  return urlAttributeViolation(name, value, tagName);
+}
