@@ -1,5 +1,7 @@
 # Changelog
 
+English · [简体中文](CHANGELOG.zh.md)
+
 ## 0.10.0 — 2026-11-12
 
 Fourth review round: transfer safety, content search, document find and comparison actions.
