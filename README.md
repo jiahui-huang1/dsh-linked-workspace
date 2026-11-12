@@ -114,6 +114,19 @@ dsh plugin --profile "$DSH_PROFILE" add "file:$PWD/dsh-linked-workspace"
 
 已打开的旧右侧栏「远程目录」标签页会在刷新后自动恢复（插件保留了两个隐藏的旧 tab 类型别名），标签标题也会自动改成「联动工作区目录」，新开的标签使用新的 `dsh-linked-workspace` 类型。
 
+### 0.10.0 变化
+
+传输安全、内容搜索、文档查找与对比操作（第四轮评审）：
+
+- **不再静默覆盖**：把文件拖到已有同名文件的目标目录时，先弹「取消 / 保留两者 / 覆盖」；`fs.pullToLocal`、`fs.upload` 新增 `conflict=error|overwrite|unique`，唯一名走 `uniqueLocalPath` / `remoteUniqueTarget`（实测覆盖 `REMOTE-OVER` → `LOCAL-OVER`，保留两者生成 `same copy.txt`、`overwrite (2).txt`）。
+- **传输与拖拽修正**：单文件传输会自动创建缺失的父目录（此前报 `writeFileAtomic … No such file`）；同侧拖拽会提示改用「移动到…」；拖目录时按方向给出明确提示；拖拽悬停目录 700 ms 自动展开。
+- **内容搜索**：新增 `fs.grep` 搜索文件内容——本地限制单文件 1 MB、2000 个文件、8 MB、5 秒；远端用 `grep -rIl … | head`。搜索条可在「文件名 / 内容」之间切换；`fs.search` 仍是文件名匹配（已写入文档，占位文案同步修正）。
+- **文档内查找**：Markdown 文档面板支持 `Ctrl/Cmd + F`，带计数、上一个/下一个与 Esc 关闭；只读，替换仍在文本编辑器中。
+- **对比操作**：对比行可「推送到远端 / 拉取到本地」；本地缺少对应目录、单侧截断都有说明；点行打开后对话框自动关闭；本地路径分隔符按路径推断，不再写死 `\`。
+- **队列重试**：传输队列的失败项增加「重试」。
+- **注册工作区**：联动记录没有 `workspaceId` 时，设置页显示「注册为工作区」（`linked.update` 的 `ensureWorkspace`）。
+- **其他修正**：查找计数加 `aria-live`；焦点在替换框时 Esc 也能关闭查找条；编辑器状态栏移除无用的 `Ctrl+S` 键帽。
+- 测试：63 项单元测试通过；`test/host-api.mjs` 通过 28 步。
 ### 0.9.0 变化
 
 编辑器内查找替换、本地⇄远端对比、多选与拖拽，以及刷新行为修复（第三轮评审）：

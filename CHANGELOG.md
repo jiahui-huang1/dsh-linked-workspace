@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.10.0 — 2026-11-12
+
+Fourth review round: transfer safety, content search, document find and comparison actions.
+
+- **No silent overwrite (fix)**: dropping a file onto a folder that already has that name now asks first — cancel, keep both, or overwrite. `fs.pullToLocal` and `fs.upload` accept `conflict=error|overwrite|unique`; `unique` goes through `uniqueLocalPath` / `remoteUniqueTarget`. Verified by overwriting `REMOTE-OVER` with `LOCAL-OVER` and by creating `same copy.txt` and `overwrite (2).txt`.
+- **Transfer and drag fixes**: single-file transfers create missing parent directories (previously `writeFileAtomic … No such file`); same-tree drops point at “Move to…”; dropping a folder shows a direction-specific notice; hovering a folder for 700 ms while dragging expands it.
+- **Content search (feature)**: `fs.grep` searches file contents — the local scan is bounded to 1 MB per file, 2000 files, 8 MB and 5 s; the remote side runs `grep -rIl … | head`. The search bar switches between “File name” and “Content” modes; `fs.search` stays a filename search (now documented, and the placeholder was corrected).
+- **Document find (feature)**: the Markdown document pane supports Ctrl/Cmd+F with a counter, next/previous and Escape; it is read-only (replace remains in the text editor).
+- **Compare actions (feature)**: comparison rows can be pushed to the remote side or pulled to the local side; the dialog notes a missing local folder and per-side truncation, closes when a row is opened, and derives the local path separator instead of hardcoding `\`.
+- **Queue retry (feature)**: failed transfer-queue items gain “Retry”.
+- **Workspace registration (feature)**: when a link has no `workspaceId`, settings offers “Register workspace” (`linked.update` with `ensureWorkspace: true`).
+- **Smaller fixes**: the find counter is announced (`aria-live`), Escape closes the find bar from the replace field, and the editor status bar no longer shows a pointless `Ctrl+S` keycap.
+- Tests: 63 unit tests pass; `test/host-api.mjs` passes 28 steps.
 ## 0.9.0 — 2026-11-12
 
 Third review round: in-editor editing, local/remote comparison and drag-and-drop, plus refresh behaviour.

@@ -119,6 +119,19 @@ Old “Remote directories” tabs are restored after refresh through hidden lega
 
 See [CHANGELOG.md](CHANGELOG.md) for the full version history.
 
+### 0.10.0
+
+Transfer safety, content search, document find and comparison actions (fourth review round):
+
+- **No silent overwrite**: dropping a file onto a folder that already has that name now asks first — cancel, keep both or overwrite. `fs.pullToLocal` and `fs.upload` accept `conflict=error|overwrite|unique`; unique names go through `uniqueLocalPath` / `remoteUniqueTarget` (verified by overwriting `REMOTE-OVER` with `LOCAL-OVER`, and by producing `same copy.txt` and `overwrite (2).txt`).
+- **Transfer and drag fixes**: single-file transfers create missing parent directories (previously `writeFileAtomic … No such file`); same-tree drops point at “Move to…”; dropping a folder shows a direction-specific notice; hovering a folder for 700 ms while dragging expands it.
+- **Content search**: `fs.grep` searches file contents — local scans are bounded to 1 MB per file, 2000 files, 8 MB and 5 s; the remote side runs `grep -rIl … | head`. The search bar switches between “File name” and “Content”; `fs.search` remains a filename search (now documented, placeholder corrected).
+- **Document find**: the Markdown document pane supports `Ctrl/Cmd + F` with a counter, next/previous and Escape; it is read-only (replace stays in the text editor).
+- **Compare actions**: rows can be pushed to the remote side or pulled to the local side; a missing local folder and per-side truncation are explained; opening a row closes the dialog; the local path separator is inferred instead of hardcoded.
+- **Queue retry**: failed transfer-queue items gain “Retry”.
+- **Workspace registration**: when a link has no `workspaceId`, settings offers “Register workspace” (`linked.update` with `ensureWorkspace`).
+- **Smaller fixes**: the find counter is announced (`aria-live`); Escape closes the find bar from the replace field; the editor status bar no longer shows a pointless `Ctrl+S` keycap.
+- Tests: 63 unit tests pass; `test/host-api.mjs` passes 28 steps.
 ### 0.9.0
 
 In-editor find/replace, local↔remote comparison, multi-select and drag-and-drop, plus refresh fixes (third review round):

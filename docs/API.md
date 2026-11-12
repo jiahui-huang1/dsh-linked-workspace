@@ -74,7 +74,7 @@ relative to the scope root, or absolute inside it.
 | `local.mkdir` | `{ path, name }` | `{ path }` (existing target → 409) |
 | `linked.list` | `{}` | `{ links: LinkInfo[] }` (each link carries `running`) |
 | `linked.create` | `{ hostId, remotePath, localPath, name?, mirror? }` | `{ link, workspaceId: string|null }` |
-| `linked.update` | `{ id, name?, mirror? }` | `{ link }` |
+| `linked.update` | `{ id, name?, mirror?, ensureWorkspace? }` | `{ link }` (`ensureWorkspace: true` registers the local directory as a DSH workspace when it is not registered yet) |
 | `linked.remove` | `{ id, removeWorkspace?, deleteLocalState? }` | `{ removedWorkspace, deletedLocalState }` |
 | `linked.sync` | `{ id, maxFiles?, maxBytes? }` | `{ job: SyncJob }` (starts a background job) |
 | `linked.syncStatus` | `{ id }` | `{ job: SyncJob | null }` |
@@ -88,10 +88,11 @@ relative to the scope root, or absolute inside it.
 | `skills.list` | `{ linkedId }` | `{ localPath, skills: [{ name, description, whenToUse, path, source }] }` |
 | `skills.read` | `{ linkedId, name }` | `{ name, description, content, path }` |
 | `git.status` | `{ workspaceId?/linkedId?, side: 'remote'|'local' }` | `{ ok, repo, root, branch, changes, error? }` |
-| `fs.search` | `{ workspaceId?/linkedId?, side, query, maxResults? }` | `{ ok, query, entries, truncated }` (matches file names, not contents) |
-| `fs.compare` | `{ workspaceId?/linkedId?, path? }` | `{ path, relative, localPath, localMissing, counts: { onlyLocal, onlyRemote, changed, same }, onlyLocal, onlyRemote, changed, truncated }` (linked workspaces only; excludes `.git`, `node_modules`, `.local`, `.remote`; max 4000 files, depth 12, 200 rows per group) |
-| `fs.pullToLocal` | `{ workspaceId?/linkedId?, path, targetDir? }` | `{ path, relative, size, mtime }` (single file, ≤64 MB; `targetDir` must stay inside the local root) |
-| `fs.upload` | `{ workspaceId?/linkedId?, path, paths }` | `{ side: 'remote', target, files, bytes, skipped }` (≤50 local files, 64 MB each) |
+| `fs.search` | `{ workspaceId?/linkedId?, side, query, maxResults? }` | `{ ok, query, entries, truncated }` (matches **file names**, not contents; use `fs.grep` for contents) |
+| `fs.grep` | `{ workspaceId?/linkedId?, side, query, maxResults? }` | `{ ok, query, entries, truncated }` (searches file **contents**; local scans stop at 1 MB per file, 2000 files, 8 MB and 5 s; remote uses `grep -rIl`; max 1000 rows) |
+| `fs.compare` | `{ workspaceId?/linkedId?, path? }` | `{ path, relative, localPath, localMissing, counts: { onlyLocal, onlyRemote, changed, same }, onlyLocal, onlyRemote, changed, truncated, remoteTruncated, localTruncated, skippedLinks }` (linked workspaces only; excludes `.git`, `node_modules`, `.local`, `.remote`; 4000 files and depth 12 **per side**, 200 rows per group; `skippedLinks` counts symlinks and non-regular files) |
+| `fs.pullToLocal` | `{ workspaceId?/linkedId?, path, targetDir?, conflict? }` | `{ path, relative, size, mtime }` (single file, ≤64 MB; `targetDir` must stay inside the local root; `conflict` is `error` (default), `overwrite` or `unique`) |
+| `fs.upload` | `{ workspaceId?/linkedId?, path, paths, conflict? }` | `{ side: 'remote', target, files, bytes, skipped }` (≤50 local files, 64 MB each; `conflict` is `error` (default), `overwrite` or `unique`; a missing target directory is created) |
 | `fs.transfer` | `{ workspaceId?/linkedId?, path }` | `{ files, bytes, skipped, truncated, dest }` |
 | `fs.download` | `{ workspaceId?/linkedId?, path }` | `{ path, files, bytes, skipped, truncated }` |
 | `fs.edit` | `{ workspaceId?/linkedId?, path, app? }` | `{ localPath, size }` (opens Notepad/default app) |
