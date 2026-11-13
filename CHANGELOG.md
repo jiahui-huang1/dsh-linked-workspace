@@ -17,6 +17,7 @@ English · [简体中文](CHANGELOG.zh.md)
 - **Workspace icons (feature)**: linked workspaces now use a two-link glyph and remote workspaces a display-with-arrow glyph everywhere the plugin renders them — the sidebar workspace row, the sidebar “+” menu, the directory-tree chips and headers, the settings cards and create buttons, and the “Add workspace” dialog tabs.
 - **Connection state (feature)**: the sidebar row icon belongs to the plugin, so a dropped SSH connection paints it red (`.data-lw-disconnected` + a `#f85149` mask). Hovering the sidebar row, the settings card, the tree chip or the tree header reports the state (“已连接 · 12 ms” / “连接已断开” / “未连接”). The Host now reports a lost connection itself: `RemoteHost` gained an `onLost` hook, `HostPool.noteConnectionLost` stores `{ state: "error", reason: "lost" }`, and the next successful connect clears it.
 - **Naming**: the settings nav entry is “Linked workspaces” (was “Connections”) and the page title is “Linked & remote workspaces”; the “Add workspace” tab is plain “Remote workspace”.
+- **Dark theme**: primary buttons take their label colour from `--dsw-alias-bg-base` instead of a hard-coded `#fff`, so they are no longer white-on-white in the dark theme; the checked switch thumb follows the theme too.
 - Tests: 63 unit tests pass; `test/host-api.mjs` covers `remote_workspaces.*` end to end.
 
 ## 0.10.0 — 2026-11-12
