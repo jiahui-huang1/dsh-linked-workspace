@@ -129,6 +129,10 @@ Settings → “Linked workspaces”: the upper half lists **linked workspaces**
 
 ![Settings → Linked workspaces](docs/screenshots/settings-connections.png)
 
+Click “Add workspace” next to the workspace title on the left: the dialog has three tabs (local workspace / linked workspace / remote workspace). Pick “Linked workspace (local ⇄ remote)”, choose an SSH connection, enter the remote folder, pick the local folder, then decide on mirroring and type a name; press “Create”.
+
+![Add workspace: the linked workspace tab](docs/screenshots/add-workspace-modal.png)
+
 The “Linked workspace directory” tab: the remote tree on top, the local tree below; files open from either side.
 
 ![Linked workspace directory: remote above, local below](docs/screenshots/linked-directories.png)
@@ -149,8 +153,8 @@ You can also use `plugin_manager`'s `install_bundle` with the absolute path to t
 
 Two entry points afterwards:
 
-1. Bottom-left account menu → Settings → “Connections”.
-2. Or the sidebar's “Add workspace” → “Linked workspace” / “Remote workspace”.
+1. Bottom-left account menu → Settings → “Linked workspaces”.
+2. Or “Add workspace” next to the workspace title on the left, then the “Linked workspace (local ⇄ remote)” or “Remote workspace” tab.
 
 The npm package is `dsh-linked-workspace`; released versions can also be installed from npm (plugin marketplaces read the npm latest version).
 

@@ -129,6 +129,10 @@
 
 ![设置 → 联动工作区](docs/screenshots/settings-connections.png)
 
+点左侧工作区标题旁的「添加工作区」，弹窗里有三个页签（本地工作区 / 联动工作区 / 远程工作区）。选「联动工作区（本地 ⇄ 远端）」后依次选 SSH 连接、填远端目录、选本地目录，再决定是否开镜像、填写工作区名称，底部「创建」即可。
+
+![添加工作区：联动工作区页签](docs/screenshots/add-workspace-modal.png)
+
 「联动工作区目录」标签页：上面是远端目录，下面是本地目录，两边都能点开文件。
 
 ![联动工作区目录：上远程、下本地](docs/screenshots/linked-directories.png)
@@ -149,8 +153,8 @@ dsh plugin --profile "$DSH_PROFILE" add "file:$PWD/dsh-linked-workspace"
 
 之后从两处进入：
 
-1. 左下角「账号菜单」→ 设置 →「连接」；
-2. 或点左侧工作区的「添加工作区」，选「远程联动」。
+1. 左下角「账号菜单」→ 设置 →「联动工作区」；
+2. 或点左侧工作区标题旁的「添加工作区」，切到「联动工作区（本地 ⇄ 远端）」或「远程工作区」页签。
 
 npm 包名为 `dsh-linked-workspace`，也可以从 npm 安装已发布版本（DSH 插件市场按 npm latest 版本展示）。
 
