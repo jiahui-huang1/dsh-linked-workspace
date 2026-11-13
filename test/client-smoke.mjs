@@ -10,7 +10,7 @@
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 
-const registered = { settings: [], flows: [], tabs: [] }
+const registered = { settings: [], icons: [], flows: [], tabs: [] }
 let captured = null
 let effectCount = 0
 
@@ -66,6 +66,7 @@ const ctx = {
     register(options, component) {
       const entry = { options, component }
       if (options.name === 'settings.section') registered.settings.push(entry)
+      else if (options.name === 'settings.section.icon') registered.icons.push(entry)
       else registered.flows.push(entry)
       return () => {}
     },
@@ -110,6 +111,18 @@ assert.equal(typeof section.options.label, 'function')
 assert.equal(section.options.label(), '联动工作区', 'the nav label follows the zh locale')
 assert.equal(typeof section.component, 'function')
 
+assert.equal(registered.icons.length, 1, 'exactly one settings nav icon registered')
+const navIcon = registered.icons[0]
+assert.equal(navIcon.options.name, 'settings.section.icon')
+assert.equal(navIcon.options.id, 'linked-workspaces', 'the icon claims the same id as the section')
+assert.equal(navIcon.options.order, 52)
+assert.equal(typeof navIcon.component, 'function')
+const navIconNode = navIcon.component({ size: 16 })
+assert.equal(navIconNode.type, 'svg')
+assert.equal(navIconNode.props.viewBox, '0 0 1024 1024', 'the settings glyph keeps the 1024 grid')
+assert.equal(navIconNode.props.width, 16, 'the host size is honoured')
+assert.equal(navIconNode.props.height, 16)
+
 assert.equal(registered.flows.length, 2, 'the sidebar and hero directory flows registered')
 const flowNames = registered.flows.map((entry) => entry.options.name).sort()
 assert.deepEqual(flowNames, ['conversation.hero.workspace.directoryFlow', 'sidebar.workspaces.directoryFlow'])
@@ -150,7 +163,7 @@ console.log('  sidebar tabs:', registered.tabs.map((tab) => tab.id).join(', '))
 // bundle, register the settings page and the directory flows, and simply skip
 // the sidebar pages. `ctx.get` throws for an unknown service, which is exactly
 // what the plugin sees when the companion is not installed.
-const orphan = { settings: [], flows: [], tabs: [] }
+const orphan = { settings: [], icons: [], flows: [], tabs: [] }
 const orphanCtx = {
   effect(callback) {
     const disposer = callback()
@@ -168,6 +181,7 @@ const orphanCtx = {
     register(options, component) {
       const entry = { options, component }
       if (options.name === 'settings.section') orphan.settings.push(entry)
+      else if (options.name === 'settings.section.icon') orphan.icons.push(entry)
       else orphan.flows.push(entry)
       return () => {}
     },
@@ -178,6 +192,8 @@ const orphanModule = captured.factory((name) => moduleTable[name])
 assert.doesNotThrow(() => orphanModule.apply(orphanCtx), 'apply() survives a missing dsh-better-sidebar')
 assert.equal(orphan.settings.length, 1, 'the settings section still registers without the sidebar')
 assert.equal(orphan.settings[0].options.id, 'linked-workspaces')
+assert.equal(orphan.icons.length, 1, 'the settings nav icon still registers without the sidebar')
+assert.equal(orphan.icons[0].options.id, 'linked-workspaces')
 assert.equal(orphan.flows.length, 2, 'both directory flows still register without the sidebar')
 assert.equal(orphan.tabs.length, 0, 'no sidebar page is registered when the companion is absent')
 

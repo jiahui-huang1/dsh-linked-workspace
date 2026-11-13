@@ -2,6 +2,10 @@
 
 English · [简体中文](CHANGELOG.zh.md)
 
+## Unreleased
+
+- **Settings nav icon**: the “Linked workspaces” entry in the settings list now uses the plugin's own stacked-sheets glyph (registered through the host's `settings.section.icon` seat) instead of the default gear.
+
 ## 0.11.0 — 2026-11-13
 
 **Breaking change**: Remote workspaces replace remote directories.
