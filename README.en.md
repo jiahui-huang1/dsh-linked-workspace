@@ -7,7 +7,7 @@ Turn an existing SSH connection into a **linked workspace** or a **remote worksp
 - **Linked workspace**: pair a **local directory** with a **remote directory**. The local directory becomes a real DSH workspace; sessions run locally and read or edit remote files through the `linked_workspace` tool. The sidebar shows both trees and supports two-way transfer, comparison and drag-and-drop.
 - **Remote workspace**: sessions run directly in the remote directory, so code, logs and `.dsh/` state all live on the server while only a placeholder directory stays local (it registers the DSH workspace). Local Skills and plugins still work; the model reads and writes remote files through the `linked_workspace` tool (or `fs.*` with `remoteId`).
 
-> Targets DSH 0.2.1-rc.4; the sidebar pages require `dsh-better-sidebar` (v0.24+). Without it the plugin still loads (settings work), but the sidebar entries do not appear.
+> Targets DSH 0.2.1-rc.4. `dsh-better-sidebar` (v0.24+) is **optional**: with it you get the sidebar directory pages and the file editor; without it the plugin still loads and the settings page, the directory pickers and the `linked_workspace` tools keep working — only the sidebar pages are skipped.
 
 ## Two modes
 
@@ -24,7 +24,7 @@ Turn an existing SSH connection into a **linked workspace** or a **remote worksp
 
 - **DSH**: 0.2.1-rc.4 or newer (`engines` allows `>=0.2.0-rc.2 <0.3.0-0`).
 - **SSH**: the host must be configured in DSH's SSH Manager or `~/.ssh/config`; the first connection needs host-key confirmation in the “SSH Tunnel” tab.
-- **dsh-better-sidebar** (optional): `>=0.24.0`. Without it, settings still work but the sidebar entries are missing.
+- **dsh-better-sidebar** (optional): `>=0.24.0`. It renders the sidebar directory pages and the file editor; without it everything else (settings page, directory pickers, agent tools) still works.
 - **Document editing** (optional): Python 3 with `python-docx`, `openpyxl`, `python-pptx` and `PyMuPDF`; set `DSH_OFFICE_PYTHON` to choose the interpreter. Markdown needs no Python.
 - **Development**: Node.js ≥ 20.
 
@@ -181,7 +181,7 @@ The npm package is `dsh-linked-workspace`; released versions can also be install
 ## FAQ
 
 **No “Linked Workspace Directory” / “Remote Workspace Directory” entry in the sidebar?**
-Check that `dsh-better-sidebar` (≥0.24) is installed and restart the client. Both tabs are registered eagerly: “Linked Workspace Directory” only shows for linked-workspace sessions and “Remote Workspace Directory” for remote-workspace sessions. Ordinary local workspaces show neither, but the tree can still be opened from Settings → Linked workspaces with “Open directory tree”.
+Check that `dsh-better-sidebar` (≥0.24) is installed and restart the client — those two pages are rendered by it. Once it is there, both entries are **always offered** in the “+” new-tab menu, whatever kind of workspace the session belongs to: opening one shows the current session's workspace first, or every workspace of that kind when the session belongs to none. A specific workspace can also be opened from Settings → Linked workspaces with “Open directory tree”.
 
 **Preview says “Python 3 and document libraries are required”?**
 Install `python-docx`, `openpyxl`, `python-pptx` and `PyMuPDF`, or point `DSH_OFFICE_PYTHON` at an interpreter that has them. Markdown previews do not need Python.

@@ -110,6 +110,19 @@ window.__ModuleLoader__.load({
       } catch (error) { /* keyboard unavailable */ }
     }
 
+    // `dsh-better-sidebar` is an optional companion: everything that touches
+    // its service goes through here, so a deployment without it keeps the
+    // settings page, the directory flows and the agent tools working instead of
+    // failing on a missing service lookup.
+    function sidebarService(ctx) {
+      if (!ctx || typeof ctx.get !== 'function') return undefined;
+      try {
+        return ctx.get('betterSidebar') || undefined;
+      } catch (error) {
+        return undefined;
+      }
+    }
+
     function rememberDirectoryAvailability(links, remotes) {
       var next = new Set();
       var workspaceKeys = new Set();
@@ -2868,7 +2881,7 @@ window.__ModuleLoader__.load({
       var local = props.local === true;
       var readOnly = props.readOnly === true;
       var filePath = props.path;
-      var sidebar = ctx.get && ctx.get('betterSidebar');
+      var sidebar = sidebarService(ctx);
       var settings = useRuntimeSettings();
       var theme = getTheme(resolveEditorTheme(settings));
       var language = languageOf(filePath);
@@ -4406,7 +4419,7 @@ window.__ModuleLoader__.load({
       var remoteOnly = props.variant === 'remote';
       var data = useRemoteData(ctx);
       var settings = useRuntimeSettings();
-      var sidebar = ctx.get && ctx.get('betterSidebar');
+      var sidebar = sidebarService(ctx);
       var selectedState = useState('');
       var selectedKey = selectedState[0];
       var setSelectedKey = selectedState[1];
@@ -6815,7 +6828,7 @@ window.__ModuleLoader__.load({
       }
 
       function openTree() {
-        var sidebar = ctx.get && ctx.get('betterSidebar');
+        var sidebar = sidebarService(ctx);
         if (!sidebar || typeof sidebar.openTab !== 'function') return;
         sidebar.openTab({
           type: REMOTE_TREE_TAB_TYPE,
@@ -7081,13 +7094,13 @@ window.__ModuleLoader__.load({
       var addingState = useState('');
       var adding = addingState[0];
       var setAdding = addingState[1];
-      var sidebarAvailable = Boolean(ctx.get && ctx.get('betterSidebar'));
+      var sidebarAvailable = Boolean(sidebarService(ctx));
       var links = remote.data.links || [];
       var remotes = remote.data.remotes || [];
       var hosts = remote.data.hosts || [];
 
       function openTree() {
-        var sidebar = ctx.get && ctx.get('betterSidebar');
+        var sidebar = sidebarService(ctx);
         if (!sidebar || typeof sidebar.openTab !== 'function') return;
         sidebar.openTab({
           type: TREE_TAB_TYPE,
@@ -7259,12 +7272,7 @@ window.__ModuleLoader__.load({
 
       function registerSidebarTabs() {
         if (sidebarRegistered) return;
-        var sidebar = undefined;
-        try {
-          sidebar = ctx.get('betterSidebar');
-        } catch (error) {
-          sidebar = undefined;
-        }
+        var sidebar = sidebarService(ctx);
         if (!sidebar || typeof sidebar.registerTab !== 'function') return;
         sidebarRegistered = true;
         if (tabPollTimer !== null) {
@@ -7282,9 +7290,13 @@ window.__ModuleLoader__.load({
             icon: function (size) { return IconLinkedWorkspace(size); },
             order: 62,
             single: true,
-            available: function (_ctx, sessionScope) {
-              return isLinkedScope(sessionScope) || isLinkedWorkspaceId(sessionScope && sessionScope.workspaceId);
-            },
+            // Always offered: the "+" menu in the start tab lists every tab
+            // kind whose `available` passes, and hiding the entry for the
+            // current session's workspace kind left both directory pages
+            // unreachable from a plain local workspace. The page itself falls
+            // back to listing every linked workspace when the session belongs
+            // to none of them.
+            available: function () { return true; },
             component: function (props) {
               var currentLocale = useLocale(ctx);
               var t = useMemo(function () { return makeT(currentLocale); }, [currentLocale]);
@@ -7309,9 +7321,9 @@ window.__ModuleLoader__.load({
             icon: function (size) { return IconRemoteWorkspace(size); },
             order: 61,
             single: true,
-            available: function (_ctx, sessionScope) {
-              return isRemoteScope(sessionScope) || isRemoteWorkspaceId(sessionScope && sessionScope.workspaceId);
-            },
+            // Same rule as the linked page: the entry must not depend on the
+            // session's workspace kind.
+            available: function () { return true; },
             component: function (props) {
               var currentLocale = useLocale(ctx);
               var t = useMemo(function () { return makeT(currentLocale); }, [currentLocale]);

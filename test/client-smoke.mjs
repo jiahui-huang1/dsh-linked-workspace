@@ -122,9 +122,11 @@ assert.equal(registered.tabs.length, 16, 'both tree tabs, the file tab, 12 file 
 const tree = registered.tabs.find((tab) => tab.id === 'dsh-linked-workspace')
 assert.ok(tree, 'linked tree tab descriptor exists')
 assert.equal(typeof tree.available, 'function')
+assert.equal(tree.available({}, { cwd: 'C:/somewhere/else', workspaceId: 'ws-unrelated' }), true, 'the linked tree page is offered from any workspace')
 const remoteTree = registered.tabs.find((tab) => tab.id === 'dsh-remote-workspace')
 assert.ok(remoteTree, 'remote tree tab descriptor exists')
 assert.equal(typeof remoteTree.available, 'function')
+assert.equal(remoteTree.available({}, { cwd: 'C:/somewhere/else', workspaceId: 'ws-unrelated' }), true, 'the remote tree page is offered from any workspace')
 const file = registered.tabs.find((tab) => tab.id === 'dsh-linked-workspace:file')
 assert.ok(file, 'file tab descriptor exists')
 assert.equal(file.hidden, true)
@@ -136,3 +138,41 @@ console.log('PASS — client bundle factory + registrations')
 console.log('  settings section:', section.options.id, '/', section.options.label())
 console.log('  directory flows:', flowNames.join(', '))
 console.log('  sidebar tabs:', registered.tabs.map((tab) => tab.id).join(', '))
+
+// ── optional companion ─────────────────────────────────────────────────────
+// `dsh-better-sidebar` is optional: a deployment without it must still load the
+// bundle, register the settings page and the directory flows, and simply skip
+// the sidebar pages. `ctx.get` throws for an unknown service, which is exactly
+// what the plugin sees when the companion is not installed.
+const orphan = { settings: [], flows: [], tabs: [] }
+const orphanCtx = {
+  effect(callback) {
+    const disposer = callback()
+    return typeof disposer === 'function' ? disposer : () => {}
+  },
+  get(name) {
+    if (name === 'locale') return localeService
+    if (name === 'betterSidebar') throw new Error('service "betterSidebar" not found')
+    return undefined
+  },
+  slots: {
+    inject(_owner, callback) {
+      callback()
+    },
+    register(options, component) {
+      const entry = { options, component }
+      if (options.name === 'settings.section') orphan.settings.push(entry)
+      else orphan.flows.push(entry)
+      return () => {}
+    },
+  },
+}
+
+const orphanModule = captured.factory((name) => moduleTable[name])
+assert.doesNotThrow(() => orphanModule.apply(orphanCtx), 'apply() survives a missing dsh-better-sidebar')
+assert.equal(orphan.settings.length, 1, 'the settings section still registers without the sidebar')
+assert.equal(orphan.settings[0].options.id, 'linked-workspaces')
+assert.equal(orphan.flows.length, 2, 'both directory flows still register without the sidebar')
+assert.equal(orphan.tabs.length, 0, 'no sidebar page is registered when the companion is absent')
+
+console.log('PASS — the plugin runs without dsh-better-sidebar')

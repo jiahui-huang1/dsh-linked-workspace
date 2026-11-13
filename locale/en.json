@@ -1,6 +1,6 @@
 {
   "meta": {
-    "title": "Remote Workspaces & Links",
-    "description": "Remote directories over SSH and local ⇄ remote linked workspaces: theme-aware split editor, file-type icons, and an agent tool that edits remote files directly."
+    "title": "Linked & Remote Workspaces",
+    "description": "Local ⇄ remote linked workspaces and remote workspaces that run inside the SSH host: theme-aware split editor, file-type icons, and an agent tool that edits remote files directly."
   }
 }
