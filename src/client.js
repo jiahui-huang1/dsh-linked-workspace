@@ -216,6 +216,7 @@ window.__ModuleLoader__.load({
       remoteStepName: '3. 工作区名称',
       pathPlaceholder: '/shared_data_ssd1/huangjh/project',
       localPathPlaceholder: 'C:\\Users\\you\\projects\\demo',
+      localPathRequired: '先选择或填写一个本地目录',
       namePlaceholder: '留空则使用目录名',
       browse: '浏览…',
       browsing: '正在浏览…',
@@ -620,6 +621,7 @@ window.__ModuleLoader__.load({
       remoteStepName: '3. Workspace name',
       pathPlaceholder: '/home/you/project',
       localPathPlaceholder: 'C:\\Users\\you\\projects\\demo',
+      localPathRequired: 'Choose or enter a local directory first',
       namePlaceholder: 'Defaults to the directory name',
       browse: 'Browse…',
       browsing: 'Browsing…',
@@ -6448,7 +6450,10 @@ window.__ModuleLoader__.load({
 
       function createLocal() {
         var target = localPath.trim();
-        if (target === '' || localBusy) return;
+        if (localBusy) return;
+        // Keep the button looking the same as the linked/remote ones and report
+        // the missing folder instead of silently ignoring the click.
+        if (target === '') { setLocalError(t('localPathRequired')); return; }
         setLocalBusy(true);
         setLocalError('');
         apiCall('localWorkspace.create', { path: target, name: localName.trim() }).then(function () {
@@ -6533,7 +6538,7 @@ window.__ModuleLoader__.load({
                       value: localPath,
                       placeholder: t('localPathPlaceholder'),
                       spellCheck: false,
-                      onChange: function (event) { setLocalPath(event.currentTarget.value); },
+                      onChange: function (event) { setLocalPath(event.currentTarget.value); if (localError) setLocalError(''); },
                     }),
                     h('button', {
                       type: 'button', className: 'rw-btn',
@@ -6576,7 +6581,7 @@ window.__ModuleLoader__.load({
             flow === 'local'
               ? h('button', {
                 type: 'button', className: 'rw-btn rw-btn-primary',
-                disabled: localBusy || localPath.trim() === '',
+                disabled: Boolean(props.busy) || localBusy,
                 onClick: createLocal,
               }, localBusy ? Spinner(13) : IconPlus(13), localBusy ? t('creating') : t('create'))
               : h('button', {
