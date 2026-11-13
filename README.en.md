@@ -125,9 +125,19 @@ The workspace resolves automatically when the session cwd falls inside a linked 
 
 ## Screenshots
 
+Settings → “Linked workspaces”: the upper half lists **linked workspaces** (local folder ⇄ remote folder; each card shows the connection state, the mirror switch and the sync button).
+
 ![Settings → Linked workspaces](docs/screenshots/settings-connections.png)
 
+The lower half lists **remote workspaces** (the session runs inside the remote folder; only a placeholder folder lives locally).
+
+![Settings → Remote workspaces](docs/screenshots/settings-remote.png)
+
+The “Linked workspace directory” tab: the remote tree on top, the local tree below; files open from either side.
+
 ![Linked workspace directory: remote above, local below](docs/screenshots/linked-directories.png)
+
+Clicking a file opens it in a new editor tab — remote files are read and written directly, with no sync step first.
 
 ![Clicking a file opens the remote editor in a new tab](docs/screenshots/file-editor.png)
 

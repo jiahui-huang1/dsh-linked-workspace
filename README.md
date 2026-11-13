@@ -125,9 +125,19 @@
 
 ## 界面
 
+设置 →「联动工作区」：上半部分是**联动工作区**（本地目录 ⇄ 远端目录，卡片里能看到连接状态、镜像开关和同步按钮）。
+
 ![设置 → 联动工作区](docs/screenshots/settings-connections.png)
 
+下半部分是**远程工作区**（会话直接运行在远端目录，本地只留一个占位目录）。
+
+![设置 → 远程工作区](docs/screenshots/settings-remote.png)
+
+「联动工作区目录」标签页：上面是远端目录，下面是本地目录，两边都能点开文件。
+
 ![联动工作区目录：上远程、下本地](docs/screenshots/linked-directories.png)
+
+点击文件在新标签页打开编辑器，远端文件直接读写，不需要先同步到本地。
 
 ![点击文件在新标签页打开远端编辑器](docs/screenshots/file-editor.png)
 
