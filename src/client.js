@@ -56,6 +56,9 @@ window.__ModuleLoader__.load({
     var linkedTabDisposer = null;
     var remoteTabDisposer = null;
     var syncDirectoryTabsRef = null;
+    // Set by the sidebar registration block so the availability refresh can ask
+    // the sidebar to rebuild its "+" entries after the workspace lists change.
+    var refreshTabVisibilityRef = null;
 
     function linkedScopeKey(cwd) {
       return String(cwd || '').replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase();
@@ -154,6 +157,11 @@ window.__ModuleLoader__.load({
         var remotes = (results[1] && results[1].workspaces) || [];
         rememberDirectoryAvailability(links, remotes);
         publishWorkspaceIcons(links, remotes);
+        // The "+" menu decides visibility from this availability data, and the
+        // sidebar only rebuilds its entries when something notifies it.
+        if (refreshTabVisibilityRef !== null) {
+          try { refreshTabVisibilityRef(); } catch (error) { /* ignore */ }
+        }
       });
     }
     function releaseRemoteFileSlot(kind) {
@@ -7192,7 +7200,10 @@ window.__ModuleLoader__.load({
 
     // ── apply ──────────────────────────────────────────────────────────────
 
-    var inject = ['slots', 'locale'];
+    // `sessions` is a core client service (the sidebar shell injects it too):
+    // the directory entries need the focused session's cwd/workspaceId to
+    // decide whether they belong in the "+" menu.
+    var inject = ['slots', 'locale', 'sessions'];
 
     function apply(ctx) {
       ctx.effect(installStyles, 'dsh-linked-workspace: styles');
@@ -7281,7 +7292,80 @@ window.__ModuleLoader__.load({
         }
         var syncDirectoryTabsInFlight = false;
 
-        function installLinkedTab() {
+        // The "+" menu filters on `descriptor.hidden` and only maps `available`
+        // to a disabled flag, so a per-session entry has to be hidden rather
+        // than marked unavailable. These two helpers resolve the session on
+        // screen right when the menu asks, which keeps the entries in sync with
+        // the workspace kind without unregistering anything (an unregistered
+        // kind would orphan its open pages and break "Open directory tree").
+        var activeScopeCache = { cwd: '', workspaceId: '' };
+
+        function readActiveScope() {
+          var info = { cwd: '', workspaceId: '' };
+          try {
+            var snapshot = typeof sidebar.getSnapshot === 'function' ? sidebar.getSnapshot() : null;
+            var sessionId = snapshot && snapshot.sessionId;
+            if (!sessionId) return info;
+            var sessions = ctx.sessions || (ctx.get && ctx.get('sessions'));
+            var list = sessions && sessions.list ? sessions.list : sessions;
+            var sessionState = list && typeof list.getSnapshot === 'function' ? list.getSnapshot() : null;
+            var record = sessionState && sessionState.byId ? sessionState.byId[sessionId] : null;
+            if (record) {
+              info.cwd = record.cwd || '';
+              info.workspaceId = record.workspaceId || '';
+            }
+          } catch (error) { /* fall back to an empty scope */ }
+          return info;
+        }
+
+        function activeScope() {
+          activeScopeCache = readActiveScope();
+          return activeScopeCache;
+        }
+
+        function linkedTabHidden() {
+          var scope = activeScope();
+          return !(isLinkedScope(scope) || isLinkedWorkspaceId(scope.workspaceId));
+        }
+
+        function remoteTabHidden() {
+          var scope = activeScope();
+          return !(isRemoteScope(scope) || isRemoteWorkspaceId(scope.workspaceId));
+        }
+
+        // `hidden` is read whenever the sidebar builds its "+" entries, so the
+        // answer is always fresh — but the sidebar only rebuilds those entries
+        // when something notifies it. Re-registering the same two descriptors
+        // notifies without touching the stored tabs, so open pages survive.
+        var visibilitySignature = '';
+
+        function currentVisibilitySignature() {
+          return (linkedTabHidden() ? '0' : '1') + (remoteTabHidden() ? '0' : '1');
+        }
+
+        function syncTabVisibility() {
+          var next = currentVisibilitySignature();
+          if (next === visibilitySignature) return;
+          visibilitySignature = next;
+          if (linkedTabDisposer === null && remoteTabDisposer === null) return;
+          disposeLinkedTab();
+          disposeRemoteTab();
+          installLinkedTab(false);
+          installRemoteTab(false);
+        }
+
+        function watchSessionScope() {
+          visibilitySignature = currentVisibilitySignature();
+          try {
+            var sessions = ctx.sessions || (ctx.get && ctx.get('sessions'));
+            var list = sessions && (sessions.list || sessions);
+            if (!list || typeof list.subscribe !== 'function') return;
+            var unsubscribe = list.subscribe(function () { syncTabVisibility(); });
+            if (typeof unsubscribe === 'function') tabDisposers.push(unsubscribe);
+          } catch (error) { /* without a store the entries simply stay as they are */ }
+        }
+
+        function installLinkedTab(track) {
           if (linkedTabDisposer !== null) return;
           linkedTabDisposer = sidebar.registerTab({
             id: TREE_TAB_TYPE,
@@ -7290,12 +7374,7 @@ window.__ModuleLoader__.load({
             icon: function (size) { return IconLinkedWorkspace(size); },
             order: 62,
             single: true,
-            // Always offered: the "+" menu in the start tab lists every tab
-            // kind whose `available` passes, and hiding the entry for the
-            // current session's workspace kind left both directory pages
-            // unreachable from a plain local workspace. The page itself falls
-            // back to listing every linked workspace when the session belongs
-            // to none of them.
+            get hidden() { return linkedTabHidden(); },
             available: function () { return true; },
             component: function (props) {
               var currentLocale = useLocale(ctx);
@@ -7303,7 +7382,7 @@ window.__ModuleLoader__.load({
               return h(RemoteDirectoryTab, Object.assign({}, props, { ctx: ctx, t: t, locale: currentLocale, variant: 'linked' }));
             },
           });
-          tabDisposers.push(function () { disposeLinkedTab(); });
+          if (track !== false) tabDisposers.push(function () { disposeLinkedTab(); });
         }
 
         function disposeLinkedTab() {
@@ -7312,7 +7391,7 @@ window.__ModuleLoader__.load({
           linkedTabDisposer = null;
         }
 
-        function installRemoteTab() {
+        function installRemoteTab(track) {
           if (remoteTabDisposer !== null) return;
           remoteTabDisposer = sidebar.registerTab({
             id: REMOTE_TREE_TAB_TYPE,
@@ -7321,8 +7400,7 @@ window.__ModuleLoader__.load({
             icon: function (size) { return IconRemoteWorkspace(size); },
             order: 61,
             single: true,
-            // Same rule as the linked page: the entry must not depend on the
-            // session's workspace kind.
+            get hidden() { return remoteTabHidden(); },
             available: function () { return true; },
             component: function (props) {
               var currentLocale = useLocale(ctx);
@@ -7330,7 +7408,7 @@ window.__ModuleLoader__.load({
               return h(RemoteDirectoryTab, Object.assign({}, props, { ctx: ctx, t: t, locale: currentLocale, variant: 'remote' }));
             },
           });
-          tabDisposers.push(function () { disposeRemoteTab(); });
+          if (track !== false) tabDisposers.push(function () { disposeRemoteTab(); });
         }
 
         function disposeRemoteTab() {
@@ -7353,8 +7431,11 @@ window.__ModuleLoader__.load({
         }
 
         syncDirectoryTabsRef = syncDirectoryTabs;
+        refreshTabVisibilityRef = syncTabVisibility;
         installLinkedTab();
         installRemoteTab();
+        watchSessionScope();
+        syncTabVisibility();
         try {
           tabDisposers.push(sidebar.subscribeState(function () { syncDirectoryTabs(); }));
         } catch (error) { /* state subscription is optional */ }

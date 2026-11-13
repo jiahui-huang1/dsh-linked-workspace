@@ -98,7 +98,7 @@ const mod = captured.factory((name) => {
   return moduleTable[name]
 })
 
-assert.deepEqual(mod.inject, ['slots', 'locale'])
+assert.deepEqual(mod.inject, ['slots', 'locale', 'sessions'])
 mod.apply(ctx)
 
 assert.equal(registered.settings.length, 1, 'exactly one settings section registered')
@@ -122,11 +122,17 @@ assert.equal(registered.tabs.length, 16, 'both tree tabs, the file tab, 12 file 
 const tree = registered.tabs.find((tab) => tab.id === 'dsh-linked-workspace')
 assert.ok(tree, 'linked tree tab descriptor exists')
 assert.equal(typeof tree.available, 'function')
-assert.equal(tree.available({}, { cwd: 'C:/somewhere/else', workspaceId: 'ws-unrelated' }), true, 'the linked tree page is offered from any workspace')
+assert.equal(tree.available({}, { cwd: 'C:/somewhere/else', workspaceId: 'ws-unrelated' }), true, 'the linked page is enabled whenever the "+" menu lists it')
+const linkedHidden = Object.getOwnPropertyDescriptor(tree, 'hidden')
+assert.equal(typeof linkedHidden.get, 'function', 'the linked page hides itself per session instead of being unregistered')
+assert.equal(tree.hidden, true, 'the linked page is hidden outside linked workspaces')
 const remoteTree = registered.tabs.find((tab) => tab.id === 'dsh-remote-workspace')
 assert.ok(remoteTree, 'remote tree tab descriptor exists')
 assert.equal(typeof remoteTree.available, 'function')
-assert.equal(remoteTree.available({}, { cwd: 'C:/somewhere/else', workspaceId: 'ws-unrelated' }), true, 'the remote tree page is offered from any workspace')
+assert.equal(remoteTree.available({}, { cwd: 'C:/somewhere/else', workspaceId: 'ws-unrelated' }), true, 'the remote page is enabled whenever the "+" menu lists it')
+const remoteHidden = Object.getOwnPropertyDescriptor(remoteTree, 'hidden')
+assert.equal(typeof remoteHidden.get, 'function', 'the remote page hides itself per session instead of being unregistered')
+assert.equal(remoteTree.hidden, true, 'the remote page is hidden outside remote workspaces')
 const file = registered.tabs.find((tab) => tab.id === 'dsh-linked-workspace:file')
 assert.ok(file, 'file tab descriptor exists')
 assert.equal(file.hidden, true)

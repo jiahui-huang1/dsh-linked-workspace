@@ -181,7 +181,7 @@ The npm package is `dsh-linked-workspace`; released versions can also be install
 ## FAQ
 
 **No “Linked Workspace Directory” / “Remote Workspace Directory” entry in the sidebar?**
-Check that `dsh-better-sidebar` (≥0.24) is installed and restart the client — those two pages are rendered by it. Once it is there, both entries are **always offered** in the “+” new-tab menu, whatever kind of workspace the session belongs to: opening one shows the current session's workspace first, or every workspace of that kind when the session belongs to none. A specific workspace can also be opened from Settings → Linked workspaces with “Open directory tree”.
+Check that `dsh-better-sidebar` (≥0.24) is installed and restart the client — those two pages are rendered by it. Once it is there, the “+” new-tab menu offers the entries that match the session's workspace kind: a linked workspace session lists “Linked Workspace Directory”, a remote workspace session lists “Remote Workspace Directory”, and a plain local workspace lists neither (both pages stay registered, so “Open directory tree” in Settings → Linked workspaces always works).
 
 **Preview says “Python 3 and document libraries are required”?**
 Install `python-docx`, `openpyxl`, `python-pptx` and `PyMuPDF`, or point `DSH_OFFICE_PYTHON` at an interpreter that has them. Markdown previews do not need Python.
