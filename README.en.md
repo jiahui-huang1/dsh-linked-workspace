@@ -23,7 +23,7 @@ Turn an existing SSH connection into a **linked workspace** or a **remote worksp
 ## Requirements
 
 - **DSH**: 0.2.1-rc.4 or newer (`engines` allows `>=0.2.0-rc.2 <0.3.0-0`).
-- **SSH**: the host must be configured in DSH's SSH Manager or `~/.ssh/config`; the first connection needs host-key confirmation in the “SSH Tunnel” tab.
+- **SSH**: the host must be configured in DSH's SSH Manager or `~/.ssh/config`; the first connection needs host-key confirmation in the “SSH Tunnel” tab. **`dsh-ssh-tunnel` is optional**: a host in `~/.ssh/config` without an `IdentityFile` can be given a password once in the “Add workspace” dialog, and it stays on this machine (see “SSH credentials” under Configuration).
 - **dsh-better-sidebar** (optional): `>=0.24.0`. It renders the sidebar directory pages and the file editor; without it everything else (settings page, directory pickers, agent tools) still works.
 - **Document editing** (optional): Python 3 with `python-docx`, `openpyxl`, `python-pptx` and `PyMuPDF`; set `DSH_OFFICE_PYTHON` to choose the interpreter. Markdown needs no Python.
 - **Development**: Node.js ≥ 20.
@@ -40,7 +40,7 @@ Turn an existing SSH connection into a **linked workspace** or a **remote worksp
 
 ### Settings → Linked workspaces
 
-- SSH hosts come from the `dsh-ssh-tunnel` SSH Manager (`~/.dsh/ssh-tunnel/hosts.json`) and `~/.ssh/config`; passwords and keys stay inside the Host process and are never returned to the page or the model.
+- SSH hosts come from the `dsh-ssh-tunnel` SSH Manager (`~/.dsh/ssh-tunnel/hosts.json`, optional) and `~/.ssh/config`; passwords and keys from either source stay inside the Host process and are never returned to the page or the model. Without the SSH Manager, the plugin stores a password on this machine itself (see “SSH credentials” under Configuration).
 - Remote workspace list: each card shows “remote · user@host + remote path” and the local placeholder directory, with **open workspace**, **open directory tree**, **test connection**, **rename** (renames the DSH workspace too) and **remove** (two-step confirmation; deletes the record, the placeholder directory and the DSH workspace, never remote files).
 - Linked workspace list: local ⇄ remote paths, mirror toggle (**off by default**), background sync (archive into `.remote`, with file/byte progress and cancel), remove (optionally remove the DSH workspace and delete `.local`/`.remote`). With the mirror on, the first check runs immediately and then **every 5 minutes**: new or changed remote files are downloaded, mirror files that no longer exist remotely are deleted, unchanged files are skipped via `.local/mirror-manifest.json`, and `.git`/`node_modules`/cache directories are excluded. With the mirror off the two sides may diverge freely.
 - A linked record without a DSH workspace shows “Register workspace” in its settings card, which registers it without recreating the record.
@@ -165,6 +165,7 @@ The npm package is `dsh-linked-workspace`; released versions can also be install
 - **Python interpreter**: `DSH_OFFICE_PYTHON` for Office/PDF operations.
 - **Terminal**: `DSH_LINKED_WORKSPACE_NO_TERMINAL=1` keeps “Open terminal” from launching a real window (used in tests).
 - **SSH**: aliases from `~/.ssh/config` appear in the host list; host fingerprints are stored in the plugin data directory.
+- **SSH credentials**: there are three sources — `IdentityFile` in `~/.ssh/config` (plus the SSH agent), the `dsh-ssh-tunnel` SSH Manager when installed, and the plugin's own `$DSH_HOME/linked-workspace/ssh-credentials.json`. A host with no key shows “Password needed” in the “Add workspace” dialog: pick it, type the password once, then “Create”. The password is written only to that file on this machine (mode `0600`) and read only by the Host process; it is never returned to the page or the model. Later workspaces can leave the field empty to reuse it, and `hosts.credentials` with `clear: true` removes it.
 
 ## Upgrading and versions
 

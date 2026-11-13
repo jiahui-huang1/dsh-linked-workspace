@@ -4,6 +4,7 @@ English · [简体中文](CHANGELOG.zh.md)
 
 ## Unreleased
 
+- **Local SSH credentials**: hosts listed in `~/.ssh/config` without an `IdentityFile` used to require `dsh-ssh-tunnel` for a password. The “Add workspace” dialog now shows them as “Password needed” instead of disabling them, takes the password once, and stores it in the plugin's own `$DSH_HOME/linked-workspace/ssh-credentials.json` (mode `0600`, Host process only). New API `hosts.credentials` (`{ hostId, password?, passphrase?, privateKey?, clear? }`); `hosts.list` entries gained `hasStoredPassword`, and a password typed earlier is reused when the field is left empty.
 - **Settings nav icon**: the “Linked workspaces” entry in the settings list now uses the plugin's own stacked-sheets glyph (registered through the host's `settings.section.icon` seat) instead of the default gear.
 
 ## 0.11.0 — 2026-11-13

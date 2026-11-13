@@ -6,6 +6,7 @@
 
 ## Unreleased
 
+- **本机 SSH 凭据**：`~/.ssh/config` 里没有 `IdentityFile` 的主机，过去必须装 `dsh-ssh-tunnel` 才能用密码登录；现在「添加工作区」弹窗把它们显示为「需要密码」而不是置灰，填一次密码即可，密码保存在插件自己的 `$DSH_HOME/linked-workspace/ssh-credentials.json`（权限 `0600`，只有 Host 进程读取）。新增 API `hosts.credentials`（`{ hostId, password?, passphrase?, privateKey?, clear? }`）；`hosts.list` 增加 `hasStoredPassword`，之后再建工作区留空密码即沿用已保存的密码。
 - **设置导航图标**：设置左侧列表里的「联动工作区」改用插件自己的层叠纸张图标（通过宿主的 `settings.section.icon` 插槽注册），不再显示默认齿轮。
 
 ## 0.11.0 — 2026-11-13

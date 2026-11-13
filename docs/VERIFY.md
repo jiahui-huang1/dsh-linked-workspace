@@ -44,6 +44,15 @@ Host code (lib/) reloads live with `plugin_manager set_plugin include:linked-wor
 4. **没有 dsh-better-sidebar 时仍能运行**：停用 `dsh-better-sidebar` 后重启客户端——插件仍加载（设置 → 联动工作区 可正常打开与创建/移除工作区）、「添加工作区」弹窗可用、会话里 `linked_workspace` 工具可用；控制台不再出现因缺少 `betterSidebar` 服务而抛出的错误，右侧栏也不出现本插件的目录页。
 5. **插件显示名**：插件市场列表中本插件显示为「联动与远程工作区」（英文 `Linked & Remote Workspaces`）。
 
+## 本机 SSH 凭据（Unreleased）
+
+1. **没有私钥的主机不再置灰**：在 `~/.ssh/config` 里写一个没有 `IdentityFile` 的 Host（例如 `Host demo` / `HostName 10.9.9.9` / `User dev`），重启后「添加工作区」弹窗里该主机可点选，右侧 chip 显示「需要密码」，主机列表下方出现「SSH 密码」输入框与「密码只保存在本机…不需要安装 SSH Manager 插件」的提示。
+2. **保存后立即生效**：填入任意密码点「创建」（远端目录不可达时创建会失败，但凭据已写入）——该主机 chip 变回 `~/.ssh/config`，hint 变「已保存密码。想更换就重新输入，留空则继续使用原密码。」；`$DSH_HOME/linked-workspace/ssh-credentials.json` 出现 `{"version":1,"byHostId":{"sshconfig:demo":{"password":"…"}}}`，权限 `0600`。
+3. **主机状态跟着变**：`hosts.list` 里该主机 `authType` 从 `agent` 变 `password`、`hasCredential` 与 `hasStoredPassword` 均为 `true`；再连会进入真实网络（错误是连接层面的 `SSH_CONNECT`，而不是「没有密码」）。
+4. **清除**：`hosts.credentials` 传 `{ hostId, clear: true }` → 返回 `authType: 'agent'`、`hasCredential: false`，文件里的条目被删掉，弹窗里又显示「需要密码」。
+5. **不装 dsh-ssh-tunnel 也照常**：没有 SSH Manager 时上述流程全部可用；`identityFile` 与 agent 的主机行为不变，仍显示 `~/.ssh/config`。
+6. **不影响已有的密钥主机**：`~/.ssh/config` 里带 `IdentityFile` 的主机 `authType` 仍是 `privateKey`、`hasCredential` 仍为 `true`。
+
 ## 工作区图标与连接状态（0.11.0）
 
 1. **图标区分**：左侧栏工作区行、侧栏「+」菜单、目录树工作区 chip 与分组头、设置页卡片与两个创建按钮、「添加工作区」弹窗三个页签——联动工作区统一是「双链环」，远程工作区统一是「显示器 + 出链箭头」，本地工作区仍是文件夹。

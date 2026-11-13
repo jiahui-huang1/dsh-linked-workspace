@@ -23,7 +23,7 @@
 ## 环境要求
 
 - **DSH**：0.2.1-rc.4 或更高（`engines` 允许 `>=0.2.0-rc.2 <0.3.0-0`）。
-- **SSH**：主机已加入 DSH 的 SSH Manager，或写在 `~/.ssh/config`；首次连接需要在「SSH Tunnel」标签页确认主机指纹。
+- **SSH**：主机已加入 DSH 的 SSH Manager，或写在 `~/.ssh/config`；首次连接需要在「SSH Tunnel」标签页确认主机指纹。**不安装 `dsh-ssh-tunnel` 也能用**：`~/.ssh/config` 里没有 `IdentityFile` 的主机可以在这个插件的「添加工作区」弹窗里填一次密码，密码保存在本机（见下文「SSH 配置」）。
 - **dsh-better-sidebar**（可选）：`>=0.24.0`。装上才有右侧栏目录页与文件编辑页；缺少时其余功能（设置页、目录选择、模型工具）照常可用。
 - **文档编辑**（可选）：Python 3 及 `python-docx`、`openpyxl`、`python-pptx`、`PyMuPDF`；可用 `DSH_OFFICE_PYTHON` 指定解释器。Markdown 不需要 Python。
 - **开发**：Node.js ≥ 20。
@@ -40,7 +40,7 @@
 
 ### 连接与设置（设置 → 联动工作区）
 
-- SSH 主机来自 `dsh-ssh-tunnel` 的 SSH Manager（`~/.dsh/ssh-tunnel/hosts.json`），也支持 `~/.ssh/config`；密码/私钥只在 Host 进程内使用，永不返回给页面或模型。
+- SSH 主机来自 `dsh-ssh-tunnel` 的 SSH Manager（`~/.dsh/ssh-tunnel/hosts.json`，可选），也支持 `~/.ssh/config`；两者的密码/私钥只在 Host 进程内使用，永不返回给页面或模型。没有安装 SSH Manager 时，插件会自己在本机保存密码（见「配置 → SSH 凭据」）。
 - **联动工作区**列表：本地 ⇄ 远端路径、镜像开关（**默认关闭**）、后台同步（归档到 `.remote`，显示文件数/体积进度，可取消）、移除（可选同时移除 DSH 工作区、删除 `.local`/`.remote`）。开启镜像后首次立即检查，之后**每 5 分钟**自动比较远端与 `.remote`：下载新增/变更文件、删除远端已不存在的镜像文件、跳过未变更文件（`.local/mirror-manifest.json`），并排除 `.git`/`node_modules`/缓存目录；关闭镜像时允许两侧存在版本和文件差异。
 - **远程工作区**列表：每张卡片显示「远端 · 用户名@主机 + 远端路径」和「本地占位目录」，提供**打开工作区**（切到该 DSH 工作区）、**打开目录树**、**测试连接**、**重命名**（同步改名 DSH 工作区）、**移除远程工作区**（两步确认；同时删除占位目录和 DSH workspace 注册，不动远端文件）。
 - 联动记录若没有对应的 DSH 工作区，设置卡会显示「注册为工作区」，点击即可补注册，无需删除重建。
@@ -165,6 +165,7 @@ npm 包名为 `dsh-linked-workspace`，也可以从 npm 安装已发布版本（
 - **Python 解释器**：`DSH_OFFICE_PYTHON` 指定用于 Office/PDF 的 Python。
 - **终端**：`DSH_LINKED_WORKSPACE_NO_TERMINAL=1` 关闭「打开终端」的实际启动（测试环境用）。
 - **SSH 配置**：`~/.ssh/config` 中的别名会出现在主机列表；主机指纹保存在插件数据目录。
+- **SSH 凭据**：主机列表的凭据来源有三处——`~/.ssh/config` 的 `IdentityFile`（含 SSH agent）、`dsh-ssh-tunnel` 的 SSH Manager（若已安装），以及插件自己的 `$DSH_HOME/linked-workspace/ssh-credentials.json`。没有私钥的主机在「添加工作区」弹窗里显示「需要密码」，选它、填一次密码再点「创建」即可：密码只写在本机这个文件里（权限 `0600`），只由 Host 进程读取，不会返回给页面或模型；之后再建工作区留空即沿用已存密码。用 `hosts.credentials` 的 `clear: true` 可以删除。
 
 ## 升级与版本
 

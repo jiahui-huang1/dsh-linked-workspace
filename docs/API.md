@@ -51,7 +51,8 @@ scope root, or absolute inside it.
 
 | method | params | data |
 | --- | --- | --- |
-| `hosts.list` | `{ refresh? }` | `{ hosts: HostInfo[] }` |
+| `hosts.list` | `{ refresh? }` | `{ hosts: HostInfo[] }` (`HostInfo` carries `authType`, `hasCredential`, `hasStoredPassword`) |
+| `hosts.credentials` | `{ hostId, password?, passphrase?, privateKey?, clear? }` | `{ hostId, authType, hasCredential, hasStoredPassword }` (stores the secret in the plugin's own `ssh-credentials.json`; `clear: true` deletes it) |
 | `hosts.browse` | `{ hostId, path? }` | `{ path, parent, home, entries }` (dirs + files) |
 | `remote_workspaces.list` | `{}` | `{ workspaces: RemoteWorkspaceInfo[] }` |
 | `remote_workspaces.create` | `{ hostId, remotePath, name? }` | `{ workspace }` |
@@ -125,6 +126,10 @@ Under `$DSH_HOME/linked-workspace/`:
 - `remote-workspaces.json` — remote workspaces (no credentials).
 - `settings.json` — `{ editorTheme, editorThemeFamily, editorThemeMode, fileOpenMode, autoSave }`.
 - `known_hosts.json` — trust-on-first-use host key fingerprints.
+- `ssh-credentials.json` — `{ version, byHostId: { <hostId>: { password?, privateKey?, passphrase? } } }`,
+  written by `hosts.credentials` with mode `0600`. Hosts listed in `~/.ssh/config`
+  without an `IdentityFile` can be paired with a password here, so the plugin does
+  not need `dsh-ssh-tunnel` for password logins.
 - `remote-placeholders/<uuid>/` — placeholder directories for remote workspaces.
 - Local linked directories also hold `.local/linked.json` (same binding without
   secrets) and the optional `.remote/` mirror.
