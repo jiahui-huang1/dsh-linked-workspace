@@ -1355,6 +1355,7 @@ window.__ModuleLoader__.load({
       '.rw-btn:disabled{opacity:.5;cursor:not-allowed}',
       '.rw-btn-primary{background:var(--dsw-alias-brand-primary);border-color:transparent;color:var(--dsw-alias-bg-base)}',
       '.rw-btn-primary:hover{filter:brightness(1.06)}',
+      'body[data-ds-dark-theme] .rw-btn-primary{color:#000}',
       '.rw-btn-ghost{background:transparent;border-color:transparent;color:var(--dsw-alias-label-secondary)}',
       '.rw-btn-ghost:hover{background:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.12))}',
       '.rw-btn-danger{color:var(--dsw-alias-state-error-primary);border-color:color-mix(in srgb,var(--dsw-alias-state-error-primary) 40%,transparent)}',
@@ -1373,6 +1374,11 @@ window.__ModuleLoader__.load({
       '.rw-chip{display:inline-flex;align-items:center;gap:4px;padding:1px 8px;border-radius:999px;background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-l1);color:var(--dsw-alias-label-secondary);font-size:11px;line-height:16px;white-space:nowrap}',
       '.rw-chip-link{color:var(--dsw-alias-state-success-primary);border-color:color-mix(in srgb,var(--dsw-alias-state-success-primary) 45%,transparent)}',
       '.rw-path{font-family:ui-monospace,"Cascadia Code",Consolas,monospace;font-size:12px;line-height:18px;color:var(--dsw-alias-label-secondary);word-break:break-all}',
+      // Injected into the host's workspace hover preview, which always paints on
+      // a fixed dark card, so these colours cannot follow the theme tokens.
+      '.rw-hover-status{margin:1px 0 0;font-size:12px;line-height:18px;color:rgb(207,211,214)}',
+      '.rw-hover-status.is-on{color:#3fb950}',
+      '.rw-hover-status.is-off{color:#f85149}',
       '.rw-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}',
       '.rw-meta-text{font-size:12px;line-height:18px;color:var(--dsw-alias-label-tertiary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
       '.rw-pair{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}',
@@ -1743,11 +1749,12 @@ window.__ModuleLoader__.load({
       return stateOf(item) === 'error';
     }
 
-    // Rows are React-rendered and get recreated on every sidebar update, so a
-    // tooltip set once would disappear. A debounced observer re-applies it.
+    // Rows are React-rendered and get recreated on every sidebar update, so the
+    // decorations have to be re-applied. A debounced observer handles that.
     var workspaceRowTips = [];
     var workspaceRowObserver = null;
     var workspaceRowTimer = null;
+    var workspaceHoverRecords = {};
 
     function applyWorkspaceRowTips() {
       if (typeof document === 'undefined') return;
@@ -1756,10 +1763,11 @@ window.__ModuleLoader__.load({
         var rows = document.querySelectorAll('[data-row-key="workspace:' + tip.id + '"]');
         for (var rowIndex = 0; rowIndex < rows.length; rowIndex += 1) {
           var row = rows[rowIndex];
-          if (row.getAttribute('title') === tip.text) continue;
-          row.setAttribute('title', tip.text);
           if (tip.disconnected) row.setAttribute('data-lw-disconnected', 'true');
           else row.removeAttribute('data-lw-disconnected');
+          // The native tooltip would pop up next to the hover preview card, so
+          // the connection state is written into that card instead.
+          if (row.hasAttribute('title')) row.removeAttribute('title');
         }
       }
     }
@@ -1769,6 +1777,7 @@ window.__ModuleLoader__.load({
       workspaceRowTimer = window.setTimeout(function () {
         workspaceRowTimer = null;
         applyWorkspaceRowTips();
+        applyHoverCards();
       }, 200);
       if (workspaceRowTimer && typeof workspaceRowTimer.unref === 'function') workspaceRowTimer.unref();
     }
@@ -1778,26 +1787,140 @@ window.__ModuleLoader__.load({
       if (typeof MutationObserver === 'undefined' || typeof document === 'undefined' || !document.body) return;
       try {
         workspaceRowObserver = new MutationObserver(function () { queueWorkspaceRowTips(); });
-        // Only structural changes: our own title writes must not retrigger it.
+        // Only structural changes: our own attribute writes must not retrigger it.
         workspaceRowObserver.observe(document.body, { childList: true, subtree: true });
       } catch (error) {
         workspaceRowObserver = null;
       }
     }
 
+    function statusLabel(t, item) {
+      var state = stateOf(item);
+      if (state === 'error') return item && item.status && item.status.reason === 'lost' ? t('disconnected') : t('errorState');
+      return state === 'connected' ? t('connected') : t('idle');
+    }
+
+    // ── workspace hover preview ────────────────────────────────────────────
+    // The host renders the hover card itself (name / directory / created at)
+    // inside a portal that lives outside our row, so it can only be enriched by
+    // decorating it after it appears. Class names are hashed, hence the
+    // substring selectors.
+    var HOVER_CARD_QUERY = '[class*="hoverContent"]';
+    var HOVER_LINE_ATTR = 'data-lw-hover-line';
+    var hoverCardObserver = null;
+    var hoverCardState = typeof WeakMap === 'function' ? new WeakMap() : null;
+
+    function clearHoverLines(card) {
+      var injected = card.querySelectorAll('[' + HOVER_LINE_ATTR + ']');
+      for (var index = 0; index < injected.length; index += 1) {
+        var node = injected[index];
+        if (node.parentNode) node.parentNode.removeChild(node);
+      }
+    }
+
+    function decorateHoverCard(card) {
+      if (!card || !hoverCardState || !card.querySelector) return;
+      var pathEl = card.querySelector('[class*="hoverPath"]');
+      if (!pathEl) return;
+      var known = hoverCardState.get(card);
+      var current = (pathEl.textContent || '').trim();
+      // Already decorated for this very content: nothing to do.
+      if (known && known.rendered === current) return;
+      // The host re-rendered the card for another workspace: drop our lines.
+      if (known) clearHoverLines(card);
+      var record = workspaceHoverRecords[linkedScopeKey(current)];
+      if (!record || !record.remotePath) return;
+      var t = makeT(readLocale());
+      var remote = record.remotePath;
+      var local = record.localPath || '';
+
+      var status = document.createElement('div');
+      status.className = 'rw-hover-status' + (record.disconnected ? ' is-off' : record.connected ? ' is-on' : '');
+      status.setAttribute(HOVER_LINE_ATTR, '1');
+      status.textContent = record.status;
+      var titleEl = card.querySelector('[class*="hoverTitle"]');
+      var anchor = titleEl || pathEl;
+      anchor.parentNode.insertBefore(status, anchor.nextSibling);
+
+      if (record.kind === 'linked' && local !== '') {
+        pathEl.textContent = t('pathRemoteShort') + ' ' + remote;
+        var localEl = pathEl.cloneNode(false);
+        localEl.setAttribute(HOVER_LINE_ATTR, '1');
+        localEl.textContent = t('pathLocalShort') + ' ' + local;
+        pathEl.parentNode.insertBefore(localEl, pathEl.nextSibling);
+      } else {
+        pathEl.textContent = remote;
+      }
+
+      // The card doubles as a "copy this path" button; keep its label in sync so
+      // a remote workspace copies the remote directory, not the placeholder.
+      var host = card.parentElement;
+      var label = host && host.getAttribute ? host.getAttribute('aria-label') : null;
+      if (label && current !== '' && label.indexOf(current) !== -1) {
+        host.setAttribute('aria-label', label.split(current).join(remote));
+      }
+
+      hoverCardState.set(card, { rendered: (pathEl.textContent || '').trim() });
+    }
+
+    function applyHoverCards() {
+      if (typeof document === 'undefined') return;
+      var cards = document.querySelectorAll(HOVER_CARD_QUERY);
+      for (var index = 0; index < cards.length; index += 1) decorateHoverCard(cards[index]);
+    }
+
+    function watchHoverCards() {
+      if (hoverCardObserver !== null) return;
+      if (typeof MutationObserver === 'undefined' || typeof document === 'undefined' || !document.body) return;
+      try {
+        hoverCardObserver = new MutationObserver(function (records) {
+          for (var index = 0; index < records.length; index += 1) {
+            var added = records[index].addedNodes;
+            for (var nodeIndex = 0; nodeIndex < added.length; nodeIndex += 1) {
+              var node = added[nodeIndex];
+              if (!node || node.nodeType !== 1) continue;
+              if (node.closest) {
+                var outer = node.closest(HOVER_CARD_QUERY);
+                if (outer) decorateHoverCard(outer);
+              }
+              if (node.querySelectorAll) {
+                var inner = node.querySelectorAll(HOVER_CARD_QUERY);
+                for (var innerIndex = 0; innerIndex < inner.length; innerIndex += 1) decorateHoverCard(inner[innerIndex]);
+              }
+            }
+          }
+        });
+        hoverCardObserver.observe(document.body, { childList: true, subtree: true });
+      } catch (error) {
+        hoverCardObserver = null;
+      }
+    }
+
     function publishRowTips(entries) {
       var t = makeT(readLocale());
+      var records = {};
       workspaceRowTips = entries.map(function (entry) {
-        var item = entry.item;
-        var kindLabel = entry.kind === 'linked' ? t('linkedTitle') : t('remoteTitle');
-        return {
-          id: entry.id,
-          text: item.name + ' · ' + kindLabel + ' · ' + statusTitle(t, item),
-          disconnected: isDisconnected(item),
-        };
+        var item = entry.item || {};
+        var linked = entry.kind === 'linked';
+        var key = linkedScopeKey(linked ? item.localPath : item.placeholderPath);
+        if (key !== '') {
+          records[key] = {
+            kind: entry.kind,
+            name: item.name,
+            remotePath: item.remotePath || '',
+            localPath: linked ? (item.localPath || '') : '',
+            status: statusLabel(t, item),
+            connected: stateOf(item) === 'connected',
+            disconnected: isDisconnected(item),
+          };
+        }
+        return { id: entry.id, disconnected: isDisconnected(item) };
       });
+      workspaceHoverRecords = records;
       applyWorkspaceRowTips();
       watchWorkspaceRows();
+      watchHoverCards();
+      applyHoverCards();
     }
 
     function publishWorkspaceIcons(links, remotes) {
