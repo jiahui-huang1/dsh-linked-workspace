@@ -107,7 +107,7 @@ assert.equal(section.options.name, 'settings.section')
 assert.equal(section.options.id, 'linked-workspaces')
 assert.equal(section.options.order, 52)
 assert.equal(typeof section.options.label, 'function')
-assert.equal(section.options.label(), '连接', 'the nav label follows the zh locale')
+assert.equal(section.options.label(), '联动工作区', 'the nav label follows the zh locale')
 assert.equal(typeof section.component, 'function')
 
 assert.equal(registered.flows.length, 2, 'the sidebar and hero directory flows registered')

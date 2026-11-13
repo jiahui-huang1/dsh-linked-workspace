@@ -31,14 +31,14 @@ Turn an existing SSH connection into a **linked workspace** or a **remote worksp
 ## Quick start
 
 1. **Install** the plugin (see [Install](#install)) and restart the DSH client.
-2. **Add a workspace**: Settings → Connections → “Create linked workspace” or “Create remote workspace”, then pick an existing SSH host (add it in the DSH SSH Manager first if the list is empty).
+2. **Add a workspace**: Settings → Linked workspaces → “Create linked workspace” or “Create remote workspace”, then pick an existing SSH host (add it in the DSH SSH Manager first if the list is empty).
 3. **Pick directories**: a linked workspace needs a remote path plus a local folder (empty or new); a remote workspace needs only a remote path, and that directory must already exist — the plugin never creates it.
 4. **Open the sidebar**: on the right sidebar start page choose “Linked Workspace Directory” or “Remote Workspace Directory”.
 5. **Edit**: single-click a file to preview it, double-click to pin the tab; `Ctrl/Cmd + S` saves.
 
 ## Features
 
-### Settings → Connections
+### Settings → Linked workspaces
 
 - SSH hosts come from the `dsh-ssh-tunnel` SSH Manager (`~/.dsh/ssh-tunnel/hosts.json`) and `~/.ssh/config`; passwords and keys stay inside the Host process and are never returned to the page or the model.
 - Remote workspace list: each card shows “remote · user@host + remote path” and the local placeholder directory, with **open workspace**, **open directory tree**, **test connection**, **rename** (renames the DSH workspace too) and **remove** (two-step confirmation; deletes the record, the placeholder directory and the DSH workspace, never remote files).
@@ -54,9 +54,9 @@ The plugin takes over the DSH sidebar/hero directory-selection hole; the dialog 
 
 1. **Local workspace**: type or browse a local directory (drive letters C:/D:/E: on Windows), enter a name, create a normal DSH workspace.
 2. **Linked workspace (local ⇄ remote)**: SSH host + remote directory + local directory + mirror toggle; the local directory becomes a DSH workspace.
-3. **Remote workspace (runs on the server)**: SSH host + remote directory + workspace name; the placeholder directory becomes a DSH workspace and sessions run on the server.
+3. **Remote workspace**: SSH host + remote directory + workspace name; the placeholder directory becomes a DSH workspace and sessions run on the server.
 
-> Linked workspace rows no longer carry a `⇄` title prefix: a scoped stylesheet keyed on `data-row-key` replaces the host folder glyph with a link icon (normal local workspaces are untouched). This is the only DOM-level adaptation of the host row; if DSH changes the row structure the selector stops matching and the original folder icon returns, with no other breakage.
+> Linked workspace rows no longer carry a `⇄` title prefix: a scoped stylesheet keyed on `data-row-key` swaps the host folder glyph for the workspace's own icon — two interlocking links for a linked workspace, a display with an outbound arrow for a remote workspace (normal local workspaces are untouched). When the SSH connection drops the row icon turns red, and hovering the row, a settings card or the tree header shows the connection state (connected / not connected / connection lost). This is the only DOM-level adaptation of the host row; if DSH changes the row structure the selector stops matching and the original folder icon returns, with no other breakage.
 
 ### Sidebar: “Linked Workspace Directory”
 
@@ -75,7 +75,7 @@ The plugin takes over the DSH sidebar/hero directory-selection hole; the dialog 
 - **Find and replace**: `Ctrl/Cmd + F` opens an in-editor bar with a case-sensitive toggle, previous/next, a match counter, replace and replace all. Above 5000 matches the counter shows `5000+` while replace-all still edits the whole document; `Esc` closes it from the replace field too. The Markdown document panel has its own read-only find (`Ctrl+F`, counter, next/previous).
 - **Image, CSV and HTML previews**: PNG/JPG/GIF/WebP/BMP/ICO/AVIF/SVG render in the content panel (up to 24 MB) with zoom buttons, `Ctrl/Cmd + wheel`, fit-to-window and 1:1; CSV/TSV open as a table with a Table/Source toggle (the source view stays editable), capped at 1000 rows × 80 columns. HTML/HTM render in a sandboxed iframe with scripts disabled; Markdown previews strip scripts, event attributes and dangerous links.
 - **Shortcuts**: `Ctrl/Cmd+S` save, `Ctrl/Cmd+W` close tab (prompting when dirty), `Ctrl+Tab` / `Shift+Ctrl+Tab` cycle tabs, `Ctrl/Cmd+B` toggle the directory panel, `Ctrl/Cmd+Shift+F` file search.
-- **Auto save**: Settings → Connections → “Editor behaviour”; saves about one second after typing stops. With it off, use `Ctrl/Cmd+S`; unsaved changes trigger a confirmation before the page unloads.
+- **Auto save**: Settings → Linked workspaces → “Editor behaviour”; saves about one second after typing stops. With it off, use `Ctrl/Cmd+S`; unsaved changes trigger a confirmation before the page unloads.
 
 ### Context menu (file/folder/root)
 
@@ -125,7 +125,7 @@ The workspace resolves automatically when the session cwd falls inside a linked 
 
 ## Screenshots
 
-![Settings → Connections](docs/screenshots/settings-connections.png)
+![Settings → Linked workspaces](docs/screenshots/settings-connections.png)
 
 ![Linked workspace directory: remote above, local below](docs/screenshots/linked-directories.png)
 
@@ -150,7 +150,7 @@ The npm package is `dsh-linked-workspace`; released versions can also be install
 
 ## Configuration
 
-- **Settings → Connections**: editor theme and display mode, file open mode, auto save, mirror toggle, manual sync and removal options.
+- **Settings → Linked workspaces**: editor theme and display mode, file open mode, auto save, mirror toggle, manual sync and removal options.
 - **Data directory**: `$DSH_HOME/linked-workspace` (remote workspace records, linked records, settings); override with `DSH_LINKED_WORKSPACE_HOME`.
 - **Python interpreter**: `DSH_OFFICE_PYTHON` for Office/PDF operations.
 - **Terminal**: `DSH_LINKED_WORKSPACE_NO_TERMINAL=1` keeps “Open terminal” from launching a real window (used in tests).
@@ -175,7 +175,7 @@ The npm package is `dsh-linked-workspace`; released versions can also be install
 ## FAQ
 
 **No “Linked Workspace Directory” / “Remote Workspace Directory” entry in the sidebar?**
-Check that `dsh-better-sidebar` (≥0.24) is installed and restart the client. Both tabs are registered eagerly: “Linked Workspace Directory” only shows for linked-workspace sessions and “Remote Workspace Directory” for remote-workspace sessions. Ordinary local workspaces show neither, but the tree can still be opened from Settings → Connections with “Open directory tree”.
+Check that `dsh-better-sidebar` (≥0.24) is installed and restart the client. Both tabs are registered eagerly: “Linked Workspace Directory” only shows for linked-workspace sessions and “Remote Workspace Directory” for remote-workspace sessions. Ordinary local workspaces show neither, but the tree can still be opened from Settings → Linked workspaces with “Open directory tree”.
 
 **Preview says “Python 3 and document libraries are required”?**
 Install `python-docx`, `openpyxl`, `python-pptx` and `PyMuPDF`, or point `DSH_OFFICE_PYTHON` at an interpreter that has them. Markdown previews do not need Python.
@@ -184,7 +184,7 @@ Install `python-docx`, `openpyxl`, `python-pptx` and `PyMuPDF`, or point `DSH_OF
 The search bar matches file names by default — switch to “Content”. Content search is bounded to 1 MB per file, 2000 files, 8 MB and 5 s locally, with a truncation notice.
 
 **Sync seems to do nothing?**
-The mirror is off by default; enable it in Settings → Connections to archive into `.remote`. Runs over 500 files / 50 MB, or files over 20 MB, are skipped; progress is shown in the settings card.
+The mirror is off by default; enable it in Settings → Linked workspaces to archive into `.remote`. Runs over 500 files / 50 MB, or files over 20 MB, are skipped; progress is shown in the settings card.
 
 **Drag and drop does nothing?**
 Web browsers do not expose dropped file paths; the notice tells you to use the desktop app. Inside the same tree, use “Move to…” instead.
@@ -199,7 +199,7 @@ Run `npm run build` to regenerate `lib/client.js`, then restart the DSH client; 
 
 ```
 Client (browser)                          Host (DSH process)
-Settings → Connections / sidebar trees / directory dialogs → POST /dsh-linked-workspace/api
+Settings → Linked workspaces / sidebar trees / directory dialogs → POST /dsh-linked-workspace/api
 theme + highlight + file icons (src/parts/*)  workspace registry + linked registry + SSH pool
 ```
 
