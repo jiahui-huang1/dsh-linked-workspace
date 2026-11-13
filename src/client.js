@@ -36,7 +36,10 @@ window.__ModuleLoader__.load({
     // __INLINE_PARTS__
 
     var TREE_TAB_TYPE = 'dsh-linked-workspace';
-    var REMOTE_TAB_TYPE = 'dsh-linked-workspace:remote';
+    // Remote workspaces get their own page kind: the two modes show different
+    // trees (local ⇄ remote pair vs. a plain remote root), so a session must be
+    // able to hold both, and each one filters its own workspace list.
+    var REMOTE_TREE_TAB_TYPE = 'dsh-remote-workspace';
     // One tree page; a folder with 20k entries must not render 20k rows.
     var TREE_PAGE_SIZE = 500;
     var TREE_PAGE_MAX = 5000;
@@ -46,7 +49,10 @@ window.__ModuleLoader__.load({
     var REFRESH_MIN_INTERVAL_MS = 15000;
     var linkedLocalKeys = new Set();
     var linkedWorkspaceKeys = new Set();
-    var hasRemoteDirectories = false;
+    // Remote workspaces run inside a placeholder directory, so they are matched
+    // by that path (and by their DSH workspace id) instead of a local directory.
+    var remotePlaceholderKeys = new Set();
+    var remoteWorkspaceKeys = new Set();
     var linkedTabDisposer = null;
     var remoteTabDisposer = null;
     var syncDirectoryTabsRef = null;
@@ -77,13 +83,34 @@ window.__ModuleLoader__.load({
       return found;
     }
 
+    function isRemoteWorkspaceId(workspaceId) {
+      return Boolean(workspaceId) && remoteWorkspaceKeys.has(String(workspaceId));
+    }
+
+    function isRemoteScope(scope) {
+      var key = linkedScopeKey(scope && scope.cwd);
+      if (!key) return false;
+      var found = false;
+      remotePlaceholderKeys.forEach(function (placeholderKey) {
+        if (found) return;
+        if (key === placeholderKey || key.indexOf(placeholderKey + '/') === 0) found = true;
+      });
+      return found;
+    }
+
     function dismissSettingsOverlay() {
+      // 设置面板以 Escape 关闭；事件必须落在当前焦点元素上，直接派发到 window 不会触发它。
+      function fire(target) {
+        if (!target || typeof target.dispatchEvent !== 'function') return;
+        target.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', keyCode: 27, which: 27, bubbles: true, cancelable: true }));
+      }
       try {
-        window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', bubbles: true }));
+        fire((typeof document !== 'undefined' && (document.activeElement || document.body)) || null);
+        fire(typeof window !== 'undefined' ? window : null);
       } catch (error) { /* keyboard unavailable */ }
     }
 
-    function rememberDirectoryAvailability(links, workspaces) {
+    function rememberDirectoryAvailability(links, remotes) {
       var next = new Set();
       var workspaceKeys = new Set();
       (links || []).forEach(function (link) {
@@ -93,17 +120,26 @@ window.__ModuleLoader__.load({
       });
       linkedLocalKeys = next;
       linkedWorkspaceKeys = workspaceKeys;
-      hasRemoteDirectories = Array.isArray(workspaces) && workspaces.length > 0;
+
+      var placeholderKeys = new Set();
+      var remoteKeys = new Set();
+      (remotes || []).forEach(function (workspace) {
+        var key = linkedScopeKey(workspace.placeholderPath);
+        if (key) placeholderKeys.add(key);
+        if (workspace.workspaceId) remoteKeys.add(String(workspace.workspaceId));
+      });
+      remotePlaceholderKeys = placeholderKeys;
+      remoteWorkspaceKeys = remoteKeys;
     }
 
     function refreshDirectoryAvailability() {
       return Promise.all([
         apiCall('linked.list').catch(function () { return { links: [] }; }),
-        apiCall('workspaces.list').catch(function () { return { workspaces: [] }; }),
+        apiCall('remote_workspaces.list').catch(function () { return { workspaces: [] }; }),
       ]).then(function (results) {
-        var links = results[0] && results[0].links ? results[0].links : [];
-        var workspaces = results[1] && results[1].workspaces ? results[1].workspaces : [];
-        rememberDirectoryAvailability(links, workspaces);
+        var links = (results[0] && results[0].links) || [];
+        var remotes = (results[1] && results[1].workspaces) || [];
+        rememberDirectoryAvailability(links, remotes);
         publishLinkedWorkspaceIcons(links);
       });
     }
@@ -157,13 +193,11 @@ window.__ModuleLoader__.load({
 
     var ZH = {
       settingsNav: '连接',
-      title: '连接与联动工作区',
-      intro: '把已建立的 SSH 连接变成远程目录；或把本地目录与远端目录联动起来——会话可以直接读取、搜索和编辑远端文件。',
+      title: '连接与工作区',
+      intro: '把 SSH 连接变成工作区：联动工作区把本地目录与远端目录配对，远程工作区让会话直接运行在远端目录。会话都能读取、搜索和编辑远端文件。',
       addWorkspace: '添加工作区',
-      addRemoteDir: '添加远程目录',
       addLinked: '添加联动工作区',
       createLinked: '创建联动工作区',
-      addAction: '添加',
       addShort: '添加',
       refresh: '刷新',
       open: '打开',
@@ -172,13 +206,14 @@ window.__ModuleLoader__.load({
       remove: '移除',
       confirmRemove: '确认移除',
       removeHint: '只移除记录，不会删除远端文件。',
-      emptyTitle: '还没有远程目录',
-      emptyBody: '选择一个已建立的 SSH 连接，就能把远端目录加进侧边栏。',
+      emptyTitle: '还没有可浏览的工作区',
+      emptyBody: '先在「设置 → 连接」里创建联动工作区或远程工作区，左侧「添加工作区」里也能创建。',
       emptyHint: '没有找到可用的 SSH 连接。请先在右侧栏的 SSH Tunnel 面板里添加主机。',
       stepHost: '1. 选择 SSH 连接',
       stepPath: '2. 远程目录',
       stepLocalPath: '3. 本地目录',
       stepName: '4. 工作区名称',
+      remoteStepName: '3. 工作区名称',
       pathPlaceholder: '/shared_data_ssd1/huangjh/project',
       localPathPlaceholder: 'C:\\Users\\you\\projects\\demo',
       namePlaceholder: '留空则使用目录名',
@@ -232,7 +267,7 @@ window.__ModuleLoader__.load({
       moveHint: '进入目标文件夹后点击「使用此目录」',
       ctxMove: '移动到…',
       noWorkspace: '远程工作区不存在，请重新添加。',
-      noTarget: '没有可用的远程目录。先在设置 → 连接中添加，或点击左侧「添加工作区」。',
+      noTarget: '没有可浏览的工作区。先在设置 → 连接中创建，或点击左侧「添加工作区」。',
       treeEmpty: '空目录',
       sourceManager: 'SSH 管理器',
       sourceConfig: '~/.ssh/config',
@@ -293,7 +328,6 @@ window.__ModuleLoader__.load({
       sheetMore: '工作表较多，仅显示前 20 个',
       noCredential: '缺少凭据',
       sourceManagerShort: 'SSH',
-      remoteGroup: '远程目录',
       linkedGroup: '联动工作区',
       linkedEmpty: '还没有联动工作区。联动工作区会把本地目录与远端目录配对，会话可直接编辑远端文件。',
       linkedName: '联动工作区',
@@ -370,10 +404,6 @@ window.__ModuleLoader__.load({
       docPageOf: '第 {page} / {total} 页',
       docExportDone: '已导出 PDF：{path}',
       docPreviewFailed: '预览失败',
-      remoteTabTitle: '远程目录',
-      remoteTabDesc: '只读查看已添加的远程目录及其文件，不允许编辑。',
-      remoteDirsTitle: '远程目录',
-      remoteDirsHint: '直接浏览远端目录（只读）。',
       linkedTitle: '联动工作区',
       linkedHint: '本地目录与远端目录成对出现：DSH 会话在该本地目录中工作，并通过 linked_workspace 工具直接编辑远端文件。',
       localFlow: '本地目录',
@@ -396,6 +426,32 @@ window.__ModuleLoader__.load({
       openInTab: '在标签中打开',
       linkedBadge: '本地 ⇄ 远端',
       linkedChip: '联动',
+      remoteChip: '远程',
+      remoteGroup: '远程工作区',
+      remoteEmpty: '还没有远程工作区。远程工作区会让会话直接运行在 SSH 主机的目录里，本地不落任何项目文件。',
+      remoteTitle: '远程工作区',
+      remoteHint: '会话运行在远端目录：DSH 不在本地创建项目文件，模型通过 remote_workspace 与 linked_workspace 工具读写远端。',
+      addRemote: '添加远程工作区',
+      createRemote: '创建远程工作区',
+      remoteTabTitle: '远程工作区目录',
+      remoteTabDesc: '远程工作区的远端目录；点击文件在新标签页打开。',
+      remotePlaceholderLabel: '本地占位目录',
+      remotePlaceholderHint: '占位目录只用于把工作区注册进 DSH，不会同步任何远端文件；请不要在里面存放项目文件。',
+      remoteCreateFailed: '创建远程工作区失败',
+      remoteUpdateFailed: '重命名远程工作区失败',
+      remoteRemoveFailed: '移除远程工作区失败',
+      remoteRemoved: '已移除远程工作区',
+      removeRemote: '移除远程工作区',
+      remoteRemoveHint: '只移除记录与占位目录，不会删除远端文件。',
+      remoteSessionHint: '在该工作区下新建会话即可直接使用远端目录。',
+      flowRemote: '远程工作区（直接运行在远端）',
+      flowRemoteDesc: '会话运行在远端目录，本地只保留一个占位目录',
+      localSideMissing: '该工作区没有本地目录',
+      remoteWorkspacesFailed: '读取远程工作区失败',
+      openTree: '打开目录树',
+      testConnection: '测试连接',
+      testFailed: '连接失败',
+      rename: '重命名',
       pathLocalShort: '本地',
       pathRemoteShort: '远端',
       flowTitle: '添加工作区',
@@ -539,13 +595,12 @@ window.__ModuleLoader__.load({
 
     var EN = {
       settingsNav: 'Connections',
-      title: 'Connections & Linked Workspaces',
-      intro: 'Turn an existing SSH connection into a remote directory, or pair a local folder with a remote folder so sessions can read, search and edit remote files directly.',
+      title: 'Connections & workspaces',
+      intro: 'Turn an SSH connection into a workspace: a linked workspace pairs a local folder with a remote folder, and a remote workspace runs sessions directly inside the remote folder. Either way sessions can read, search and edit remote files.',
       addWorkspace: 'Add workspace',
       addRemoteDir: 'Add remote directory',
       addLinked: 'Add linked workspace',
       createLinked: 'Create linked workspace',
-      addAction: 'Add',
       addShort: 'Add',
       refresh: 'Refresh',
       open: 'Open',
@@ -554,13 +609,14 @@ window.__ModuleLoader__.load({
       remove: 'Remove',
       confirmRemove: 'Confirm remove',
       removeHint: 'Removes the record only; remote files stay untouched.',
-      emptyTitle: 'No remote directories yet',
-      emptyBody: 'Pick an SSH connection you already set up to bring a remote directory into the sidebar.',
+      emptyTitle: 'No workspace to browse yet',
+      emptyBody: 'Create a linked or remote workspace in Settings → Connections, or from “Add workspace” on the left.',
       emptyHint: 'No SSH connections found. Add a host in the Side card’s SSH Tunnel panel first.',
       stepHost: '1. Choose an SSH connection',
       stepPath: '2. Remote directory',
       stepLocalPath: '3. Local directory',
       stepName: '4. Workspace name',
+      remoteStepName: '3. Workspace name',
       pathPlaceholder: '/home/you/project',
       localPathPlaceholder: 'C:\\Users\\you\\projects\\demo',
       namePlaceholder: 'Defaults to the directory name',
@@ -614,7 +670,7 @@ window.__ModuleLoader__.load({
       moveHint: 'Open the destination folder, then click “Use this directory”',
       ctxMove: 'Move to…',
       noWorkspace: 'This remote workspace no longer exists. Add it again.',
-      noTarget: 'No remote directory is available. Add one in Settings → Connections, or click “Add workspace” on the left.',
+      noTarget: 'No workspace to browse. Create one in Settings → Connections, or click “Add workspace” on the left.',
       treeEmpty: 'Empty directory',
       sourceManager: 'SSH Manager',
       sourceConfig: '~/.ssh/config',
@@ -675,7 +731,6 @@ window.__ModuleLoader__.load({
       sheetMore: 'Showing the first 20 worksheets only',
       noCredential: 'No credentials',
       sourceManagerShort: 'SSH',
-      remoteGroup: 'Remote directories',
       linkedGroup: 'Linked workspaces',
       linkedEmpty: 'No linked workspaces yet. A linked workspace pairs a local folder with a remote folder so sessions can edit remote files directly.',
       linkedName: 'Linked workspace',
@@ -752,10 +807,6 @@ window.__ModuleLoader__.load({
       docPageOf: 'Page {page} / {total}',
       docExportDone: 'Exported PDF: {path}',
       docPreviewFailed: 'Preview failed',
-      remoteTabTitle: 'Remote directories',
-      remoteTabDesc: 'Read-only view of configured remote directories and files; editing is disabled.',
-      remoteDirsTitle: 'Remote directories',
-      remoteDirsHint: 'Browse remote directories read-only (no local copy).',
       linkedTitle: 'Linked workspaces',
       linkedHint: 'A local folder paired with a remote folder: DSH sessions work in the local folder and edit remote files through the linked_workspace tool.',
       localFlow: 'Local folder',
@@ -778,6 +829,32 @@ window.__ModuleLoader__.load({
       openInTab: 'Open in tab',
       linkedBadge: 'Local ⇄ remote',
       linkedChip: 'Linked',
+      remoteChip: 'Remote',
+      remoteGroup: 'Remote workspaces',
+      remoteEmpty: 'No remote workspace yet. A remote workspace runs sessions directly inside an SSH host folder, so nothing is written to your machine.',
+      remoteTitle: 'Remote workspaces',
+      remoteHint: 'Sessions run in the remote folder: DSH creates no local project files, and the model reads and writes the remote side through the remote_workspace and linked_workspace tools.',
+      addRemote: 'Add remote workspace',
+      createRemote: 'Create remote workspace',
+      remoteTabTitle: 'Remote workspace tree',
+      remoteTabDesc: 'The remote folder of this remote workspace; click a file to open it in a new tab.',
+      remotePlaceholderLabel: 'Local placeholder',
+      remotePlaceholderHint: 'The placeholder only registers the workspace in DSH and never mirrors remote files; do not keep project files in it.',
+      remoteCreateFailed: 'Could not create the remote workspace',
+      remoteUpdateFailed: 'Could not rename the remote workspace',
+      remoteRemoveFailed: 'Could not remove the remote workspace',
+      remoteRemoved: 'Remote workspace removed',
+      removeRemote: 'Remove remote workspace',
+      remoteRemoveHint: 'Only the record and the placeholder are removed; remote files are untouched.',
+      remoteSessionHint: 'Start a session in this workspace to work directly in the remote folder.',
+      flowRemote: 'Remote workspace (runs remotely)',
+      flowRemoteDesc: 'Sessions run in the remote folder; only a placeholder stays local',
+      localSideMissing: 'This workspace has no local folder',
+      remoteWorkspacesFailed: 'Could not read remote workspaces',
+      openTree: 'Open tree',
+      testConnection: 'Test connection',
+      testFailed: 'Connection failed',
+      rename: 'Rename',
       pathLocalShort: 'Local',
       pathRemoteShort: 'Remote',
       flowTitle: 'Add workspace',
@@ -1145,6 +1222,7 @@ window.__ModuleLoader__.load({
     function scopeParams(scope) {
       if (!scope) return {};
       if (scope.kind === 'linked') return { linkedId: scope.id };
+      if (scope.kind === 'remote') return { remoteId: scope.id };
       return { workspaceId: scope.id };
     }
 
@@ -1844,14 +1922,14 @@ window.__ModuleLoader__.load({
     // ── data hooks ─────────────────────────────────────────────────────────
 
     function useRemoteData(ctx) {
-      var dataState = useState({ loading: true, hosts: [], workspaces: [], links: [], error: null, hostError: null, linkError: null });
+      var dataState = useState({ loading: true, hosts: [], remotes: [], links: [], error: null, hostError: null, linkError: null });
       var data = dataState[0];
       var setData = dataState[1];
       var alive = useRef(true);
 
       var load = useCallback(function () {
         var jobs = [
-          apiCall('workspaces.list').then(function (result) { return { workspaces: result.workspaces || [] }; }),
+          apiCall('remote_workspaces.list').then(function (result) { return { remotes: result.workspaces || [] }; }),
           apiCall('hosts.list').then(function (result) { return { hosts: result.hosts || [] }; }),
           apiCall('linked.list').then(function (result) { return { links: result.links || [] }; }),
         ];
@@ -1859,21 +1937,21 @@ window.__ModuleLoader__.load({
           return promise.then(function (value) { return { ok: true, value: value }; }, function (error) { return { ok: false, error: error }; });
         })).then(function (results) {
           if (!alive.current) return;
-          var workspacesResult = results[0];
+          var remotesResult = results[0];
           var hostsResult = results[1];
           var linksResult = results[2];
           setData(function (previous) {
             return {
               loading: false,
-              workspaces: workspacesResult.ok ? workspacesResult.value.workspaces : previous.workspaces,
+              remotes: remotesResult.ok ? remotesResult.value.remotes : previous.remotes,
               hosts: hostsResult.ok ? hostsResult.value.hosts : previous.hosts,
               links: linksResult.ok ? linksResult.value.links : previous.links,
-              error: workspacesResult.ok ? null : workspacesResult.error,
+              error: remotesResult.ok ? null : remotesResult.error,
               hostError: hostsResult.ok ? null : hostsResult.error,
               linkError: linksResult.ok ? null : linksResult.error,
             };
           });
-          rememberDirectoryAvailability(linksResult.ok ? linksResult.value.links : [], workspacesResult.ok ? workspacesResult.value.workspaces : []);
+          rememberDirectoryAvailability(linksResult.ok ? linksResult.value.links : [], remotesResult.ok ? remotesResult.value.remotes : []);
           publishLinkedWorkspaceIcons(linksResult.ok ? linksResult.value.links : []);
         });
       }, []);
@@ -2979,13 +3057,14 @@ window.__ModuleLoader__.load({
 
     function sourceScopeOf(source) {
       if (source && source.kind === 'linked') return { kind: 'linked', id: source.id };
+      if (source && source.kind === 'remote') return { kind: 'remote', id: source.id };
       return { kind: 'workspace', id: source ? source.id : '' };
     }
 
     function sourceMetaOf(source) {
-      return source && source.kind === 'linked'
-        ? { linkedId: source.id, linkedName: source.name }
-        : { workspaceId: source ? source.id : undefined, workspaceName: source ? source.name : undefined };
+      if (source && source.kind === 'linked') return { linkedId: source.id, linkedName: source.name };
+      if (source && source.kind === 'remote') return { remoteId: source.id, remoteName: source.name };
+      return { workspaceId: source ? source.id : undefined, workspaceName: source ? source.name : undefined };
     }
 
     function workspaceRelativePath(rootPath, filePath) {
@@ -4134,46 +4213,52 @@ window.__ModuleLoader__.load({
       var pinnedLinkedId = tabMeta.linkedId ? String(tabMeta.linkedId) : '';
       var pinnedRemoteId = tabMeta.remoteId ? String(tabMeta.remoteId) : '';
       var sources = useMemo(function () {
-        var list = [];
+        var pinned = remoteOnly ? pinnedRemoteId : pinnedLinkedId;
         var scopeKey = linkedScopeKey(scope && scope.cwd);
-        if (!remoteOnly) {
-          (data.data.links || []).forEach(function (link) {
-            if (pinnedLinkedId) { if (String(link.id) !== pinnedLinkedId) return; }
-            else if (scopeKey && linkedScopeKey(link.localPath) !== scopeKey) return;
-            list.push({
-              key: 'linked:' + link.id,
-              kind: 'linked',
-              id: link.id,
-              name: link.name,
-              localPath: link.localPath,
-              remotePath: link.remotePath,
-              host: link.host,
-              username: link.username,
-              hostName: link.hostName,
-              mirror: link.mirror,
-              status: link.status,
-            });
-          });
-        } else {
-          (data.data.workspaces || []).forEach(function (workspace) {
-            if (pinnedRemoteId && String(workspace.id) !== pinnedRemoteId) return;
-            list.push({
-              key: 'workspace:' + workspace.id,
-              kind: 'workspace',
-              id: workspace.id,
-              name: workspace.name,
-              localPath: null,
-              remotePath: workspace.remotePath,
-              host: workspace.host,
-              username: workspace.username,
-              hostName: workspace.hostName,
-              mirror: false,
-              status: workspace.status,
-            });
-          });
+        var all = (remoteOnly ? (data.data.remotes || []) : (data.data.links || []));
+        function pathOf(item) {
+          return remoteOnly ? item.placeholderPath : item.localPath;
         }
-        return list;
-      }, [data.data.links, data.data.workspaces, remoteOnly, scope && scope.cwd, pinnedLinkedId, pinnedRemoteId]);
+        function toSource(item) {
+          if (remoteOnly) {
+            return {
+              key: 'remote:' + item.id,
+              kind: 'remote',
+              id: item.id,
+              name: item.name,
+              localPath: null,
+              placeholderPath: item.placeholderPath,
+              remotePath: item.remotePath,
+              host: item.host,
+              username: item.username,
+              hostName: item.hostName,
+              mirror: false,
+              status: item.status,
+            };
+          }
+          return {
+            key: 'linked:' + item.id,
+            kind: 'linked',
+            id: item.id,
+            name: item.name,
+            localPath: item.localPath,
+            remotePath: item.remotePath,
+            host: item.host,
+            username: item.username,
+            hostName: item.hostName,
+            mirror: item.mirror,
+            status: item.status,
+          };
+        }
+        var matched = all.filter(function (item) {
+          if (pinned) return String(item.id) === pinned;
+          if (!scopeKey) return true;
+          return linkedScopeKey(pathOf(item)) === scopeKey;
+        });
+        // 标签页也可能从起始页或设置页直接打开：当前会话不属于任何联动/远程工作区时，
+        // 列出全部，而不是让标签页空着。
+        return (matched.length === 0 && !pinned ? all : matched).map(toSource);
+      }, [data.data.links, data.data.remotes, remoteOnly, scope && scope.cwd, pinnedLinkedId, pinnedRemoteId]);
 
       var selected = useMemo(function () {
         return sources.filter(function (source) { return source.key === selectedKey; })[0] || sources[0] || null;
@@ -4327,10 +4412,12 @@ window.__ModuleLoader__.load({
 
       function openTerminal(side, atPath) {
         if (!selected) return;
-        var request = { side: side };
+        if (side === 'local' && selected.kind !== 'linked') {
+          showNotice('info', t('localSideMissing'));
+          return;
+        }
+        var request = Object.assign({ side: side }, scopeParams(selected));
         if (typeof atPath === 'string' && atPath !== '') request.path = atPath;
-        if (selected.kind === 'linked') request.linkedId = selected.id;
-        else request.workspaceId = selected.id;
         apiCall('terminal.open', request).then(function () {
           showNotice('success', t('terminalOpened'));
         }).catch(function (error) {
@@ -5388,7 +5475,9 @@ window.__ModuleLoader__.load({
       var meta = tab && tab.meta ? tab.meta : {};
       var scope = meta.linkedId
         ? { kind: 'linked', id: meta.linkedId }
-        : { kind: 'workspace', id: meta.workspaceId };
+        : meta.remoteId
+          ? { kind: 'remote', id: meta.remoteId }
+          : { kind: 'workspace', id: meta.workspaceId };
       var filePath = tab && tab.path ? tab.path : '';
       return h('div', { className: 'rw-editor-pane' },
         h(RemoteFileEditor, {
@@ -5609,8 +5698,7 @@ window.__ModuleLoader__.load({
       }
 
       function listRequest(path, offset) {
-        return Object.assign({ path: path, limit: TREE_PAGE_SIZE, offset: offset },
-          source.kind === 'linked' ? { linkedId: source.id } : { workspaceId: source.id });
+        return Object.assign({ path: path, limit: TREE_PAGE_SIZE, offset: offset }, scopeParams(source));
       }
 
       function load(path) {
@@ -5713,7 +5801,8 @@ window.__ModuleLoader__.load({
             source.kind === 'linked' ? IconLink(13) : IconServer(13)),
           h('span', { className: 'rw-tree-ws-title' },
             h('span', { className: 'rw-tree-ws-name' }, source.name),
-            h('span', { className: 'rw-tree-ws-sub' }, source.username + '@' + source.host + (source.kind === 'linked' ? ' · ' + t('linkedChip') : ''))),
+            h('span', { className: 'rw-tree-ws-sub' }, source.username + '@' + source.host
+              + (source.kind === 'linked' ? ' · ' + t('linkedChip') : source.kind === 'remote' ? ' · ' + t('remoteChip') : ''))),
           h(StatusPill, { status: source.status, t: t })),
         open
           ? h('div', { className: 'rw-tree-body', role: 'tree', 'aria-label': source.name },
@@ -5772,10 +5861,6 @@ window.__ModuleLoader__.load({
       var locale = props.locale;
       var onDone = props.onDone;
       var onCancel = props.onCancel;
-      var lockedMode = props.lockedMode === 'linked' ? 'linked' : props.lockedMode === 'remote' ? 'remote' : '';
-      var modeState = useState(lockedMode || (props.initialMode === 'linked' ? 'linked' : 'remote'));
-      var mode = lockedMode || modeState[0];
-      var setMode = modeState[1];
 
       var hostState = useState({ loading: true, hosts: [], error: null });
       var hostData = hostState[0];
@@ -5839,25 +5924,10 @@ window.__ModuleLoader__.load({
         if (!selectedHostId) { setError(t('stepHost')); return; }
         var trimmedRemote = remotePath.trim();
         if (trimmedRemote === '') { setError(t('stepPath')); return; }
-        setBusy(true);
-        setError('');
-        if (mode === 'remote') {
-          apiCall('workspaces.add', {
-            hostId: selectedHostId,
-            remotePath: trimmedRemote,
-            name: name.trim(),
-          }).then(function () {
-            setBusy(false);
-            bus.emit();
-            if (onDone) onDone();
-          }).catch(function (err) {
-            setBusy(false);
-            setError(t('addFailed') + '：' + messageOf(err, t, locale));
-          });
-          return;
-        }
         var trimmedLocal = localPath.trim();
         if (trimmedLocal === '') { setBusy(false); setError(t('stepLocalPath')); return; }
+        setBusy(true);
+        setError('');
         apiCall('linked.create', {
           hostId: selectedHostId,
           remotePath: trimmedRemote,
@@ -5874,16 +5944,11 @@ window.__ModuleLoader__.load({
         });
       }
 
-      if (props.submitRef) props.submitRef.current = { submit: submit, busy: busy, mode: mode };
+      if (props.submitRef) props.submitRef.current = { submit: submit, busy: busy };
 
       return h('div', { className: 'rw-add' },
         h('div', { className: 'rw-inline', style: { justifyContent: 'space-between' } },
-          h('div', { className: 'rw-add-title' }, mode === 'linked' ? t('createLinked') : t('addRemoteDir')),
-          lockedMode === ''
-            ? h('div', { className: 'rw-tabs' },
-              h('button', { type: 'button', className: 'rw-tab' + (mode === 'remote' ? ' is-on' : ''), onClick: function () { setMode('remote'); } }, IconServer(13), t('remoteGroup')),
-              h('button', { type: 'button', className: 'rw-tab' + (mode === 'linked' ? ' is-on' : ''), onClick: function () { setMode('linked'); } }, IconLink(13), t('linkedName')))
-            : null),
+          h('div', { className: 'rw-add-title' }, t('createLinked'))),
         h('div', { className: 'rw-field' },
           h('div', { className: 'rw-label' }, t('stepHost')),
           h(HostList, { t: t, hosts: hostData.hosts, loading: hostData.loading, selectedId: selectedHostId, onSelect: chooseHost }),
@@ -5913,8 +5978,7 @@ window.__ModuleLoader__.load({
             })
             : null,
           h('div', { className: 'rw-hint' }, t('diskHint'))),
-        mode === 'linked'
-          ? h('div', { className: 'rw-field' },
+        h('div', { className: 'rw-field' },
             h('div', { className: 'rw-label' }, t('stepLocalPath')),
             h('div', { className: 'rw-input-row' },
               h('input', {
@@ -5940,28 +6004,158 @@ window.__ModuleLoader__.load({
                 checked: mirror, onChange: setMirror, label: t('mirrorLabel'),
                 text: t('mirrorLabel'),
               })),
-            h('div', { className: 'rw-hint' }, t('mirrorHint')))
-          : null,
-        mode === 'linked'
-          ? h('div', { className: 'rw-field' },
-            h('div', { className: 'rw-label' }, t('stepName')),
-            h('input', {
-              className: 'rw-input',
-              value: name,
-              placeholder: basename(localPath) || t('namePlaceholder'),
-              maxLength: 120,
-              onChange: function (event) { setName(event.currentTarget.value); },
-              onKeyDown: function (event) { if (event.key === 'Enter') submit(); },
-            }))
-          : null,
+            h('div', { className: 'rw-hint' }, t('mirrorHint'))),
+        h('div', { className: 'rw-field' },
+          h('div', { className: 'rw-label' }, t('stepName')),
+          h('input', {
+            className: 'rw-input',
+            value: name,
+            placeholder: basename(localPath) || t('namePlaceholder'),
+            maxLength: 120,
+            onChange: function (event) { setName(event.currentTarget.value); },
+            onKeyDown: function (event) { if (event.key === 'Enter') submit(); },
+          })),
         error ? h(Banner, { kind: 'error' }, error) : null,
         props.compact ? null : h('div', { className: 'rw-actions' },
           h('button', { type: 'button', className: 'rw-btn', disabled: busy, onClick: onCancel }, t('cancel')),
           h('button', {
             type: 'button', className: 'rw-btn rw-btn-primary',
-            disabled: busy || !selectedHostId || remotePath.trim() === '' || (mode === 'linked' && localPath.trim() === ''),
+            disabled: busy || !selectedHostId || remotePath.trim() === '' || localPath.trim() === '',
             onClick: submit,
-          }, busy ? Spinner(13) : (mode === 'linked' ? IconLink(13) : IconPlus(13)), busy ? t('creating') : (mode === 'linked' ? t('create') : t('addAction')))));
+          }, busy ? Spinner(13) : IconLink(13), busy ? t('creating') : t('create'))));
+    }
+
+    // ── remote workspace flow (sessions run inside the remote folder) ──────
+
+    function AddRemoteWorkspaceFlow(props) {
+      var t = props.t;
+      var locale = props.locale;
+      var onDone = props.onDone;
+      var onCancel = props.onCancel;
+
+      var hostState = useState({ loading: true, hosts: [], error: null });
+      var hostData = hostState[0];
+      var setHostData = hostState[1];
+      var selectedState = useState('');
+      var selectedHostId = selectedState[0];
+      var setSelectedHostId = selectedState[1];
+      var pathState = useState('');
+      var remotePath = pathState[0];
+      var setRemotePath = pathState[1];
+      var nameState = useState('');
+      var name = nameState[0];
+      var setName = nameState[1];
+      var busyState = useState(false);
+      var busy = busyState[0];
+      var setBusy = busyState[1];
+      var errorState = useState('');
+      var error = errorState[0];
+      var setError = errorState[1];
+      var remoteOpenState = useState(false);
+      var remoteOpen = remoteOpenState[0];
+      var setRemoteOpen = remoteOpenState[1];
+
+      var loadHosts = useCallback(function () {
+        setHostData(function (previous) { return { loading: previous.hosts.length === 0, hosts: previous.hosts, error: null }; });
+        apiCall('hosts.list', {}).then(function (result) {
+          setHostData({ loading: false, hosts: result.hosts || [], error: null });
+          setSelectedHostId(function (current) {
+            if (current) return current;
+            return result.hosts && result.hosts.length > 0 ? result.hosts[0].id : '';
+          });
+        }).catch(function (err) {
+          setHostData({ loading: false, hosts: [], error: err });
+        });
+      }, []);
+
+      useEffect(function () { loadHosts(); }, [loadHosts]);
+
+      function chooseHost(host) {
+        setSelectedHostId(host.id);
+        setError('');
+        setRemoteOpen(false);
+        if (remotePath.trim() === '' && host && host.hasCredential !== false) {
+          apiCall('hosts.browse', { hostId: host.id }).then(function (result) {
+            setRemotePath(function (current) { return current.trim() === '' ? result.home : current; });
+          }).catch(function () { /* silent prefill */ });
+        }
+      }
+
+      function submit() {
+        if (busy) return;
+        if (!selectedHostId) { setError(t('stepHost')); return; }
+        var trimmedRemote = remotePath.trim();
+        if (trimmedRemote === '') { setError(t('stepPath')); return; }
+        setBusy(true);
+        setError('');
+        apiCall('remote_workspaces.create', {
+          hostId: selectedHostId,
+          remotePath: trimmedRemote,
+          name: name.trim(),
+        }).then(function () {
+          setBusy(false);
+          bus.emit();
+          if (onDone) onDone();
+        }).catch(function (err) {
+          setBusy(false);
+          setError(t('remoteCreateFailed') + '：' + messageOf(err, t, locale));
+        });
+      }
+
+      if (props.submitRef) props.submitRef.current = { submit: submit, busy: busy };
+
+      return h('div', { className: 'rw-add' },
+        h('div', { className: 'rw-inline', style: { justifyContent: 'space-between' } },
+          h('div', { className: 'rw-add-title' }, t('createRemote'))),
+        h('div', { className: 'rw-hint' }, t('flowRemoteDesc')),
+        h('div', { className: 'rw-field' },
+          h('div', { className: 'rw-label' }, t('stepHost')),
+          h(HostList, { t: t, hosts: hostData.hosts, loading: hostData.loading, selectedId: selectedHostId, onSelect: chooseHost }),
+          hostData.error ? h(Banner, { kind: 'error' }, t('hostsFailed') + '：' + messageOf(hostData.error, t, locale)) : null),
+        h('div', { className: 'rw-field' },
+          h('div', { className: 'rw-label' }, t('stepPath')),
+          h('div', { className: 'rw-input-row' },
+            h('input', {
+              className: 'rw-input rw-input-mono',
+              value: remotePath,
+              placeholder: t('pathPlaceholder'),
+              spellCheck: false,
+              autoComplete: 'off',
+              onChange: function (event) { setRemotePath(event.currentTarget.value); },
+              onKeyDown: function (event) { if (event.key === 'Enter') submit(); },
+            }),
+            h('button', {
+              type: 'button', className: 'rw-btn',
+              onClick: function () { setRemoteOpen(function (value) { return !value; }); },
+              disabled: !selectedHostId,
+            }, IconFolder(13), remoteOpen ? t('cancel') : t('browse'))),
+          remoteOpen
+            ? h(RemotePathPicker, {
+              t: t, locale: locale, hostId: selectedHostId,
+              initialPath: remotePath,
+              onPick: function (picked) { setRemotePath(picked); setRemoteOpen(false); },
+            })
+            : null,
+          h('div', { className: 'rw-hint' }, t('diskHint'))),
+        h('div', { className: 'rw-field' },
+          h('div', { className: 'rw-label' }, t('remoteStepName')),
+          h('input', {
+            className: 'rw-input',
+            value: name,
+            placeholder: basename(remotePath) || t('namePlaceholder'),
+            maxLength: 120,
+            onChange: function (event) { setName(event.currentTarget.value); },
+            onKeyDown: function (event) { if (event.key === 'Enter') submit(); },
+          })),
+        h('div', { className: 'rw-hint' }, t('remotePlaceholderHint')),
+        error ? h(Banner, { kind: 'error' }, error) : null,
+        props.compact ? null : h('div', { className: 'rw-actions' },
+          h('button', { type: 'button', className: 'rw-btn', disabled: busy, onClick: onCancel }, t('cancel')),
+          h('button', {
+            type: 'button', className: 'rw-btn rw-btn-primary',
+            disabled: busy || !selectedHostId || remotePath.trim() === '',
+            onClick: submit,
+          }, busy ? Spinner(13) : IconServer(13), busy ? t('creating') : t('create'))));
     }
 
     // ── directory flow (sidebar / hero "add workspace" hole) ───────────────
@@ -6064,8 +6258,9 @@ window.__ModuleLoader__.load({
           h('div', { className: 'rw-modal-body' },
             h('div', { className: 'rw-tabs' },
               h('button', { type: 'button', className: 'rw-tab' + (flow === 'local' ? ' is-on' : ''), onClick: function () { setFlow('local'); } }, IconFolder(13), t('flowLocal')),
-              h('button', { type: 'button', className: 'rw-tab' + (flow === 'linked' ? ' is-on' : ''), onClick: function () { setFlow('linked'); } }, IconLink(13), t('flowLinked'))),
-            h('div', { className: 'rw-hint' }, flow === 'local' ? t('localFlowHint') : t('linkedFlowHint')),
+              h('button', { type: 'button', className: 'rw-tab' + (flow === 'linked' ? ' is-on' : ''), onClick: function () { setFlow('linked'); } }, IconLink(13), t('flowLinked')),
+              h('button', { type: 'button', className: 'rw-tab' + (flow === 'remote' ? ' is-on' : ''), onClick: function () { setFlow('remote'); } }, IconServer(13), t('flowRemote'))),
+            h('div', { className: 'rw-hint' }, flow === 'local' ? t('localFlowHint') : flow === 'remote' ? t('flowRemoteDesc') : t('linkedFlowHint')),
             flow === 'local'
               ? h('div', { className: 'rw-add' },
                 h('div', { className: 'rw-field' },
@@ -6099,13 +6294,19 @@ window.__ModuleLoader__.load({
                     onKeyDown: function (event) { if (event.key === 'Enter') createLocal(); },
                   })),
                 localError ? h(Banner, { kind: 'error' }, localError) : null)
-              : h(AddWorkspaceFlow, {
-                ctx: ctx, t: t, locale: locale, compact: true, initialMode: 'linked', lockedMode: 'linked', submitRef: flowSubmitRef,
-                onDone: function () { if (props.onCancel) props.onCancel(); },
-                onCancel: function () { if (props.onCancel) props.onCancel(); },
-              })),
+              : flow === 'remote'
+                ? h(AddRemoteWorkspaceFlow, {
+                  ctx: ctx, t: t, locale: locale, compact: true, submitRef: flowSubmitRef,
+                  onDone: function () { if (props.onCancel) props.onCancel(); },
+                  onCancel: function () { if (props.onCancel) props.onCancel(); },
+                })
+                : h(AddWorkspaceFlow, {
+                  ctx: ctx, t: t, locale: locale, compact: true, submitRef: flowSubmitRef,
+                  onDone: function () { if (props.onCancel) props.onCancel(); },
+                  onCancel: function () { if (props.onCancel) props.onCancel(); },
+                })),
           h('div', { className: 'rw-modal-foot' },
-            h('span', { className: 'rw-hint', style: { flex: '1 1 auto' } }, props.busy ? t('wsFlowBusy') : flow === 'linked' ? t('linkedFlowHint') : t('useLocalDirHint')),
+            h('span', { className: 'rw-hint', style: { flex: '1 1 auto' } }, props.busy ? t('wsFlowBusy') : flow === 'linked' ? t('linkedFlowHint') : flow === 'remote' ? t('flowRemoteDesc') : t('useLocalDirHint')),
             h('button', {
               type: 'button', className: 'rw-btn', disabled: Boolean(props.busy) || localBusy,
               onClick: function () { if (props.onCancel) props.onCancel(); },
@@ -6127,89 +6328,6 @@ window.__ModuleLoader__.load({
     }
 
     // ── settings section ───────────────────────────────────────────────────
-
-    function RemoteWorkspaceCard(props) {
-      var workspace = props.workspace;
-      var t = props.t;
-      var ctx = props.ctx;
-      var locale = props.locale;
-      var refresh = props.refresh;
-      var state = useState({ testing: false, removing: false, message: null });
-      var local = state[0];
-      var setLocal = state[1];
-
-      function open() {
-        var sidebar = ctx.get && ctx.get('betterSidebar');
-        if (!sidebar || typeof sidebar.openTab !== 'function') return;
-        sidebar.openTab({
-          type: REMOTE_TAB_TYPE,
-          id: REMOTE_TAB_TYPE,
-          title: t('remoteTabTitle'),
-          path: '/',
-          meta: { remoteId: workspace.id },
-        });
-        dismissSettingsOverlay();
-      }
-
-      function test() {
-        setLocal({ testing: true, removing: false, message: null });
-        apiCall('workspaces.test', { id: workspace.id }).then(function (result) {
-          setLocal({
-            testing: false,
-            removing: false,
-            message: result.ok
-              ? { kind: 'success', text: t('testOk') + (result.latencyMs ? ' · ' + result.latencyMs + ' ms' : '') }
-              : { kind: 'error', text: t('testFail') + '：' + (result.error || '') },
-          });
-          refresh();
-        }).catch(function (error) {
-          setLocal({ testing: false, removing: false, message: { kind: 'error', text: t('testFail') + '：' + messageOf(error, t, locale) } });
-        });
-      }
-
-      function remove() {
-        if (!local.removing) {
-          setLocal({ testing: false, removing: true, message: null });
-          return;
-        }
-        setLocal({ testing: false, removing: true, message: { kind: 'info', text: t('loading') } });
-        apiCall('workspaces.remove', { id: workspace.id }).then(function () {
-          bus.emit();
-        }).catch(function (error) {
-          setLocal({ testing: false, removing: false, message: { kind: 'error', text: messageOf(error, t, locale) } });
-        });
-      }
-
-      var title = workspace.name || basename(workspace.remotePath) || workspace.hostName;
-      var hostLabel = workspace.username + '@' + workspace.host + ':' + workspace.port;
-
-      return h('div', { className: 'rw-card' },
-        h('div', { className: 'rw-card-head' },
-          h('span', { className: 'rw-icon-chip' }, IconServer(16)),
-          h('div', { className: 'rw-fill', style: { flex: '1 1 auto', minWidth: 0 } },
-            h('div', { className: 'rw-card-title' },
-              h('span', { className: 'rw-name', title: title }, title),
-              h(StatusPill, { status: workspace.status, t: t })),
-            h('div', { className: 'rw-path', title: workspace.remotePath }, workspace.remotePath)),
-          h('div', { className: 'rw-actions' },
-            h('button', { type: 'button', className: 'rw-btn rw-btn-sm', onClick: open, disabled: !(ctx.get && ctx.get('betterSidebar')) }, IconExternal(12), t('open')),
-            h('button', { type: 'button', className: 'rw-btn rw-btn-sm', onClick: test, disabled: local.testing }, local.testing ? Spinner(12) : IconRefresh(12), local.testing ? t('testRunning') : t('test')),
-            h('button', {
-              type: 'button',
-              className: 'rw-btn rw-btn-sm' + (local.removing ? ' rw-btn-danger' : ' rw-btn-ghost'),
-              onClick: remove,
-              title: local.removing ? t('removeHint') : t('remove'),
-            }, IconTrash(12), local.removing ? t('confirmRemove') : t('remove')))),
-        h('div', { className: 'rw-meta' },
-          h('span', { className: 'rw-chip' }, IconServer(11), workspace.hostName),
-          h('span', { className: 'rw-meta-text rw-input-mono', title: hostLabel }, hostLabel)),
-        local.message
-          ? h(Banner, {
-            kind: local.message.kind === 'success' ? 'success' : local.message.kind === 'error' ? 'error' : undefined,
-            onClose: function () { setLocal({ testing: false, removing: false, message: null }); },
-          }, local.message.text)
-          : null);
-    }
 
     function LinkedWorkspaceCard(props) {
       var link = props.link;
@@ -6403,6 +6521,157 @@ window.__ModuleLoader__.load({
           : null);
     }
 
+    function RemoteWorkspaceCard(props) {
+      var workspace = props.workspace;
+      var t = props.t;
+      var ctx = props.ctx;
+      var locale = props.locale;
+      var refresh = props.refresh;
+      var state = useState({ busy: '', message: null, removing: false, renaming: false, draft: workspace.name });
+      var local = state[0];
+      var setLocal = state[1];
+
+      function openWorkspace() {
+        if (!workspace.workspaceId) return;
+        var uiWorkspace = null;
+        try { uiWorkspace = ctx.get('uiWorkspace'); } catch (error) { uiWorkspace = null; }
+        if (!uiWorkspace && ctx.root && typeof ctx.root.get === 'function') {
+          try { uiWorkspace = ctx.root.get('uiWorkspace'); } catch (error) { uiWorkspace = null; }
+        }
+        if (uiWorkspace && typeof uiWorkspace.openWorkspace === 'function') {
+          try {
+            var navigation = uiWorkspace.openWorkspace(workspace.workspaceId);
+            if (navigation && typeof navigation.catch === 'function') navigation.catch(function () { /* navigation aborted */ });
+          } catch (error) { /* ignore */ }
+        }
+        dismissSettingsOverlay();
+      }
+
+      function openTree() {
+        var sidebar = ctx.get && ctx.get('betterSidebar');
+        if (!sidebar || typeof sidebar.openTab !== 'function') return;
+        sidebar.openTab({
+          type: REMOTE_TREE_TAB_TYPE,
+          id: REMOTE_TREE_TAB_TYPE,
+          title: workspace.name,
+          path: '/',
+          meta: { remoteId: workspace.id },
+        });
+        dismissSettingsOverlay();
+      }
+
+      function startRename() {
+        setLocal(function (previous) { return Object.assign({}, previous, { renaming: true, draft: workspace.name, message: null }); });
+      }
+
+      function submitRename() {
+        var next = String(local.draft == null ? '' : local.draft).trim();
+        if (next === '' || next === workspace.name) {
+          setLocal(function (previous) { return Object.assign({}, previous, { renaming: false }); });
+          return;
+        }
+        setLocal(function (previous) { return Object.assign({}, previous, { busy: 'rename', message: null }); });
+        apiCall('remote_workspaces.update', { id: workspace.id, name: next }).then(function () {
+          setLocal(function (previous) { return Object.assign({}, previous, { busy: '', renaming: false }); });
+          refresh();
+        }).catch(function (error) {
+          setLocal(function (previous) {
+            return Object.assign({}, previous, { busy: '', message: { kind: 'error', text: t('remoteUpdateFailed') + '：' + messageOf(error, t, locale) } });
+          });
+        });
+      }
+
+      function testConnection() {
+        setLocal(function (previous) { return Object.assign({}, previous, { busy: 'test', message: null }); });
+        apiCall('remote_workspaces.test', { id: workspace.id }).then(function (result) {
+          var ok = result && result.ok;
+          var text = ok
+            ? t('testOk', { ms: result.latencyMs == null ? '' : result.latencyMs })
+            : (t('testFailed') + '：' + (result && result.error ? result.error : t('testFailed')));
+          setLocal(function (previous) { return Object.assign({}, previous, { busy: '', message: { kind: ok ? 'success' : 'error', text: text } }); });
+        }).catch(function (error) {
+          setLocal(function (previous) {
+            return Object.assign({}, previous, { busy: '', message: { kind: 'error', text: t('testFailed') + '：' + messageOf(error, t, locale) } });
+          });
+        });
+      }
+
+      function remove() {
+        if (!local.removing) {
+          setLocal(function (previous) { return Object.assign({}, previous, { removing: true, message: null }); });
+          return;
+        }
+        setLocal(function (previous) { return Object.assign({}, previous, { busy: 'remove' }); });
+        apiCall('remote_workspaces.remove', { id: workspace.id }).then(function () {
+          setLocal(function (previous) { return Object.assign({}, previous, { busy: '', removing: false, message: { kind: 'success', text: t('remoteRemoved') } }); });
+          bus.emit();
+          refresh();
+        }).catch(function (error) {
+          setLocal(function (previous) {
+            return Object.assign({}, previous, { busy: '', message: { kind: 'error', text: t('remoteRemoveFailed') + '：' + messageOf(error, t, locale) } });
+          });
+        });
+      }
+
+      var hostLabel = (workspace.username ? workspace.username + '@' : '') + (workspace.host || workspace.hostName || '');
+
+      return h('div', { className: 'rw-card' },
+        h('div', { className: 'rw-card-head' },
+          h('span', { className: 'rw-icon-chip' }, IconServer(16)),
+          h('div', { className: 'rw-fill', style: { flex: '1 1 auto', minWidth: 0 } },
+            h('div', { className: 'rw-card-title' },
+              local.renaming
+                ? h('input', {
+                  className: 'rw-input',
+                  value: local.draft,
+                  autoFocus: true,
+                  onChange: function (event) { setLocal(function (previous) { return Object.assign({}, previous, { draft: event.target.value }); }); },
+                  onKeyDown: function (event) {
+                    if (event.key === 'Enter') { event.preventDefault(); submitRename(); }
+                    if (event.key === 'Escape') { event.preventDefault(); setLocal(function (previous) { return Object.assign({}, previous, { renaming: false }); }); }
+                  },
+                })
+                : h('span', { className: 'rw-name', title: workspace.name }, workspace.name),
+              h('span', { className: 'rw-chip' }, t('remoteChip')),
+              h(StatusPill, { status: workspace.status, t: t })),
+            local.renaming
+              ? null
+              : h('div', { className: 'rw-pair' },
+                h('div', { className: 'rw-pair-item' },
+                  h('span', { className: 'rw-pair-label' }, t('pathRemoteShort') + (hostLabel ? ' · ' + hostLabel : '')),
+                  h('span', { className: 'rw-path', title: workspace.remotePath }, workspace.remotePath)),
+                h('div', { className: 'rw-pair-item' },
+                  h('span', { className: 'rw-pair-label' }, t('remotePlaceholderLabel')),
+                  h('span', { className: 'rw-path', title: workspace.placeholderPath }, workspace.placeholderPath)))),
+          h('div', { className: 'rw-actions' },
+            local.renaming
+              ? h('span', null,
+                h('button', { type: 'button', className: 'rw-btn rw-btn-sm rw-btn-ghost', onClick: function () { setLocal(function (previous) { return Object.assign({}, previous, { renaming: false }); }); } }, t('cancel')),
+                h('button', { type: 'button', className: 'rw-btn rw-btn-sm rw-btn-primary', onClick: submitRename, disabled: local.busy === 'rename' }, local.busy === 'rename' ? Spinner(12) : null, t('save')))
+              : h('span', null,
+                workspace.workspaceId
+                  ? h('button', { type: 'button', className: 'rw-btn rw-btn-sm', onClick: openWorkspace }, IconExternal(12), t('openWorkspace'))
+                  : null,
+                h('button', { type: 'button', className: 'rw-btn rw-btn-sm', onClick: openTree }, IconFolderTree(12), t('openTree')),
+                h('button', { type: 'button', className: 'rw-btn rw-btn-sm rw-btn-ghost', onClick: testConnection, disabled: local.busy !== '' }, local.busy === 'test' ? Spinner(12) : IconRefresh(12), t('testConnection')),
+                h('button', { type: 'button', className: 'rw-btn rw-btn-sm rw-btn-ghost', onClick: startRename, disabled: local.busy !== '' }, t('rename')),
+                h('button', { type: 'button', className: 'rw-btn rw-btn-sm rw-btn-ghost', onClick: remove, disabled: local.busy === 'remove' }, IconTrash(12), t('removeRemote'))))),
+        h('div', { className: 'rw-hint' }, t('remoteSessionHint')),
+        local.removing
+          ? h('div', { className: 'rw-warn-box' },
+            h('div', null, t('remoteRemoveHint')),
+            h('div', { className: 'rw-actions', style: { marginTop: 8 } },
+              h('button', { type: 'button', className: 'rw-btn rw-btn-sm', onClick: function () { setLocal(function (previous) { return Object.assign({}, previous, { removing: false }); }); } }, t('cancel')),
+              h('button', { type: 'button', className: 'rw-btn rw-btn-sm rw-btn-danger', onClick: remove, disabled: local.busy === 'remove' }, IconTrash(12), t('confirmRemove'))))
+          : null,
+        local.message
+          ? h(Banner, {
+            kind: local.message.kind === 'success' ? 'success' : local.message.kind === 'error' ? 'error' : undefined,
+            onClose: function () { setLocal(function (previous) { return Object.assign({}, previous, { message: null }); }); },
+          }, local.message.text)
+          : null);
+    }
+
     function ThemeGroup(props) {
       var t = props.t;
       var locale = props.locale;
@@ -6547,7 +6816,7 @@ window.__ModuleLoader__.load({
       var setAdding = addingState[1];
       var sidebarAvailable = Boolean(ctx.get && ctx.get('betterSidebar'));
       var links = remote.data.links || [];
-      var workspaces = remote.data.workspaces || [];
+      var remotes = remote.data.remotes || [];
       var hosts = remote.data.hosts || [];
 
       function openTree() {
@@ -6560,6 +6829,11 @@ window.__ModuleLoader__.load({
           path: '/',
           meta: {},
         });
+        dismissSettingsOverlay();
+      }
+
+      function toggleAdding(mode) {
+        setAdding(adding === mode ? '' : mode);
       }
 
       return h('div', { className: 'rw-root' },
@@ -6570,23 +6844,30 @@ window.__ModuleLoader__.load({
           h('div', { className: 'rw-actions' },
             h('button', {
               type: 'button', className: 'rw-btn' + (adding === 'linked' ? '' : ' rw-btn-primary'),
-              onClick: function () { setAdding(adding === 'linked' ? '' : 'linked'); },
+              onClick: function () { toggleAdding('linked'); },
             }, adding === 'linked' ? IconClose(13) : IconLink(13), t('createLinked')),
             h('button', {
               type: 'button', className: 'rw-btn' + (adding === 'remote' ? '' : ' rw-btn-primary'),
-              onClick: function () { setAdding(adding === 'remote' ? '' : 'remote'); },
-            }, adding === 'remote' ? IconClose(13) : IconServer(13), t('addRemoteDir')))),
+              onClick: function () { toggleAdding('remote'); },
+            }, adding === 'remote' ? IconClose(13) : IconServer(13), t('createRemote')))),
         !sidebarAvailable ? h(Banner, { kind: 'warn' }, t('needsSidebar')) : null,
         h(ThemeGroup, { t: t, locale: locale }),
         h(EditorSettingsGroup, { t: t, locale: locale }),
-        adding !== ''
+        adding === 'linked'
           ? h(AddWorkspaceFlow, {
-            ctx: ctx, t: t, locale: locale, initialMode: adding, lockedMode: adding,
+            ctx: ctx, t: t, locale: locale,
             onDone: function () { setAdding(''); remote.reload(); },
             onCancel: function () { setAdding(''); },
           })
           : null,
-        remote.data.error ? h(Banner, { kind: 'error' }, t('workspacesFailed') + '：' + messageOf(remote.data.error, t, locale)) : null,
+        adding === 'remote'
+          ? h(AddRemoteWorkspaceFlow, {
+            ctx: ctx, t: t, locale: locale,
+            onDone: function () { setAdding(''); remote.reload(); },
+            onCancel: function () { setAdding(''); },
+          })
+          : null,
+        remote.data.error ? h(Banner, { kind: 'error' }, t('remoteWorkspacesFailed') + '：' + messageOf(remote.data.error, t, locale)) : null,
         remote.data.hostError ? h(Banner, { kind: 'error' }, t('hostsFailed') + '：' + messageOf(remote.data.hostError, t, locale)) : null,
         remote.data.linkError ? h(Banner, { kind: 'error' }, t('linksFailed') + '：' + messageOf(remote.data.linkError, t, locale)) : null,
         h('div', { className: 'rw-group' },
@@ -6609,15 +6890,13 @@ window.__ModuleLoader__.load({
               }))),
         h('div', { className: 'rw-group' },
           h('div', { className: 'rw-group-head' },
-            h('span', { className: 'rw-group-title' }, t('remoteDirsTitle')),
-            h('span', { className: 'rw-chip' }, String(workspaces.length)),
-            h('span', { className: 'rw-group-hint' }, t('remoteDirsHint'))),
-          workspaces.length === 0
-            ? h('div', { className: 'rw-empty', style: { border: 'none', padding: '18px 8px' } },
-              h('div', { className: 'rw-empty-title' }, t('emptyTitle')),
-              h('div', { className: 'rw-empty-body' }, hosts.length === 0 ? t('emptyHint') : t('emptyBody')))
+            h('span', { className: 'rw-group-title' }, t('remoteGroup')),
+            h('span', { className: 'rw-chip' }, String(remotes.length)),
+            h('span', { className: 'rw-group-hint' }, t('remoteHint'))),
+          remotes.length === 0
+            ? h('div', { className: 'rw-hint' }, t('remoteEmpty'))
             : h('div', { className: 'rw-list' },
-              workspaces.map(function (workspace) {
+              remotes.map(function (workspace) {
                 return h(RemoteWorkspaceCard, {
                   key: workspace.id,
                   workspace: workspace,
@@ -6627,8 +6906,7 @@ window.__ModuleLoader__.load({
                   refresh: remote.reload,
                 });
               }))),
-        h('div', { className: 'rw-inline', style: { justifyContent: 'space-between' } },
-          h('span', { className: 'rw-hint' }, workspaces.length + ' ' + t('remoteGroup') + ' · ' + links.length + ' ' + t('linkedGroup')),
+        h('div', { className: 'rw-inline', style: { justifyContent: 'flex-end' } },
           h('button', { type: 'button', className: 'rw-btn rw-btn-ghost rw-btn-sm', onClick: remote.reload }, IconRefresh(12), t('refresh'))));
     }
 
@@ -6737,13 +7015,16 @@ window.__ModuleLoader__.load({
             icon: function (size) { return IconFolderTree(size); },
             order: 62,
             single: true,
-            available: function (_ctx, sessionScope) { return isLinkedScope(sessionScope); },
+            available: function (_ctx, sessionScope) {
+              return isLinkedScope(sessionScope) || isLinkedWorkspaceId(sessionScope && sessionScope.workspaceId);
+            },
             component: function (props) {
               var currentLocale = useLocale(ctx);
               var t = useMemo(function () { return makeT(currentLocale); }, [currentLocale]);
               return h(RemoteDirectoryTab, Object.assign({}, props, { ctx: ctx, t: t, locale: currentLocale, variant: 'linked' }));
             },
           });
+          tabDisposers.push(function () { disposeLinkedTab(); });
         }
 
         function disposeLinkedTab() {
@@ -6755,19 +7036,22 @@ window.__ModuleLoader__.load({
         function installRemoteTab() {
           if (remoteTabDisposer !== null) return;
           remoteTabDisposer = sidebar.registerTab({
-            id: REMOTE_TAB_TYPE,
+            id: REMOTE_TREE_TAB_TYPE,
             title: function () { return makeT(readLocale(ctx))('remoteTabTitle'); },
             description: function () { return makeT(readLocale(ctx))('remoteTabDesc'); },
             icon: function (size) { return IconServer(size); },
             order: 61,
             single: true,
-            available: function () { return hasRemoteDirectories; },
+            available: function (_ctx, sessionScope) {
+              return isRemoteScope(sessionScope) || isRemoteWorkspaceId(sessionScope && sessionScope.workspaceId);
+            },
             component: function (props) {
               var currentLocale = useLocale(ctx);
               var t = useMemo(function () { return makeT(currentLocale); }, [currentLocale]);
               return h(RemoteDirectoryTab, Object.assign({}, props, { ctx: ctx, t: t, locale: currentLocale, variant: 'remote' }));
             },
           });
+          tabDisposers.push(function () { disposeRemoteTab(); });
         }
 
         function disposeRemoteTab() {
@@ -6776,50 +7060,22 @@ window.__ModuleLoader__.load({
           remoteTabDisposer = null;
         }
 
-        function activeSessionClientInfo(sessionId) {
-          if (!sessionId) return null;
-          try {
-            var sessions = ctx.sessions || (ctx.get && ctx.get('sessions'));
-            var list = sessions && sessions.list;
-            var snapshot = list && typeof list.getSnapshot === 'function' ? list.getSnapshot() : null;
-            var record = snapshot && snapshot.byId ? snapshot.byId[sessionId] : null;
-            if (!record) return null;
-            var header = record.header || record;
-            return { cwd: header.cwd || record.cwd || '', workspaceId: header.workspaceId || record.workspaceId || '' };
-          } catch (error) {
-            return null;
-          }
-        }
-
-        function isLinkedSessionInfo(info) {
-          return Boolean(info && ((info.cwd && isLinkedScope({ cwd: info.cwd })) || isLinkedWorkspaceId(info.workspaceId)));
-        }
-
+        // Both page kinds stay registered for the whole session: `available`
+        // only greys out the "+" entry for a mismatched session, while
+        // `openTab` refuses a kind it has never seen. Registering lazily per
+        // session meant "open the tree" from the settings page silently did
+        // nothing whenever the workspace was not the one on screen.
         function syncDirectoryTabs() {
           if (syncDirectoryTabsInFlight) return;
           syncDirectoryTabsInFlight = true;
           refreshDirectoryAvailability().catch(function () { /* ignore */ }).then(function () {
-            if (hasRemoteDirectories) installRemoteTab();
-            else disposeRemoteTab();
-            var snapshot = typeof sidebar.getSnapshot === 'function' ? sidebar.getSnapshot() : null;
-            var sessionId = snapshot && snapshot.sessionId;
-            if (!sessionId) {
-              disposeLinkedTab();
-              return undefined;
-            }
-            var clientInfo = activeSessionClientInfo(sessionId);
-            if (isLinkedSessionInfo(clientInfo)) {
-              installLinkedTab();
-              return undefined;
-            }
-            return apiCall('session.info', { sessionId: sessionId }).then(function (info) {
-              if (isLinkedSessionInfo(info)) installLinkedTab();
-              else disposeLinkedTab();
-            }).catch(function () { disposeLinkedTab(); });
-          }).catch(function () { /* ignore */ }).then(function () { syncDirectoryTabsInFlight = false; });
+            syncDirectoryTabsInFlight = false;
+          });
         }
 
         syncDirectoryTabsRef = syncDirectoryTabs;
+        installLinkedTab();
+        installRemoteTab();
         try {
           tabDisposers.push(sidebar.subscribeState(function () { syncDirectoryTabs(); }));
         } catch (error) { /* state subscription is optional */ }
@@ -6864,22 +7120,11 @@ window.__ModuleLoader__.load({
           }
         }
 
-        // Tabs persisted before the 0.3.0 rename still carry the old type ids;
-        // register hidden aliases so a reloaded page restores them instead of
-        // showing "no available view" for the legacy tab.
+        // Tabs persisted before the 0.3.0 rename still carry the old file type
+        // id; register a hidden alias so a reloaded page restores it instead of
+        // showing "no available view" for the legacy tab. The legacy tree kind
+        // ("dsh-remote-workspace") is now the real remote-workspace tab.
         try {
-          tabDisposers.push(sidebar.registerTab({
-            id: 'dsh-remote-workspace',
-            title: function () { return makeT(readLocale(ctx))('tabTitle'); },
-            hidden: true,
-            order: 64,
-            single: true,
-            component: function (props) {
-              var currentLocale = useLocale(ctx);
-              var t = useMemo(function () { return makeT(currentLocale); }, [currentLocale]);
-              return h(RemoteDirectoryTab, Object.assign({}, props, { ctx: ctx, t: t, locale: currentLocale, variant: 'linked' }));
-            },
-          }));
           tabDisposers.push(sidebar.registerTab({
             id: 'dsh-remote-workspace:file',
             title: function () { return makeT(readLocale(ctx))('fileTabTitle'); },

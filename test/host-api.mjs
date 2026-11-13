@@ -227,16 +227,21 @@ async function main() {
 
   // 5. Add a direct remote workspace
   started = Date.now()
-  const added = await ok('workspaces.add', { hostId: host.id, remotePath: ROOT, name: 'Smoke Test' })
-  const workspaceId = added.workspace.id
+  const added = await ok('remote_workspaces.create', { hostId: host.id, remotePath: ROOT, name: 'Smoke Test' })
+  const remoteId = added.workspace.id
   assert.equal(added.workspace.remotePath, ROOT)
   assert.equal(added.workspace.name, 'Smoke Test')
-  step('workspaces.add', started, workspaceId)
+  const fetched = await ok('remote_workspaces.get', { id: remoteId })
+  assert.equal(fetched.workspace.id, remoteId)
+  assert.ok(fetched.workspace.placeholderPath, 'a placeholder directory backs the workspace')
+  assert.ok(existsSync(fetched.workspace.placeholderPath), 'the placeholder directory exists on disk')
+  assert.ok(fetched.workspace.workspaceId, 'a DSH workspace was registered')
+  step('remote_workspaces.create + get', started, remoteId)
 
   try {
     // 6. List the workspace root
     started = Date.now()
-    const listing = await ok('fs.list', { workspaceId, path: '' })
+    const listing = await ok('fs.list', { remoteId, path: '' })
     assert.equal(listing.path, ROOT)
     assert.ok(listing.entries.length > 0, 'workspace root is not empty')
     step('fs.list', started, `${listing.entries.length} entries`)
@@ -244,9 +249,9 @@ async function main() {
     // 7. Write a file, read it back
     started = Date.now()
     const content = `hello from dsh-linked-workspace\n第二个行\n${Date.now()}\n`
-    const written = await ok('fs.write', { workspaceId, path: TEST_FILE, content })
+    const written = await ok('fs.write', { remoteId, path: TEST_FILE, content })
     assert.equal(written.size, Buffer.byteLength(content))
-    const read = await ok('fs.read', { workspaceId, path: TEST_FILE })
+    const read = await ok('fs.read', { remoteId, path: TEST_FILE })
     assert.equal(read.content, content)
     assert.equal(read.editable, true)
     step('fs.write + fs.read', started, `${written.size} bytes`)
@@ -254,66 +259,66 @@ async function main() {
     // 8. Conflict detection
     started = Date.now()
     const conflict = await fail('fs.write', {
-      workspaceId,
+      remoteId,
       path: TEST_FILE,
       content: 'should not be written\n',
       expectedMtime: read.mtime - 60_000,
     }, 409)
     assert.equal(conflict.code, 'CONFLICT')
-    const kept = await ok('fs.read', { workspaceId, path: TEST_FILE })
+    const kept = await ok('fs.read', { remoteId, path: TEST_FILE })
     assert.equal(kept.content, content, 'the conflicting write did not touch the file')
     step('fs.write conflict guard', started)
 
     // 9. Forced save (no expectedMtime)
     started = Date.now()
-    await ok('fs.write', { workspaceId, path: TEST_FILE, content: 'force saved\n' })
-    const forced = await ok('fs.read', { workspaceId, path: TEST_FILE })
+    await ok('fs.write', { remoteId, path: TEST_FILE, content: 'force saved\n' })
+    const forced = await ok('fs.read', { remoteId, path: TEST_FILE })
     assert.equal(forced.content, 'force saved\n')
     step('fs.write force', started)
 
     // 10. Path containment
     started = Date.now()
-    await fail('fs.list', { workspaceId, path: '../../etc' }, 400)
-    await fail('fs.read', { workspaceId, path: '/etc/passwd' }, 400)
+    await fail('fs.list', { remoteId, path: '../../etc' }, 400)
+    await fail('fs.read', { remoteId, path: '/etc/passwd' }, 400)
     step('path containment', started)
 
     // 11. stat / mkdir / rename / delete
     started = Date.now()
-    const stat = await ok('fs.stat', { workspaceId, path: TEST_FILE })
+    const stat = await ok('fs.stat', { remoteId, path: TEST_FILE })
     assert.equal(stat.type, 'file')
     const dir = `${ROOT}/.dshrw-dir-${SUFFIX}`
-    await ok('fs.mkdir', { workspaceId, path: dir })
-    await ok('fs.rename', { workspaceId, from: TEST_FILE, to: `${dir}/renamed.txt` })
-    const moved = await ok('fs.read', { workspaceId, path: `${dir}/renamed.txt` })
+    await ok('fs.mkdir', { remoteId, path: dir })
+    await ok('fs.rename', { remoteId, from: TEST_FILE, to: `${dir}/renamed.txt` })
+    const moved = await ok('fs.read', { remoteId, path: `${dir}/renamed.txt` })
     assert.equal(moved.content, 'force saved\n')
-    await ok('fs.mkdir', { workspaceId, path: `${dir}/sub` })
-    const remoteMoved = await ok('fs.move', { workspaceId, path: `${dir}/renamed.txt`, targetDir: `${dir}/sub` })
+    await ok('fs.mkdir', { remoteId, path: `${dir}/sub` })
+    const remoteMoved = await ok('fs.move', { remoteId, path: `${dir}/renamed.txt`, targetDir: `${dir}/sub` })
     assert.equal(remoteMoved.path, `${dir}/sub/renamed.txt`)
-    assert.equal((await ok('fs.read', { workspaceId, path: remoteMoved.path })).content, 'force saved\n')
-    await ok('fs.write', { workspaceId, path: `${dir}/renamed.txt`, content: 'collision\n' })
-    await fail('fs.move', { workspaceId, path: `${dir}/renamed.txt`, targetDir: `${dir}/sub` }, 409)
-    await ok('fs.delete', { workspaceId, path: `${dir}/renamed.txt` })
-    await ok('fs.delete', { workspaceId, path: remoteMoved.path })
-    await ok('fs.delete', { workspaceId, path: `${dir}/sub` })
-    await ok('fs.delete', { workspaceId, path: dir })
+    assert.equal((await ok('fs.read', { remoteId, path: remoteMoved.path })).content, 'force saved\n')
+    await ok('fs.write', { remoteId, path: `${dir}/renamed.txt`, content: 'collision\n' })
+    await fail('fs.move', { remoteId, path: `${dir}/renamed.txt`, targetDir: `${dir}/sub` }, 409)
+    await ok('fs.delete', { remoteId, path: `${dir}/renamed.txt` })
+    await ok('fs.delete', { remoteId, path: remoteMoved.path })
+    await ok('fs.delete', { remoteId, path: `${dir}/sub` })
+    await ok('fs.delete', { remoteId, path: dir })
     step('stat / mkdir / rename / delete', started)
 
     // 12. Connection test + rename + listing
     started = Date.now()
-    const tested = await ok('workspaces.test', { id: workspaceId })
-    assert.equal(tested.ok, true, `workspaces.test failed: ${JSON.stringify(tested)}`)
-    const renamed = await ok('workspaces.rename', { id: workspaceId, name: 'Renamed Workspace' })
+    const tested = await ok('remote_workspaces.test', { id: remoteId })
+    assert.equal(tested.ok, true, `remote_workspaces.test failed: ${JSON.stringify(tested)}`)
+    const renamed = await ok('remote_workspaces.update', { id: remoteId, name: 'Renamed Workspace' })
     assert.equal(renamed.workspace.name, 'Renamed Workspace')
-    const all = await ok('workspaces.list', {})
+    const all = await ok('remote_workspaces.list', {})
     assert.equal(all.workspaces.length, 1)
     assert.equal(all.workspaces[0].hostName, host.name)
-    step('workspaces.test + rename + list', started, `${tested.latencyMs} ms`)
+    step('remote_workspaces.test + update + list', started, `${tested.latencyMs} ms`)
 
     // 13. Prepare a small remote tree for the linked workspace
     started = Date.now()
-    await ok('fs.mkdir', { workspaceId, path: REMOTE_LINK_DIR })
-    await ok('fs.write', { workspaceId, path: `${REMOTE_LINK_DIR}/a.txt`, content: 'alpha\n' })
-    await ok('fs.write', { workspaceId, path: `${REMOTE_LINK_DIR}/b.txt`, content: 'beta\n' })
+    await ok('fs.mkdir', { remoteId, path: REMOTE_LINK_DIR })
+    await ok('fs.write', { remoteId, path: `${REMOTE_LINK_DIR}/a.txt`, content: 'alpha\n' })
+    await ok('fs.write', { remoteId, path: `${REMOTE_LINK_DIR}/b.txt`, content: 'beta\n' })
     step('prepare remote linked tree', started)
 
     // 14. Linked workspace creation
@@ -331,9 +336,11 @@ async function main() {
     assert.equal(link.remotePath, REMOTE_LINK_DIR)
     assert.equal(link.mirror, true)
     assert.ok(linked.workspaceId, 'a DSH workspace was registered')
-    assert.equal(fakeWorkspaces.length, 1)
-    assert.equal(fakeWorkspaces[0].path, localRoot)
-    assert.equal(fakeWorkspaces[0].title, 'Smoke Linked')
+    // The remote workspace created above registered its placeholder first.
+    assert.equal(fakeWorkspaces.length, 2)
+    const linkedWorkspace = fakeWorkspaces.find((workspace) => workspace.path === localRoot)
+    assert.ok(linkedWorkspace, 'the linked workspace registered its local directory')
+    assert.equal(linkedWorkspace.title, 'Smoke Linked')
     assert.equal(existsSync(join(localRoot, '.local')), false, 'linked.create does not force a .local directory')
     assert.equal(existsSync(join(localRoot, '.remote')), false, 'linked.create does not force a .remote directory')
     writeFileSync(join(localRoot, 'local-copy.txt'), 'local copy' + String.fromCharCode(10))
@@ -356,7 +363,7 @@ async function main() {
 
     if (process.env.RW_TEST_ONLY_CREATION === '1') {
       await ok('linked.remove', { id: link.id, removeWorkspace: true, deleteLocalState: true })
-      await ok('fs.delete', { workspaceId, path: REMOTE_LINK_DIR })
+      await ok('fs.delete', { remoteId, path: REMOTE_LINK_DIR })
       console.log('PASS — creation-only integration checks')
       return
     }
@@ -598,7 +605,7 @@ async function main() {
     started = Date.now()
     const linkedList = await ok('linked.list', {})
     assert.equal(linkedList.links.length, 1)
-    assert.equal(linkedList.links[0].workspaceId, 'ws-1')
+    assert.equal(linkedList.links[0].workspaceId, link.workspaceId)
     const linkedListing = await ok('fs.list', { linkedId: link.id, path: '' })
     assert.equal(linkedListing.path, REMOTE_LINK_DIR)
     assert.ok(linkedListing.entries.some((entry) => entry.name === 'a.txt'))
@@ -643,13 +650,13 @@ async function main() {
     step('linked.remove', started)
 
     // Cleanup the remote linked tree.
-    await ok('fs.delete', { workspaceId, path: `${REMOTE_LINK_DIR}/a.txt` })
-    await ok('fs.delete', { workspaceId, path: `${REMOTE_LINK_DIR}/b.txt` })
-    await ok('fs.delete', { workspaceId, path: REMOTE_LINK_DIR })
+    await ok('fs.delete', { remoteId, path: `${REMOTE_LINK_DIR}/a.txt` })
+    await ok('fs.delete', { remoteId, path: `${REMOTE_LINK_DIR}/b.txt` })
+    await ok('fs.delete', { remoteId, path: REMOTE_LINK_DIR })
   } finally {
     // Cleanup: remove the workspace record and any remote leftovers.
     try {
-      await ok('workspaces.remove', { id: workspaceId })
+      await ok('remote_workspaces.remove', { id: remoteId })
     } catch (error) {
       console.error('cleanup: could not remove workspace', error && error.message ? error.message : error)
     }

@@ -2,6 +2,20 @@
 
 English · [简体中文](CHANGELOG.zh.md)
 
+## 0.11.0 — 2026-11-13
+
+**Breaking change**: Remote workspaces replace remote directories.
+
+- **Remote workspaces (feature)**: sessions run directly in a remote directory without requiring a local copy. The Host creates a placeholder directory for DSH workspace registration, sessions use the `linked_workspace` tool (or `fs.*` APIs with `remoteId`), and local Skills stay accessible. The old read-only "remote directory" mode is removed.
+- **Settings UI (feature)**: the settings “Connections” page is now “Connections & workspaces” with a **Remote workspaces** group — create (host + remote directory + name), open workspace, open directory tree, test connection, rename inline, and remove behind a two-step confirmation.
+- **Sidebar (feature)**: a dedicated **Remote workspace directory** tab shows the remote tree without the local pane; files open read-only in the editor. Both tree tabs (linked and remote) register eagerly, so a remote tree opens from settings even while the current session belongs to a linked workspace.
+- **Add workspace flow (feature)**: the sidebar “Add workspace” dialog gains a third tab, “Remote workspace (runs in the remote directory)”, with steps *SSH connection → remote directory → workspace name*.
+- **API changes**: `workspaces.*` methods removed, replaced by `remote_workspaces.*` (list/create/get/update/remove/test). `requireScope` now accepts `linkedId` or `remoteId` (not `workspaceId`). All existing `fs.*` methods work with both linked and remote workspaces. `linked_workspace` resolves remote workspaces by id, placeholder path or name, and reports `kind: "remote"` from `info`.
+- **Data persistence**: `remote-workspaces.json` registry (including the SSH host snapshot for display), placeholder directories under `remote-placeholders/<uuid>/`.
+- **Fixes**: removing a remote workspace now really deletes its placeholder directory (the code called an unimported `rm`), the host-snapshot refresh no longer calls a non-existent `LinkedStore.updateSnapshot`, and `terminal.open` no longer reads the removed remote-directory scope.
+- **Smaller fixes**: a directory-tree tab opened from the start page lists every linked/remote workspace when the current session belongs to none of them (it used to show an empty pane), the tree empty state names workspaces instead of “remote directories”, and “Open directory tree” now closes the settings dialog the way “Open workspace” does.
+- Tests: 63 unit tests pass; `test/host-api.mjs` covers `remote_workspaces.*` end to end.
+
 ## 0.10.0 — 2026-11-12
 
 Fourth review round: transfer safety, content search, document find and comparison actions.

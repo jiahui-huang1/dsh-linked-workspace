@@ -43,9 +43,9 @@ FileRead = { path, relative, content, size, mtime, truncated, binary,
 
 ## Remote scope
 
-Every `fs.*` method takes a scope: either `{ workspaceId }` (a direct remote
-directory) or `{ linkedId }` (a linked workspace's remote root). Paths are
-relative to the scope root, or absolute inside it.
+Every `fs.*` method takes a scope: either `{ linkedId }` (a linked workspace's
+remote root) or `{ remoteId }` (a remote workspace). Paths are relative to the
+scope root, or absolute inside it.
 
 ## Methods
 
@@ -53,21 +53,22 @@ relative to the scope root, or absolute inside it.
 | --- | --- | --- |
 | `hosts.list` | `{ refresh? }` | `{ hosts: HostInfo[] }` |
 | `hosts.browse` | `{ hostId, path? }` | `{ path, parent, home, entries }` (dirs + files) |
-| `workspaces.list` | `{}` | `{ workspaces: WorkspaceInfo[] }` |
-| `workspaces.add` | `{ hostId, remotePath, name? }` | `{ workspace }` |
-| `workspaces.remove` | `{ id }` | `{}` |
-| `workspaces.rename` | `{ id, name }` | `{ workspace }` |
-| `workspaces.test` | `{ id }` | `{ ok, latencyMs?, resolvedPath?, error? }` |
-| `fs.list` | `{ workspaceId?/linkedId?, path, limit?, offset? }` | `{ path, entries: RemoteEntry[], total, offset, limit, hasMore }` (default 500, max 5000). Listings are cached for 5 s for `offset > 0`; writes, mkdir, rename, move, delete, copy and transfers invalidate the cache. |
-| `fs.read` | `{ workspaceId?/linkedId?, path, maxBytes? }` | `FileRead` |
-| `media.read` | `{ workspaceId?/linkedId?, path }` | `{ path, size, mtime, mime, base64 }` (PNG/JPG/GIF/WebP/BMP/ICO/AVIF/SVG, max 24 MB) |
-| `fs.write` | `{ workspaceId?/linkedId?, path, content, expectedMtime?, createOnly? }` | `{ path, size, mtime }` (`createOnly: true`: existing target → 409) |
-| `fs.stat` | `{ workspaceId?/linkedId?, path }` | `{ path, relative, type, size, mtime, mode }` |
-| `fs.mkdir` | `{ workspaceId?/linkedId?, path, createOnly? }` | `{}` (`createOnly: true`: existing target → 409) |
-| `fs.rename` | `{ workspaceId?/linkedId?, from, to }` | `{}` |
-| `fs.move` | `{ workspaceId?/linkedId?, path, targetDir? }` | `{ path }` (same remote tree; collision → 409) |
-| `fs.delete` | `{ workspaceId?/linkedId?, path }` | `{}` |
-| `fs.home` | `{ workspaceId?/linkedId? }` | `{ home }` |
+| `remote_workspaces.list` | `{}` | `{ workspaces: RemoteWorkspaceInfo[] }` |
+| `remote_workspaces.create` | `{ hostId, remotePath, name? }` | `{ workspace }` |
+| `remote_workspaces.get` | `{ id }` | `{ workspace }` |
+| `remote_workspaces.update` | `{ id, name? }` | `{ workspace }` |
+| `remote_workspaces.remove` | `{ id }` | `{ removedWorkspace, removedPlaceholder }` |
+| `remote_workspaces.test` | `{ id }` | `{ ok, latencyMs?, exists?, type?, error? }` |
+| `fs.list` | `{ linkedId?/remoteId?, path, limit?, offset? }` | `{ path, entries: RemoteEntry[], total, offset, limit, hasMore }` (default 500, max 5000). Listings are cached for 5 s for `offset > 0`; writes, mkdir, rename, move, delete, copy and transfers invalidate the cache. |
+| `fs.read` | `{ linkedId?/remoteId?, path, maxBytes? }` | `FileRead` |
+| `media.read` | `{ linkedId?/remoteId?, path }` | `{ path, size, mtime, mime, base64 }` (PNG/JPG/GIF/WebP/BMP/ICO/AVIF/SVG, max 24 MB) |
+| `fs.write` | `{ linkedId?/remoteId?, path, content, expectedMtime?, createOnly? }` | `{ path, size, mtime }` (`createOnly: true`: existing target → 409) |
+| `fs.stat` | `{ linkedId?/remoteId?, path }` | `{ path, relative, type, size, mtime, mode }` |
+| `fs.mkdir` | `{ linkedId?/remoteId?, path, createOnly? }` | `{}` (`createOnly: true`: existing target → 409) |
+| `fs.rename` | `{ linkedId?/remoteId?, from, to }` | `{}` |
+| `fs.move` | `{ linkedId?/remoteId?, path, targetDir? }` | `{ path }` (same remote tree; collision → 409) |
+| `fs.delete` | `{ linkedId?/remoteId?, path }` | `{}` |
+| `fs.home` | `{ linkedId?/remoteId? }` | `{ home }` |
 | `settings.get` | `{}` | `{ editorTheme, editorThemeFamily, editorThemeMode, fileOpenMode, autoSave }` |
 | `settings.update` | `{ editorTheme?, editorThemeFamily?, editorThemeMode?, fileOpenMode?, autoSave? }` | `{ editorTheme, editorThemeFamily, editorThemeMode, fileOpenMode, autoSave }` |
 | `local.browse` | `{ path? }` | `{ path, parent, home, entries: [{ name, path }] }` |
@@ -81,23 +82,23 @@ relative to the scope root, or absolute inside it.
 | `linked.syncCancel` | `{ id }` | `{ cancelled: boolean }` |
 | `local.list` | `{ path, limit?, offset? }` | `{ path, entries: [{ name, path, type, size, mtime }], total, offset, limit, hasMore }` |
 | `local.openExternal` | `{ path }` | `{ opened, path }` |
-| `terminal.open` | `{ workspaceId?/linkedId?, side: 'remote'\|'local', path? }` | `{ opened, side, path, host? }` (`path` must stay inside the linked workspace) |
-| `fs.openExternal` | `{ workspaceId?/linkedId?, path }` | `{ opened, localPath, size }` |
+| `terminal.open` | `{ linkedId?/remoteId?, side: 'remote'\|'local', path? }` | `{ opened, side, path, host? }` (`path` must stay inside the workspace; remote workspaces only support `side: 'remote'`) |
+| `fs.openExternal` | `{ linkedId?/remoteId?, path }` | `{ opened, localPath, size }` |
 | `localWorkspace.create` | `{ path, name? }` | `{ workspaceId, title, path }` |
 | `session.info` | `{ sessionId }` | `{ sessionId, cwd, running }` |
 | `skills.list` | `{ linkedId }` | `{ localPath, skills: [{ name, description, whenToUse, path, source }] }` |
 | `skills.read` | `{ linkedId, name }` | `{ name, description, content, path }` |
-| `git.status` | `{ workspaceId?/linkedId?, side: 'remote'|'local' }` | `{ ok, repo, root, branch, changes, error? }` |
-| `fs.search` | `{ workspaceId?/linkedId?, side, query, maxResults? }` | `{ ok, query, entries, truncated }` (matches **file names**, not contents; use `fs.grep` for contents) |
-| `fs.grep` | `{ workspaceId?/linkedId?, side, query, maxResults? }` | `{ ok, query, entries, truncated }` (searches file **contents**; local scans stop at 1 MB per file, 2000 files, 8 MB and 5 s; remote uses `grep -rIl`; max 1000 rows) |
-| `fs.compare` | `{ workspaceId?/linkedId?, path? }` | `{ path, relative, localPath, localMissing, counts: { onlyLocal, onlyRemote, changed, same }, onlyLocal, onlyRemote, changed, truncated, remoteTruncated, localTruncated, skippedLinks }` (linked workspaces only; excludes `.git`, `node_modules`, `.local`, `.remote`; 4000 files and depth 12 **per side**, 200 rows per group; `skippedLinks` counts symlinks and non-regular files) |
-| `fs.pullToLocal` | `{ workspaceId?/linkedId?, path, targetDir?, conflict? }` | `{ path, relative, size, mtime }` (single file, ≤64 MB; `targetDir` must stay inside the local root; `conflict` is `error` (default), `overwrite` or `unique`) |
-| `fs.upload` | `{ workspaceId?/linkedId?, path, paths, conflict? }` | `{ side: 'remote', target, files, bytes, skipped }` (≤50 local files, 64 MB each; `conflict` is `error` (default), `overwrite` or `unique`; a missing target directory is created) |
-| `fs.transfer` | `{ workspaceId?/linkedId?, path }` | `{ files, bytes, skipped, truncated, dest }` |
-| `fs.download` | `{ workspaceId?/linkedId?, path }` | `{ path, files, bytes, skipped, truncated }` |
-| `fs.edit` | `{ workspaceId?/linkedId?, path, app? }` | `{ localPath, size }` (opens Notepad/default app) |
-| `fs.copy` | `{ workspaceId?/linkedId?, path, targetDir? }` | `{ path, files }` |
-| `fs.chmod` | `{ workspaceId?/linkedId?, path, mode }` | stat |
+| `git.status` | `{ linkedId?/remoteId?, side: 'remote'|'local' }` | `{ ok, repo, root, branch, changes, error? }` (remote workspaces only support `side: 'remote'`) |
+| `fs.search` | `{ linkedId?/remoteId?, side, query, maxResults? }` | `{ ok, query, entries, truncated }` (matches **file names**, not contents; use `fs.grep` for contents) |
+| `fs.grep` | `{ linkedId?/remoteId?, side, query, maxResults? }` | `{ ok, query, entries, truncated }` (searches file **contents**; local scans stop at 1 MB per file, 2000 files, 8 MB and 5 s; remote uses `grep -rIl`; max 1000 rows) |
+| `fs.compare` | `{ linkedId?, path? }` | `{ path, relative, localPath, localMissing, counts: { onlyLocal, onlyRemote, changed, same }, onlyLocal, onlyRemote, changed, truncated, remoteTruncated, localTruncated, skippedLinks }` (linked workspaces only; excludes `.git`, `node_modules`, `.local`, `.remote`; 4000 files and depth 12 **per side**, 200 rows per group; `skippedLinks` counts symlinks and non-regular files) |
+| `fs.pullToLocal` | `{ linkedId?, path, targetDir?, conflict? }` | `{ path, relative, size, mtime }` (linked workspaces only; single file, ≤64 MB; `targetDir` must stay inside the local root; `conflict` is `error` (default), `overwrite` or `unique`) |
+| `fs.upload` | `{ linkedId?/remoteId?, path, paths, conflict? }` | `{ side: 'remote', target, files, bytes, skipped }` (≤50 local files, 64 MB each; `conflict` is `error` (default), `overwrite` or `unique`; a missing target directory is created) |
+| `fs.transfer` | `{ linkedId?/remoteId?, path }` | `{ files, bytes, skipped, truncated, dest }` |
+| `fs.download` | `{ linkedId?/remoteId?, path }` | `{ path, files, bytes, skipped, truncated }` |
+| `fs.edit` | `{ linkedId?/remoteId?, path, app? }` | `{ localPath, size }` (opens Notepad/default app) |
+| `fs.copy` | `{ linkedId?/remoteId?, path, targetDir? }` | `{ path, files }` |
+| `fs.chmod` | `{ linkedId?/remoteId?, path, mode }` | stat |
 | `local.read` | `{ path }` | `{ path, content, size, mtime, truncated, binary, tooLarge, editable }` |
 | `local.media` | `{ path }` | `{ path, size, mtime, mime, base64 }` (max 24 MB) |
 | `local.write` | `{ path, content, expectedMtime? }` | `{ path, size, mtime }` |
@@ -120,20 +121,30 @@ whose title is `⇄ <name>`.
 
 Under `$DSH_HOME/linked-workspace/`:
 
-- `workspaces.json` — direct remote directories (no credentials).
 - `linked.json` — linked workspaces (no credentials).
+- `remote-workspaces.json` — remote workspaces (no credentials).
 - `settings.json` — `{ editorTheme, editorThemeFamily, editorThemeMode, fileOpenMode, autoSave }`.
 - `known_hosts.json` — trust-on-first-use host key fingerprints.
+- `remote-placeholders/<uuid>/` — placeholder directories for remote workspaces.
 - Local linked directories also hold `.local/linked.json` (same binding without
   secrets) and the optional `.remote/` mirror.
 
-## Agent tool
+## Agent tools
 
 `linked_workspace` (Host tool, JSON-Schema parameters) actions: `list`, `info`,
 `list_dir`, `read`, `write`, `replace`, `stat`, `mkdir`, `rename`, `delete`,
-`sync`. It resolves the linked workspace from the session working directory (or
-an explicit `workspace` reference), confines paths to the remote root, and
-mirrors reads/writes into `.remote/` when the workspace mirrors.
+`sync`. It resolves the workspace from the session working directory (a linked
+local directory or a remote workspace placeholder) or from an explicit
+`workspace` reference (id, local/placeholder path, or name), confines paths to
+the remote root, and mirrors reads/writes into `.remote/` when a linked
+workspace mirrors. `list` shows both kinds, labelled `(linked)` and `(remote)`;
+`info` returns `kind: "linked" | "remote"` and `sync` is rejected for remote
+workspaces.
+
+`linked_skills` (Host tool) actions: `list`, `read` — local skills
+(`~/.dsh/skills`, `~/.agents/skills`, `<local>/.dsh/skills`,
+`<local>/.agents/skills`). For a remote workspace `<local>` is its placeholder
+directory, so skills installed on the machine hosting the session still work.
 
 ## Client transport
 

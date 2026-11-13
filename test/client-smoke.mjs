@@ -118,7 +118,13 @@ for (const flow of registered.flows) {
   assert.equal(typeof flow.component, 'function')
 }
 
-assert.equal(registered.tabs.length, 15, 'the file tabs, 12 file slots and the legacy aliases registered eagerly (linked/remote tabs install dynamically)')
+assert.equal(registered.tabs.length, 16, 'both tree tabs, the file tab, 12 file slots and the legacy file alias register eagerly')
+const tree = registered.tabs.find((tab) => tab.id === 'dsh-linked-workspace')
+assert.ok(tree, 'linked tree tab descriptor exists')
+assert.equal(typeof tree.available, 'function')
+const remoteTree = registered.tabs.find((tab) => tab.id === 'dsh-remote-workspace')
+assert.ok(remoteTree, 'remote tree tab descriptor exists')
+assert.equal(typeof remoteTree.available, 'function')
 const file = registered.tabs.find((tab) => tab.id === 'dsh-linked-workspace:file')
 assert.ok(file, 'file tab descriptor exists')
 assert.equal(file.hidden, true)

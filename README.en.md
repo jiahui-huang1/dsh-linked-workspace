@@ -2,23 +2,23 @@
 
 English · [简体中文](README.md)
 
-Turn an existing SSH connection into a **remote directory** or a **linked workspace** inside DeepSeek Harness: browse, edit and transfer remote files without syncing the code locally, and without installing any DSH component on the server.
+Turn an existing SSH connection into a **linked workspace** or a **remote workspace** inside DeepSeek Harness: browse, edit and transfer remote files without syncing the code locally, and without installing any DSH component on the server.
 
-- **Remote directory**: read-only browsing. Good for logs, configs and quick lookups; editing, transfer, rename and delete are disabled.
 - **Linked workspace**: pair a **local directory** with a **remote directory**. The local directory becomes a real DSH workspace; sessions run locally and read or edit remote files through the `linked_workspace` tool. The sidebar shows both trees and supports two-way transfer, comparison and drag-and-drop.
+- **Remote workspace**: sessions run directly in the remote directory, so code, logs and `.dsh/` state all live on the server while only a placeholder directory stays local (it registers the DSH workspace). Local Skills and plugins still work; the model reads and writes remote files through the `linked_workspace` tool (or `fs.*` with `remoteId`).
 
 > Targets DSH 0.2.1-rc.4; the sidebar pages require `dsh-better-sidebar` (v0.24+). Without it the plugin still loads (settings work), but the sidebar entries do not appear.
 
 ## Two modes
 
-| | Remote directory | Linked workspace |
+| | Linked workspace | Remote workspace |
 | --- | --- | --- |
-| Purpose | Read-only browsing, logs, configs | Local ⇄ remote paired editing |
-| Local directory needed | No | Yes (registered as a DSH workspace) |
-| Writable | No | Yes (editor, tools, transfer, delete…) |
-| Sidebar entry | “Remote Directories” | “Linked Workspace Directory” (two trees) |
-| Model tools | None | `linked_workspace`, `linked_skills` |
-| Typical use | Debugging a live server | Editing remote training code from a local VSCode setup |
+| Purpose | Local ⇄ remote paired editing | Sessions that run entirely on the server |
+| Local directory needed | Yes (registered as a DSH workspace) | No (only a placeholder directory) |
+| Writable | Yes (editor, tools, transfer, delete…) | Yes (editor, tools; no local copy) |
+| Sidebar entry | “Linked Workspace Directory” (two trees) | “Remote Workspace Directory” (remote tree only) |
+| Model tools | `linked_workspace`, `linked_skills` | `linked_workspace` (remote scope), `linked_skills` |
+| Typical use | Editing remote training code from a local setup | Training runs, long jobs, keeping everything off the laptop |
 
 ## Requirements
 
@@ -31,9 +31,9 @@ Turn an existing SSH connection into a **remote directory** or a **linked worksp
 ## Quick start
 
 1. **Install** the plugin (see [Install](#install)) and restart the DSH client.
-2. **Add a host**: Settings → Connections → “Add remote directory” or “Add linked workspace”, then pick an existing SSH host (add it in the DSH SSH Manager first if the list is empty).
-3. **Pick directories**: a remote directory only needs a remote path; a linked workspace also needs a local folder (empty or new) and a mirror choice.
-4. **Open the sidebar**: on the right sidebar start page choose “Linked Workspace Directory” (linked workspace) or “Remote Directories” (remote directory).
+2. **Add a workspace**: Settings → Connections → “Create linked workspace” or “Create remote workspace”, then pick an existing SSH host (add it in the DSH SSH Manager first if the list is empty).
+3. **Pick directories**: a linked workspace needs a remote path plus a local folder (empty or new); a remote workspace needs only a remote path, and that directory must already exist — the plugin never creates it.
+4. **Open the sidebar**: on the right sidebar start page choose “Linked Workspace Directory” or “Remote Workspace Directory”.
 5. **Edit**: single-click a file to preview it, double-click to pin the tab; `Ctrl/Cmd + S` saves.
 
 ## Features
@@ -41,19 +41,20 @@ Turn an existing SSH connection into a **remote directory** or a **linked worksp
 ### Settings → Connections
 
 - SSH hosts come from the `dsh-ssh-tunnel` SSH Manager (`~/.dsh/ssh-tunnel/hosts.json`) and `~/.ssh/config`; passwords and keys stay inside the Host process and are never returned to the page or the model.
-- Remote directory list: add (host + remote directory browser), test, open, remove.
+- Remote workspace list: each card shows “remote · user@host + remote path” and the local placeholder directory, with **open workspace**, **open directory tree**, **test connection**, **rename** (renames the DSH workspace too) and **remove** (two-step confirmation; deletes the record, the placeholder directory and the DSH workspace, never remote files).
 - Linked workspace list: local ⇄ remote paths, mirror toggle (**off by default**), background sync (archive into `.remote`, with file/byte progress and cancel), remove (optionally remove the DSH workspace and delete `.local`/`.remote`). With the mirror on, the first check runs immediately and then **every 5 minutes**: new or changed remote files are downloaded, mirror files that no longer exist remotely are deleted, unchanged files are skipped via `.local/mirror-manifest.json`, and `.git`/`node_modules`/cache directories are excluded. With the mirror off the two sides may diverge freely.
 - A linked record without a DSH workspace shows “Register workspace” in its settings card, which registers it without recreating the record.
 - **Editor theme**: display mode **System / Light / Dark** (default System, following the DSH theme); nine theme families (GitHub, Solarized, One, Dracula, Monokai, Nord, VS Code, Xcode, Catppuccin), each card previewing its light and dark variant.
-- The same form serves “Add remote directory” and “Add linked workspace” from both entry points.
+- A single form serves “Create linked workspace” and “Create remote workspace”, reachable from both entry points.
 - The file open mode (editor / system app / copy path) is switched from the sidebar toolbar and persisted.
 
 ### “Add workspace” on the left
 
-The plugin takes over the DSH sidebar/hero directory-selection hole; the dialog offers two modes:
+The plugin takes over the DSH sidebar/hero directory-selection hole; the dialog offers three modes:
 
 1. **Local workspace**: type or browse a local directory (drive letters C:/D:/E: on Windows), enter a name, create a normal DSH workspace.
-2. **Remote linked**: SSH host + remote directory + local directory + mirror toggle; the local directory becomes a DSH workspace.
+2. **Linked workspace (local ⇄ remote)**: SSH host + remote directory + local directory + mirror toggle; the local directory becomes a DSH workspace.
+3. **Remote workspace (runs on the server)**: SSH host + remote directory + workspace name; the placeholder directory becomes a DSH workspace and sessions run on the server.
 
 > Linked workspace rows no longer carry a `⇄` title prefix: a scoped stylesheet keyed on `data-row-key` replaces the host folder glyph with a link icon (normal local workspaces are untouched). This is the only DOM-level adaptation of the host row; if DSH changes the row structure the selector stops matching and the original folder icon returns, with no other breakage.
 
@@ -82,6 +83,15 @@ Transfer (download to `.remote`), download to the default folder, queue, open, e
 
 Selecting several rows (`Ctrl/Cmd`-click toggles, `Shift`-click selects a range) adds “Transfer selected (N)” and “Delete selected (N)” at the top of the menu; deletion asks for confirmation and aggregates per-item errors (e.g. a file deleted outside the app reports “path does not exist” while the rest are removed).
 
+### Sidebar: “Remote Workspace Directory”
+
+Appears automatically for sessions that belong to a remote workspace (and can be opened any time from the settings card):
+
+- A **single remote tree** with no local pane; it is rooted at “All files” and the header shows `user@host · Remote`.
+- Files open **read-only** in the built-in editor (encoding, line endings, line count and size are still shown) and are never written back locally.
+- Context menu, search (name / content), hidden-file toggle and the 15-second refresh throttle match the remote tree of a linked workspace; transfer, two-way comparison and local-side actions are unavailable in this mode.
+- Both directory tabs (linked and remote) register eagerly, so a remote tree can be opened from settings even while the current session belongs to a linked workspace.
+
 ### Transfer, comparison and conflicts
 
 - **Drag and drop**: drag rows between the local and remote trees, or drop OS files onto either tree (the web client cannot read dropped file paths and says to use the desktop app). Hovering a collapsed folder for 700 ms while dragging expands it; dragging inside the same tree suggests “Move to…” instead.
@@ -94,10 +104,10 @@ Selecting several rows (`Ctrl/Cmd`-click toggles, `Shift`-click selects a range)
 
 | Tool | Purpose |
 | --- | --- |
-| `linked_workspace` | `list`, `info`, `list_dir`, `read`, `write`, `replace`, `stat`, `mkdir`, `rename`, `delete`, `sync`; paths are relative to the remote root, writes are atomic, `if_modified_since` provides optimistic concurrency |
+| `linked_workspace` | `list`, `info`, `list_dir`, `read`, `write`, `replace`, `stat`, `mkdir`, `rename`, `delete`, `sync`; paths are relative to the remote root, writes are atomic, `if_modified_since` provides optimistic concurrency. Works for both linked and remote workspaces (`sync` only applies to a linked workspace with the mirror on) |
 | `linked_skills` | `list` / `read` local skills (`~/.dsh/skills`, `~/.agents/skills`, `<local>/.dsh/skills`, `<local>/.agents/skills`) |
 
-The workspace resolves automatically when the session cwd falls inside a linked workspace; use the `workspace` argument across workspaces. The remote server only needs SSH — no plugin or Python installation.
+The workspace resolves automatically when the session cwd falls inside a linked workspace or a remote workspace placeholder; use the `workspace` argument (id, local/placeholder path or name) across workspaces. The remote server only needs SSH — no plugin or Python installation.
 
 ### Running icon / local skills
 
@@ -134,14 +144,14 @@ You can also use `plugin_manager`'s `install_bundle` with the absolute path to t
 Two entry points afterwards:
 
 1. Bottom-left account menu → Settings → “Connections”.
-2. Or the sidebar's “Add workspace” → “Remote linked”.
+2. Or the sidebar's “Add workspace” → “Linked workspace” / “Remote workspace”.
 
 The npm package is `dsh-linked-workspace`; released versions can also be installed from npm (plugin marketplaces read the npm latest version).
 
 ## Configuration
 
 - **Settings → Connections**: editor theme and display mode, file open mode, auto save, mirror toggle, manual sync and removal options.
-- **Data directory**: `$DSH_HOME/linked-workspace` (remote directories, linked records, settings); override with `DSH_LINKED_WORKSPACE_HOME`.
+- **Data directory**: `$DSH_HOME/linked-workspace` (remote workspace records, linked records, settings); override with `DSH_LINKED_WORKSPACE_HOME`.
 - **Python interpreter**: `DSH_OFFICE_PYTHON` for Office/PDF operations.
 - **Terminal**: `DSH_LINKED_WORKSPACE_NO_TERMINAL=1` keeps “Open terminal” from launching a real window (used in tests).
 - **SSH**: aliases from `~/.ssh/config` appear in the host list; host fingerprints are stored in the plugin data directory.
@@ -150,22 +160,22 @@ The npm package is `dsh-linked-workspace`; released versions can also be install
 
 - Version history lives only in [CHANGELOG.md](CHANGELOG.md) (English) and [CHANGELOG.zh.md](CHANGELOG.zh.md) (简体中文).
 - **Upgrading from 0.2.x**: the plugin was renamed to `dsh-linked-workspace` in 0.3.0. On first start it migrates `$DSH_HOME/remote-workspace` to `$DSH_HOME/linked-workspace` (remote directories, linked workspaces, theme settings and trusted host keys are preserved); uninstall `dsh-remote-workspace` afterwards.
-- Previously opened “Remote Directory” tabs are restored after a reload (hidden legacy tab type aliases are kept); their titles become “Linked Workspace Directory”, and new tabs use the new type.
+- From 0.11.0 the tab id `dsh-remote-workspace` belongs to the new **Remote Workspace Directory** tab; only the old *file* tab alias (`dsh-remote-workspace:file`) is kept so previously opened file tabs are restored. Tree tabs opened before the upgrade close and are replaced by “Linked Workspace Directory”.
 - If the UI does not change after an upgrade: the desktop app caches the client bundle — restart the client (or reload the page in the web UI).
 
 ## Security
 
 - Credentials exist only inside the Host process; the API returns host names, addresses and workspace paths only.
 - Host keys use trust-on-first-use: the SHA256 is recorded on first connect and any change is rejected.
-- Direct remote directories are confined to that directory; linked-workspace tools are confined to the remote root, and local writes to the local root.
+- Remote workspaces and direct file APIs are confined to the configured remote root; linked-workspace tools are confined to the remote root, and local writes to the local root.
 - Single-file saves are capped at 8 MB; mirror sync runs in the background (500 files / 50 MB by default, skipping oversized files), excludes `.git`/`node_modules`/caches, uses a 30 s per-file timeout and never blocks an HTTP request. “Transfer” and “Download to default folder” handle at most 150 files / 15 MB per run and report partial transfers.
 - The page HTTP API accepts loopback same-origin requests only (remote deployments fall back to the DSH `connection` service's Host/Origin authentication).
 - Previews do not execute scripts: HTML uses a `sandbox=""` iframe; Markdown/document previews strip scripts, inline styles, event attributes and `javascript:`/`vbscript:` links, keeping safe links and image `data:` URLs.
 
 ## FAQ
 
-**No “Linked Workspace Directory” entry in the sidebar?**
-Check that `dsh-better-sidebar` (≥0.24) is installed and restart the client. The entry is registered only for linked-workspace sessions; ordinary workspaces only get “Remote Directories”.
+**No “Linked Workspace Directory” / “Remote Workspace Directory” entry in the sidebar?**
+Check that `dsh-better-sidebar` (≥0.24) is installed and restart the client. Both tabs are registered eagerly: “Linked Workspace Directory” only shows for linked-workspace sessions and “Remote Workspace Directory” for remote-workspace sessions. Ordinary local workspaces show neither, but the tree can still be opened from Settings → Connections with “Open directory tree”.
 
 **Preview says “Python 3 and document libraries are required”?**
 Install `python-docx`, `openpyxl`, `python-pptx` and `PyMuPDF`, or point `DSH_OFFICE_PYTHON` at an interpreter that has them. Markdown previews do not need Python.
