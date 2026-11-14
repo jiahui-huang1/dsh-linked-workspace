@@ -2,6 +2,10 @@
 
 English · [简体中文](CHANGELOG.zh.md)
 
+## Unreleased
+
+- **First-run welcome card**: the first time the plugin loads in a browser profile it shows one card that says what the plugin does, where to create a linked or remote workspace, where the two remote trees live, and that an SSH password can be kept on this machine — plus a “Star the repo” link. Dismissing it (button, `Esc`, or clicking the backdrop) is remembered in `localStorage`, so it never reopens; a fresh DSH profile shows it once again.
+
 ## 0.12.0 — 2026-11-14
 
 - **Password diagnostics**: an SSH failure now shows the server's own reason next to the translated text (for example “SSH 认证失败：… All configured authentication methods failed.”), and the add-workspace dialog gained a **Check password** button that stores the secret and opens a probe connection, so a wrong password is caught before creating the workspace. Password logins also answer `keyboard-interactive` prompts with the same secret, which is what PAM-based servers often ask for.

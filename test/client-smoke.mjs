@@ -10,7 +10,7 @@
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 
-const registered = { settings: [], icons: [], flows: [], tabs: [] }
+const registered = { settings: [], icons: [], overlays: [], flows: [], tabs: [] }
 let captured = null
 let effectCount = 0
 
@@ -67,6 +67,7 @@ const ctx = {
       const entry = { options, component }
       if (options.name === 'settings.section') registered.settings.push(entry)
       else if (options.name === 'settings.section.icon') registered.icons.push(entry)
+      else if (options.name === 'shell.overlay') registered.overlays.push(entry)
       else registered.flows.push(entry)
       return () => {}
     },
@@ -123,6 +124,14 @@ assert.equal(navIconNode.props.viewBox, '0 0 1024 1024', 'the settings glyph kee
 assert.equal(navIconNode.props.width, 16, 'the host size is honoured')
 assert.equal(navIconNode.props.height, 16)
 
+assert.equal(registered.overlays.length, 1, 'exactly one frame-wide overlay registered')
+const welcome = registered.overlays[0]
+assert.equal(welcome.options.name, 'shell.overlay')
+assert.equal(welcome.options.id, 'linked-workspace-welcome')
+assert.equal(typeof welcome.options.label, 'function')
+assert.equal(welcome.options.label(), '欢迎使用联动工作区插件', 'the overlay label follows the zh locale')
+assert.equal(typeof welcome.component, 'function')
+
 assert.equal(registered.flows.length, 2, 'the sidebar and hero directory flows registered')
 const flowNames = registered.flows.map((entry) => entry.options.name).sort()
 assert.deepEqual(flowNames, ['conversation.hero.workspace.directoryFlow', 'sidebar.workspaces.directoryFlow'])
@@ -163,7 +172,7 @@ console.log('  sidebar tabs:', registered.tabs.map((tab) => tab.id).join(', '))
 // bundle, register the settings page and the directory flows, and simply skip
 // the sidebar pages. `ctx.get` throws for an unknown service, which is exactly
 // what the plugin sees when the companion is not installed.
-const orphan = { settings: [], icons: [], flows: [], tabs: [] }
+const orphan = { settings: [], icons: [], overlays: [], flows: [], tabs: [] }
 const orphanCtx = {
   effect(callback) {
     const disposer = callback()
@@ -182,6 +191,7 @@ const orphanCtx = {
       const entry = { options, component }
       if (options.name === 'settings.section') orphan.settings.push(entry)
       else if (options.name === 'settings.section.icon') orphan.icons.push(entry)
+      else if (options.name === 'shell.overlay') orphan.overlays.push(entry)
       else orphan.flows.push(entry)
       return () => {}
     },
@@ -194,6 +204,7 @@ assert.equal(orphan.settings.length, 1, 'the settings section still registers wi
 assert.equal(orphan.settings[0].options.id, 'linked-workspaces')
 assert.equal(orphan.icons.length, 1, 'the settings nav icon still registers without the sidebar')
 assert.equal(orphan.icons[0].options.id, 'linked-workspaces')
+assert.equal(orphan.overlays.length, 1, 'the welcome overlay still registers without the sidebar')
 assert.equal(orphan.flows.length, 2, 'both directory flows still register without the sidebar')
 assert.equal(orphan.tabs.length, 0, 'no sidebar page is registered when the companion is absent')
 

@@ -30,7 +30,7 @@ Turn an existing SSH connection into a **linked workspace** or a **remote worksp
 
 ## Quick start
 
-1. **Install** the plugin (see [Install](#install)) and restart the DSH client.
+1. **Install** the plugin (see [Install](#install)) and restart the DSH client; the first time it loads, a welcome card explains what it does — press “Got it” to dismiss it for good.
 2. **Add a workspace**: Settings → Linked workspaces → “Create linked workspace” or “Create remote workspace”, then pick an existing SSH host (add it to `~/.ssh/config` or the DSH SSH Manager, then press “Refresh”, if the list is empty).
 3. **Pick directories**: a linked workspace needs a remote path plus a local folder (empty or new); a remote workspace needs only a remote path, and that directory must already exist — the plugin never creates it.
 4. **Open the sidebar**: on the right sidebar start page choose “Linked Workspace Directory” or “Remote Workspace Directory”.
