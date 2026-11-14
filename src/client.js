@@ -361,6 +361,7 @@ window.__ModuleLoader__.load({
       sshVerifying: '验证中…',
       sshPasswordOk: '密码可用，可以继续创建。',
       sshPasswordFailed: '验证失败：',
+      staleHost: 'DSH 的插件进程仍在运行旧版代码，请完全退出并重启 DSH 后再试',
       sourceManagerShort: 'SSH',
       linkedGroup: '联动工作区',
       linkedEmpty: '还没有联动工作区。联动工作区会把本地目录与远端目录配对，会话可直接编辑远端文件。',
@@ -777,6 +778,7 @@ window.__ModuleLoader__.load({
       sshVerifying: 'Checking…',
       sshPasswordOk: 'The password works — you can create the workspace now.',
       sshPasswordFailed: 'Check failed:',
+      staleHost: 'The plugin host is still running older code; quit and restart DSH, then retry',
       sourceManagerShort: 'SSH',
       linkedGroup: 'Linked workspaces',
       linkedEmpty: 'No linked workspaces yet. A linked workspace pairs a local folder with a remote folder so sessions can edit remote files directly.',
@@ -1149,6 +1151,11 @@ window.__ModuleLoader__.load({
 
     function messageOf(error, t, locale) {
       if (!error) return '';
+      // `unknown method` means the page is newer than the Host process: the
+      // plugin's server half only changes on restart.
+      if (typeof error.message === 'string' && error.message.indexOf('unknown method:') === 0) {
+        return t('staleHost') + ' (' + error.message + ')';
+      }
       var known = error.code ? (locale === 'zh' ? CODE_TEXT.zh : CODE_TEXT.en)[error.code] : '';
       if (!known) return error.message || String(error);
       if (error.code === 'BAD_REQUEST' && error.message) return error.message;
