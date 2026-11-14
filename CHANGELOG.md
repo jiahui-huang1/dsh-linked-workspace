@@ -2,7 +2,7 @@
 
 English · [简体中文](CHANGELOG.zh.md)
 
-## Unreleased
+## 0.14.0 — 2026-11-14
 
 - **Content search shows the hit**: results now list the file **and** the matching line (number + trimmed snippet, one row per hit), clicking one opens the file with the caret on that line, and Markdown files switch to the code editor for the jump. Local and remote searches share the same limits (1 MB per file, 2000 files, 8 MB, 5 s) and the same default folder exclusions (`node_modules`, `.git`, `site-packages`, `dist`, `build`, `target`, `.venv`, `.conda`, …), so a remote scan no longer crawls a conda tree; when a scan is cut short the notice names the reason (files / bytes / time / result cap) instead of a bare “too many”.
 - **Search options**: three toggles in the search bar — `Aa` (match case), `.*` (regular expression, with the server's own “invalid regular expression” message) and a folder chip that limits the scan to the selected folder.
