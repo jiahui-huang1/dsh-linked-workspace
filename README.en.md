@@ -94,7 +94,7 @@ Appears automatically for sessions that belong to a remote workspace (and can be
 
 ### Transfer, comparison and conflicts
 
-- **Drag and drop**: drag rows between the local and remote trees, or drop OS files onto either tree (the web client cannot read dropped file paths and says to use the desktop app). Hovering a collapsed folder for 700 ms while dragging expands it; dragging inside the same tree suggests “Move to…” instead.
+- **Drag and drop**: drag rows between the local and remote trees to transfer them, or drag inside one tree (remote-inside-remote, local-inside-local) to **move** them; with several rows selected the whole selection travels in one gesture. OS files can be dropped onto either tree (the web client cannot read dropped file paths and says to use the desktop app). Hovering a collapsed folder for 700 ms while dragging expands it; a multi-selection can also be moved at once with “Move selected (N)…”.
 - **Overwrite confirmation**: dropping onto a folder that already has the name no longer overwrites silently — a dialog offers cancel / keep both / overwrite. “Keep both” produces `name copy.txt` or `name (2).txt`. The API and tools accept `conflict=error|overwrite|unique`.
 - **Local ⇄ remote comparison**: right-click a remote folder → “Compare with local…” groups entries into only-local / only-remote / changed (size differs, or mtime differs by more than 2 s); up to 4000 files and depth 12 per side, 200 rows per group, with a truncation notice. Clicking a row opens the file; each row can push to remote or pull to local; a missing local folder is called out explicitly.
 - **Transfer queue**: one job at a time with queued/running/done/failed states; failed items can be retried.

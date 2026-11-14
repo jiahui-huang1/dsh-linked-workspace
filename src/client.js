@@ -297,11 +297,14 @@ window.__ModuleLoader__.load({
       csvTruncated: '仅显示前 1000 行',
       moveTitle: '移动到…',
       moveMessage: '选择「{{name}}」要移动到的目录',
+      moveMessageMany: '选择这 {{count}} 项要移动到的目录',
       moveDone: '已移动',
+      moveDoneCount: '已移动 {{count}} 项',
       moveDirty: '该文件有未保存修改，请先保存或关闭后再移动',
       moveFailed: '移动失败',
       moveHint: '进入目标文件夹后点击「使用此目录」',
       ctxMove: '移动到…',
+      ctxMoveSelected: '移动所选的 {{count}} 项…',
       noWorkspace: '远程工作区不存在，请重新添加。',
       noTarget: '没有可浏览的工作区。先在设置 → 连接中创建，或点击左侧「添加工作区」。',
       treeEmpty: '空目录',
@@ -727,11 +730,14 @@ window.__ModuleLoader__.load({
       csvTruncated: 'Showing the first 1000 rows',
       moveTitle: 'Move to…',
       moveMessage: 'Choose the destination folder for "{{name}}"',
+      moveMessageMany: 'Choose the destination folder for these {{count}} items',
       moveDone: 'Moved',
+      moveDoneCount: 'Moved {{count}} items',
       moveDirty: 'This file has unsaved changes; save or close it before moving',
       moveFailed: 'Move failed',
       moveHint: 'Open the destination folder, then click “Use this directory”',
       ctxMove: 'Move to…',
+      ctxMoveSelected: 'Move selected ({{count}})…',
       noWorkspace: 'This remote workspace no longer exists. Add it again.',
       noTarget: 'No workspace to browse. Create one in Settings → Connections, or click “Add workspace” on the left.',
       treeEmpty: 'Empty directory',
@@ -5225,11 +5231,21 @@ window.__ModuleLoader__.load({
 
       function beginDragRow(side, event, info) {
         if (!event.dataTransfer || !info) return;
+        // Dragging one row of a multi-selection carries the whole selection, so
+        // a single gesture can move or copy several entries at once.
+        var picked = selectionFor(side).filter(function (item) {
+          return item && typeof item.path === 'string';
+        });
+        var containsDragged = picked.some(function (item) { return item.path === info.path; });
+        var entries = (containsDragged && picked.length > 1 ? picked : [{ path: info.path, name: info.name, isDir: Boolean(info.isDir) }])
+          .map(function (item) {
+            return { path: item.path, name: item.name, isDir: Boolean(item.isDir) };
+          });
         try {
           event.dataTransfer.setData(DRAG_MIME, JSON.stringify({
-            side: side, path: info.path, name: info.name, isDir: Boolean(info.isDir),
+            side: side, path: info.path, name: info.name, isDir: Boolean(info.isDir), entries: entries,
           }));
-          event.dataTransfer.effectAllowed = 'copy';
+          event.dataTransfer.effectAllowed = 'copyMove';
         } catch (error) { /* drag payload unsupported */ }
       }
 
@@ -5290,41 +5306,142 @@ window.__ModuleLoader__.load({
         var raw = '';
         try { raw = transfer.getData(DRAG_MIME); } catch (error) { raw = ''; }
         if (!raw) return;
-        var entry;
-        try { entry = JSON.parse(raw); } catch (error) { return; }
-        if (!entry || typeof entry.path !== 'string') return;
-        if (entry.side === side) {
-          showNotice('error', t('dropSameSide'));
+        var payload;
+        try { payload = JSON.parse(raw); } catch (error) { return; }
+        if (!payload || typeof payload.path !== 'string') return;
+        var entries = Array.isArray(payload.entries)
+          ? payload.entries.filter(function (item) { return item && typeof item.path === 'string'; })
+          : [];
+        if (entries.length === 0) entries = [{ path: payload.path, name: payload.name, isDir: Boolean(payload.isDir) }];
+        if (payload.side === side) {
+          moveEntries(side, entries, targetDir);
           return;
         }
-        if (entry.side === 'remote') {
-          if (entry.isDir) {
-            showNotice('error', t('dropDirUnsupported'));
-            return;
-          }
-          var pullParams = Object.assign({ path: entry.path, targetDir: targetDir }, scopeParams(scopeRef));
-          apiCall('fs.pullToLocal', pullParams).then(function () {
-            showNotice('success', t('dropImported', { count: 1 }));
+        if (payload.side === 'remote') {
+          var files = entries.filter(function (item) { return !item.isDir; });
+          if (files.length < entries.length) showNotice('error', t('dropDirUnsupported'));
+          if (files.length > 0) pullEntries(files, targetDir);
+          return;
+        }
+        var localFiles = entries.filter(function (item) { return !item.isDir; });
+        if (localFiles.length < entries.length) showNotice('error', t('dropLocalDirUnsupported'));
+        if (localFiles.length > 0) pushEntries(localFiles, targetDir);
+      }
+
+      // Batch transfer: one request per entry, so a conflict is still answered
+      // per file and a partial batch reports how many files actually landed.
+      function pullEntries(entries, targetDir) {
+        var done = 0;
+        function settled() {
+          if (done > 0) {
+            showNotice('success', t('dropImported', { count: done }));
             refreshTree();
+          }
+        }
+        function step(index) {
+          if (index >= entries.length) { settled(); return; }
+          var params = Object.assign({ path: entries[index].path, targetDir: targetDir }, scopeParams(scopeRef));
+          apiCall('fs.pullToLocal', params).then(function () {
+            done += 1;
+            step(index + 1);
           }).catch(function (error) {
-            if (openConflict(error, 'fs.pullToLocal', pullParams)) return;
+            if (openConflict(error, 'fs.pullToLocal', params)) return;
+            settled();
             noticeError(error);
           });
-          return;
         }
-        if (entry.isDir) {
-          showNotice('error', t('dropLocalDirUnsupported'));
-          return;
+        step(0);
+      }
+
+      function pushEntries(entries, targetDir) {
+        var done = 0;
+        var skipped = 0;
+        function settled() {
+          if (done > 0) {
+            showNotice('success', t('dropImported', { count: done }));
+            refreshTree();
+          }
+          if (skipped > 0) showNotice('warn', t('dropSkipped', { count: skipped }));
         }
-        var pushParams = Object.assign({ path: targetDir, paths: [entry.path] }, scopeParams(scopeRef));
-        apiCall('fs.upload', pushParams).then(function (result) {
-          if (Number(result.skipped) > 0) showNotice('warn', t('dropSkipped', { count: result.skipped }));
-          else showNotice('success', t('dropImported', { count: Number(result.files) || 1 }));
-          refreshTree();
-        }).catch(function (error) {
-          if (openConflict(error, 'fs.upload', pushParams)) return;
-          noticeError(error);
+        function step(index) {
+          if (index >= entries.length) { settled(); return; }
+          var params = Object.assign({ path: targetDir, paths: [entries[index].path] }, scopeParams(scopeRef));
+          apiCall('fs.upload', params).then(function (result) {
+            if (Number(result && result.skipped) > 0) skipped += Number(result.skipped);
+            else done += 1;
+            step(index + 1);
+          }).catch(function (error) {
+            if (openConflict(error, 'fs.upload', params)) return;
+            settled();
+            noticeError(error);
+          });
+        }
+        step(0);
+      }
+
+      // Moves several entries into one directory (same side). Items already in
+      // the target folder and folders dropped onto themselves are skipped.
+      function moveEntries(side, entries, targetDir) {
+        if (typeof targetDir !== 'string' || targetDir === '') return;
+        var moving = entries.filter(function (entry) {
+          if (!entry || typeof entry.path !== 'string' || entry.path === '') return false;
+          if (entry.path === targetDir) return false;
+          if (entry.isDir && pathUnder(targetDir, entry.path)) return false;
+          return parentPathOf(entry.path, side) !== targetDir;
         });
+        if (moving.length === 0) return;
+        var blocked = openFiles.some(function (file) {
+          if (file.side !== side || !fileDirty[file.key]) return false;
+          return moving.some(function (entry) { return pathUnder(file.path, entry.path); });
+        });
+        if (blocked) {
+          showNotice('error', t('moveDirty'));
+          return;
+        }
+        var movedPaths = [];
+        var firstError = null;
+        function finish() {
+          if (movedPaths.length > 0) {
+            var keep = openFiles.filter(function (file) {
+              return !(file.side === side && movedPaths.some(function (moved) { return pathUnder(file.path, moved); }));
+            });
+            setOpenFiles(keep);
+            setActiveFileKey(function (activeKey) {
+              var stillOpen = keep.some(function (file) { return file.key === activeKey; });
+              if (stillOpen) return activeKey;
+              return keep.length > 0 ? keep[keep.length - 1].key : null;
+            });
+            setFileDirty(function (previous) {
+              var next = Object.assign({}, previous);
+              openFiles.forEach(function (file) {
+                if (file.side !== side) return;
+                if (movedPaths.some(function (moved) { return pathUnder(file.path, moved); })) delete next[file.key];
+              });
+              return next;
+            });
+            setMulti([]);
+            setDialog(null);
+            refreshTree();
+            showNotice('success', movedPaths.length === 1 ? t('moveDone') : t('moveDoneCount', { count: movedPaths.length }));
+          }
+          if (firstError) noticeError(firstError);
+        }
+        function step(index) {
+          if (index >= moving.length) { finish(); return; }
+          var entry = moving[index];
+          var method = side === 'remote' ? 'fs.move' : 'local.move';
+          var params = side === 'remote'
+            ? Object.assign({ path: entry.path, targetDir: targetDir }, scopeParams(scopeRef))
+            : { path: entry.path, targetDir: targetDir, root: selected.localPath };
+          apiCall(method, params).then(function (result) {
+            movedPaths.push(result && result.path ? result.path : entry.path);
+            step(index + 1);
+          }).catch(function (error) {
+            if (!firstError) firstError = error;
+            step(index + 1);
+          });
+        }
+        step(0);
       }
 
       function submitRenamed(side, oldPath, name) {
@@ -5345,49 +5462,6 @@ window.__ModuleLoader__.load({
         var normalized = String(filePath).replace(/\\/g, '/').replace(/\/+$/, '');
         var parent = String(parentPath).replace(/\\/g, '/').replace(/\/+$/, '');
         return normalized === parent || normalized.indexOf(parent + '/') === 0 || normalized.indexOf(parent + '\\') === 0;
-      }
-
-      function moveEntry(side, oldPath, targetDir) {
-        var blocked = openFiles.some(function (file) {
-          return file.side === side && pathUnder(file.path, oldPath) && fileDirty[file.key];
-        });
-        if (blocked) {
-          showNotice('error', t('moveDirty'));
-          return;
-        }
-        var method = side === 'remote' ? 'fs.move' : 'local.move';
-        var params = side === 'remote'
-          ? Object.assign({ path: oldPath, targetDir: targetDir }, scopeParams(scopeRef))
-          : { path: oldPath, targetDir: targetDir, root: selected.localPath };
-        apiCall(method, params).then(function (result) {
-          var nextPath = result && result.path ? result.path : oldPath;
-          setOpenFiles(function (previous) {
-            return previous.filter(function (file) {
-              return !(file.side === side && pathUnder(file.path, oldPath));
-            });
-          });
-          setActiveFileKey(function (activeKey) {
-            var stillOpen = openFiles.filter(function (file) {
-              return file.key === activeKey && !(file.side === side && pathUnder(file.path, oldPath));
-            });
-            if (stillOpen.length > 0) return activeKey;
-            var remaining = openFiles.filter(function (file) {
-              return !(file.side === side && pathUnder(file.path, oldPath));
-            });
-            return remaining.length > 0 ? remaining[remaining.length - 1].key : null;
-          });
-          setFileDirty(function (previous) {
-            var next = Object.assign({}, previous);
-            openFiles.forEach(function (file) {
-              if (file.side === side && pathUnder(file.path, oldPath)) delete next[file.key];
-            });
-            return next;
-          });
-          setDialog(null);
-          showNotice('success', t('moveDone'));
-          refreshTree();
-          if (nextPath !== oldPath) refreshTree();
-        }).catch(noticeError);
       }
 
       function submitNew(side, dirPath, name, isDir) {
@@ -5438,6 +5512,14 @@ window.__ModuleLoader__.load({
             batch.forEach(function (item) { enqueueTransfer(item.side, item.path, item.name); });
           } });
           items.push({ label: t('ctxDeleteSelected', { count: batch.length }), onSelect: deleteSelection });
+          if (batch.some(function (item) { return item.path === menu.path; })) {
+            items.push({ label: t('ctxMoveSelected', { count: batch.length }), onSelect: function () {
+              setDialog({
+                kind: 'move', side: menu.side, entries: batch, name: menu.name, isDir: true,
+                initialPath: parentPathOf(menu.path, menu.side),
+              });
+            } });
+          }
           items.push({ separator: true });
         }
         if (isRemote) {
@@ -5580,16 +5662,21 @@ window.__ModuleLoader__.load({
               h('button', { type: 'button', className: 'rw-btn rw-btn-sm rw-btn-danger', onClick: function () { resolveConflict('overwrite'); } }, t('conflictOverwrite'))));
         }
         if (dialog.kind === 'move') {
+          var moveTargets = Array.isArray(dialog.entries) && dialog.entries.length > 0
+            ? dialog.entries
+            : [{ path: dialog.path, name: dialog.name, isDir: dialog.isDir }];
           return h(MoveDialog, {
             t: t, locale: locale,
             title: t('moveTitle'),
-            message: t('moveMessage', { name: dialog.name }),
+            message: moveTargets.length > 1
+              ? t('moveMessageMany', { count: moveTargets.length })
+              : t('moveMessage', { name: dialog.name }),
             side: dialog.side,
             scope: dialog.side === 'remote' ? sourceScopeOf(selected) : null,
             root: dialog.side === 'remote' ? selected.remotePath : selected.localPath,
             initialPath: dialog.initialPath,
             onClose: function () { setDialog(null); },
-            onPick: function (targetDir) { moveEntry(dialog.side, dialog.path, targetDir); },
+            onPick: function (targetDir) { moveEntries(dialog.side, moveTargets, targetDir); },
           });
         }
         if (dialog.kind === 'closeDirty') {
