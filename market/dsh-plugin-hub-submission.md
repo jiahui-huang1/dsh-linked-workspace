@@ -11,7 +11,7 @@ Integrations & Connections
 dsh plugin --profile web add dsh-linked-workspace
 
 ### Compatibility
-DSH 0.2.1-rc.4; Windows/macOS/Linux; requires dsh-better-sidebar for sidebar pages.
+DSH 0.2.1-rc.4; Windows/macOS/Linux; dsh-better-sidebar (>=0.24.0) is optional — it only adds the sidebar directory pages and the file editor.
 
 ### License
 MIT
@@ -20,4 +20,4 @@ MIT
 https://github.com/jiahui-huang1/dsh-linked-workspace#screenshots
 
 ### Notes
-Remote-directory views are read-only; linked-workspace views are editable. Uses the user's existing SSH Manager hosts; credentials stay in the Host process.
+Remote workspaces run sessions on the remote host; linked workspaces pair a local folder with a remote one. Hosts come from `~/.ssh/config` (SSH Manager optional); a password can be stored on this machine by the plugin itself, and credentials stay in the Host process.

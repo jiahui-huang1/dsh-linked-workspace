@@ -23,7 +23,7 @@
 ## 环境要求
 
 - **DSH**：0.2.1-rc.4 或更高（`engines` 允许 `>=0.2.0-rc.2 <0.3.0-0`）。
-- **SSH**：主机已加入 DSH 的 SSH Manager，或写在 `~/.ssh/config`；首次连接需要在「SSH Tunnel」标签页确认主机指纹。**不安装 `dsh-ssh-tunnel` 也能用**：`~/.ssh/config` 里没有 `IdentityFile` 的主机可以在这个插件的「添加工作区」弹窗里填一次密码，密码保存在本机（见下文「SSH 配置」）。
+- **SSH**：主机写在 `~/.ssh/config`，或加入 DSH 的 SSH Manager（`dsh-ssh-tunnel`，可选）。裸 `~/.ssh/config` 也够用：插件自带 SSH 客户端，首次连接**自动信任并记录**主机指纹到 `$DSH_HOME/linked-workspace/known_hosts.json`，指纹变化时拒绝连接并提示删除对应条目。**不安装 `dsh-ssh-tunnel` 也能用**：没有 `IdentityFile` 的主机可在这个插件的「添加工作区」弹窗里填一次密码，密码保存在本机（见「配置 → SSH 凭据」）。
 - **dsh-better-sidebar**（可选）：`>=0.24.0`。装上才有右侧栏目录页与文件编辑页；缺少时其余功能（设置页、目录选择、模型工具）照常可用。
 - **文档编辑**（可选）：Python 3 及 `python-docx`、`openpyxl`、`python-pptx`、`PyMuPDF`；可用 `DSH_OFFICE_PYTHON` 指定解释器。Markdown 不需要 Python。
 - **开发**：Node.js ≥ 20。
@@ -31,7 +31,7 @@
 ## 快速开始
 
 1. **安装插件**（见[安装](#安装)），重启 DSH 客户端。
-2. **添加工作区**：设置 → 联动工作区 →「创建联动工作区」或「创建远程工作区」，选择已有 SSH 主机；列表里没有就先在 DSH 的 SSH Manager 里添加。
+2. **添加工作区**：设置 → 联动工作区 →「创建联动工作区」或「创建远程工作区」，选择已有 SSH 主机；列表里没有就把主机写进 `~/.ssh/config`（或在 DSH 的 SSH Manager 里添加），然后点「刷新」。
 3. **选目录**：联动工作区需选远端路径和本地目录；远程工作区只需选远端路径（该目录必须已存在，插件不会自动创建）。
 4. **打开右侧栏**：会话右侧栏开始页点「联动工作区目录」（联动）或「远程工作区目录」（远程）。
 5. **开始编辑**：单击文件打开预览，双击固定标签；`Ctrl/Cmd + S` 保存。
@@ -165,7 +165,8 @@ npm 包名为 `dsh-linked-workspace`，也可以从 npm 安装已发布版本（
 - **Python 解释器**：`DSH_OFFICE_PYTHON` 指定用于 Office/PDF 的 Python。
 - **终端**：`DSH_LINKED_WORKSPACE_NO_TERMINAL=1` 关闭「打开终端」的实际启动（测试环境用）。
 - **SSH 配置**：`~/.ssh/config` 中的别名会出现在主机列表；主机指纹保存在插件数据目录。
-- **SSH 凭据**：主机列表的凭据来源有三处——`~/.ssh/config` 的 `IdentityFile`（含 SSH agent）、`dsh-ssh-tunnel` 的 SSH Manager（若已安装），以及插件自己的 `$DSH_HOME/linked-workspace/ssh-credentials.json`。没有私钥的主机在「添加工作区」弹窗里显示「需要密码」，选它、填一次密码再点「创建」即可：密码只写在本机这个文件里（权限 `0600`），只由 Host 进程读取，不会返回给页面或模型；之后再建工作区留空即沿用已存密码。用 `hosts.credentials` 的 `clear: true` 可以删除。
+- **SSH 凭据**：主机列表的凭据来源有三处——`~/.ssh/config` 的 `IdentityFile`（含 SSH agent）、`dsh-ssh-tunnel` 的 SSH Manager（若已安装），以及插件自己的 `$DSH_HOME/linked-workspace/ssh-credentials.json`。没有私钥的主机在「添加工作区」弹窗里显示「需要密码」，选它、填一次密码再点「创建」即可：密码只写在本机这个文件里（权限 `0600`），只由 Host 进程读取，不会返回给页面或模型；之后再建工作区留空即沿用已存密码。填完可点「**验证密码**」先探一条连接，成功显示「密码可用」，失败直接给出服务器原话（例如 `All configured authentication methods failed.`）。用 `hosts.credentials` 的 `clear: true` 可以删除。
+- **升级后某个新功能报 `unknown method`**：说明 Host 进程还在跑旧代码（页面会热更新、Host 不会）。完全退出 DSH 再启动即可。
 
 ## 升级与版本
 

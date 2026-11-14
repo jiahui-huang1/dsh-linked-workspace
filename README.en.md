@@ -23,7 +23,7 @@ Turn an existing SSH connection into a **linked workspace** or a **remote worksp
 ## Requirements
 
 - **DSH**: 0.2.1-rc.4 or newer (`engines` allows `>=0.2.0-rc.2 <0.3.0-0`).
-- **SSH**: the host must be configured in DSH's SSH Manager or `~/.ssh/config`; the first connection needs host-key confirmation in the “SSH Tunnel” tab. **`dsh-ssh-tunnel` is optional**: a host in `~/.ssh/config` without an `IdentityFile` can be given a password once in the “Add workspace” dialog, and it stays on this machine (see “SSH credentials” under Configuration).
+- **SSH**: the host lives in `~/.ssh/config`, or in DSH's SSH Manager (`dsh-ssh-tunnel`, optional). A plain `~/.ssh/config` is enough: the plugin ships its own SSH client and pins the host key on first use into `$DSH_HOME/linked-workspace/known_hosts.json` (a changed key is refused, with instructions to delete that entry). **`dsh-ssh-tunnel` is optional**: a host in `~/.ssh/config` without an `IdentityFile` can be given a password once in the “Add workspace” dialog, and it stays on this machine (see “SSH credentials” under Configuration).
 - **dsh-better-sidebar** (optional): `>=0.24.0`. It renders the sidebar directory pages and the file editor; without it everything else (settings page, directory pickers, agent tools) still works.
 - **Document editing** (optional): Python 3 with `python-docx`, `openpyxl`, `python-pptx` and `PyMuPDF`; set `DSH_OFFICE_PYTHON` to choose the interpreter. Markdown needs no Python.
 - **Development**: Node.js ≥ 20.
@@ -31,7 +31,7 @@ Turn an existing SSH connection into a **linked workspace** or a **remote worksp
 ## Quick start
 
 1. **Install** the plugin (see [Install](#install)) and restart the DSH client.
-2. **Add a workspace**: Settings → Linked workspaces → “Create linked workspace” or “Create remote workspace”, then pick an existing SSH host (add it in the DSH SSH Manager first if the list is empty).
+2. **Add a workspace**: Settings → Linked workspaces → “Create linked workspace” or “Create remote workspace”, then pick an existing SSH host (add it to `~/.ssh/config` or the DSH SSH Manager, then press “Refresh”, if the list is empty).
 3. **Pick directories**: a linked workspace needs a remote path plus a local folder (empty or new); a remote workspace needs only a remote path, and that directory must already exist — the plugin never creates it.
 4. **Open the sidebar**: on the right sidebar start page choose “Linked Workspace Directory” or “Remote Workspace Directory”.
 5. **Edit**: single-click a file to preview it, double-click to pin the tab; `Ctrl/Cmd + S` saves.
@@ -165,7 +165,8 @@ The npm package is `dsh-linked-workspace`; released versions can also be install
 - **Python interpreter**: `DSH_OFFICE_PYTHON` for Office/PDF operations.
 - **Terminal**: `DSH_LINKED_WORKSPACE_NO_TERMINAL=1` keeps “Open terminal” from launching a real window (used in tests).
 - **SSH**: aliases from `~/.ssh/config` appear in the host list; host fingerprints are stored in the plugin data directory.
-- **SSH credentials**: there are three sources — `IdentityFile` in `~/.ssh/config` (plus the SSH agent), the `dsh-ssh-tunnel` SSH Manager when installed, and the plugin's own `$DSH_HOME/linked-workspace/ssh-credentials.json`. A host with no key shows “Password needed” in the “Add workspace” dialog: pick it, type the password once, then “Create”. The password is written only to that file on this machine (mode `0600`) and read only by the Host process; it is never returned to the page or the model. Later workspaces can leave the field empty to reuse it, and `hosts.credentials` with `clear: true` removes it.
+- **SSH credentials**: there are three sources — `IdentityFile` in `~/.ssh/config` (plus the SSH agent), the `dsh-ssh-tunnel` SSH Manager when installed, and the plugin's own `$DSH_HOME/linked-workspace/ssh-credentials.json`. A host with no key shows “Password needed” in the “Add workspace” dialog: pick it, type the password once, then “Create”. The password is written only to that file on this machine (mode `0600`) and read only by the Host process; it is never returned to the page or the model. Later workspaces can leave the field empty to reuse it. **Check password** probes a connection first and reports either “Password works” or the server's own reason (e.g. `All configured authentication methods failed.`); `hosts.credentials` with `clear: true` removes the secret.
+- **A new feature reports `unknown method` after upgrading**: the Host process is still running older code (the page hot-reloads, the Host does not). Quit DSH completely and start it again.
 
 ## Upgrading and versions
 

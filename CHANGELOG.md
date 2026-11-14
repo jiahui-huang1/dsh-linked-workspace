@@ -2,7 +2,7 @@
 
 English · [简体中文](CHANGELOG.zh.md)
 
-## Unreleased
+## 0.12.0 — 2026-11-14
 
 - **Password diagnostics**: an SSH failure now shows the server's own reason next to the translated text (for example “SSH 认证失败：… All configured authentication methods failed.”), and the add-workspace dialog gained a **Check password** button that stores the secret and opens a probe connection, so a wrong password is caught before creating the workspace. Password logins also answer `keyboard-interactive` prompts with the same secret, which is what PAM-based servers often ask for.
 - **Local SSH credentials**: hosts listed in `~/.ssh/config` without an `IdentityFile` used to require `dsh-ssh-tunnel` for a password. The “Add workspace” dialog now shows them as “Password needed” instead of disabling them, takes the password once, and stores it in the plugin's own `$DSH_HOME/linked-workspace/ssh-credentials.json` (mode `0600`, Host process only). New API `hosts.credentials` (`{ hostId, password?, passphrase?, privateKey?, clear? }`); `hosts.list` entries gained `hasStoredPassword`, and a password typed earlier is reused when the field is left empty.
