@@ -6666,6 +6666,50 @@ window.__ModuleLoader__.load({
         if (target && typeof target.focus === 'function') target.focus();
       }, [props.open, flow]);
 
+      // The app shell listens for wheel gestures on the document root and moves
+      // the conversation behind the dialog, so a wheel over the host list (or
+      // anywhere else in the dialog) never reaches the dialog's own scroll
+      // areas. Take the gesture in the capture phase: scroll the innermost
+      // scrollable element inside the dialog, chain to the next one at the
+      // edges, and never let the page behind move while the dialog is open.
+      useEffect(function () {
+        if (!props.open) return undefined;
+        var node = modalRef.current;
+        if (!node) return undefined;
+        var overlay = node.closest ? (node.closest('.rw-modal-backdrop') || node) : node;
+
+        function firstScrollable(start) {
+          var el = start;
+          while (el && el !== overlay) {
+            if (el.scrollHeight > el.clientHeight + 1) {
+              var overflow = getComputedStyle(el).overflowY;
+              if (overflow === 'auto' || overflow === 'scroll') return el;
+            }
+            el = el.parentElement;
+          }
+          return null;
+        }
+
+        function onWheel(event) {
+          if (!event.deltaY) return;
+          if (!overlay.contains(event.target)) return;
+          event.preventDefault();
+          event.stopPropagation();
+          if (event.stopImmediatePropagation) event.stopImmediatePropagation();
+          var step = event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? 400 : 1);
+          var el = firstScrollable(event.target && event.target.nodeType === 1 ? event.target : overlay);
+          while (el) {
+            var before = el.scrollTop;
+            el.scrollTop = before + step;
+            if (el.scrollTop !== before) return;
+            el = firstScrollable(el.parentElement);
+          }
+        }
+
+        window.addEventListener('wheel', onWheel, { passive: false, capture: true });
+        return function () { window.removeEventListener('wheel', onWheel, { capture: true }); };
+      }, [props.open]);
+
       function onModalKeyDown(event) {
         if (event.key === 'Escape') {
           event.preventDefault();

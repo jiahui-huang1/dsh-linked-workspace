@@ -53,6 +53,7 @@ Host code (lib/) reloads live with `plugin_manager set_plugin include:linked-wor
 4. **清除**：`hosts.credentials` 传 `{ hostId, clear: true }` → 返回 `authType: 'agent'`、`hasCredential: false`，文件里的条目被删掉，弹窗里又显示「需要密码」。
 5. **不装 dsh-ssh-tunnel 也照常**：没有 SSH Manager 时上述流程全部可用；`identityFile` 与 agent 的主机行为不变，仍显示 `~/.ssh/config`。
 6. **不影响已有的密钥主机**：`~/.ssh/config` 里带 `IdentityFile` 的主机 `authType` 仍是 `privateKey`、`hasCredential` 仍为 `true`。
+7. **弹窗内滚轮只滚弹窗**：主机多到出现滚动条时（≥6 台），把鼠标放在 SSH 主机列表上滚动滚轮 → 列表先滚；到底后继续滚 → 表单滚；全程背后会话区域不滚动。鼠标放到弹窗遮罩上滚动也一样，背后页面不动。
 
 ## 工作区图标与连接状态（0.11.0）
 
