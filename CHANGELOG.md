@@ -4,6 +4,14 @@ English · [简体中文](CHANGELOG.zh.md)
 
 ## Unreleased
 
+- **Content search shows the hit**: results now list the file **and** the matching line (number + trimmed snippet, one row per hit), clicking one opens the file with the caret on that line, and Markdown files switch to the code editor for the jump. Local and remote searches share the same limits (1 MB per file, 2000 files, 8 MB, 5 s) and the same default folder exclusions (`node_modules`, `.git`, `site-packages`, `dist`, `build`, `target`, `.venv`, `.conda`, …), so a remote scan no longer crawls a conda tree; when a scan is cut short the notice names the reason (files / bytes / time / result cap) instead of a bare “too many”.
+- **Search options**: three toggles in the search bar — `Aa` (match case), `.*` (regular expression, with the server's own “invalid regular expression” message) and a folder chip that limits the scan to the selected folder.
+- **Keyboard navigation**: the file tree and the result list accept `↑`/`↓`/`Home`/`End`, `→` expands a folder, `←` collapses it (or jumps to the parent from a file), and `Enter` opens; `↓` from the search box drops into the results.
+- **Transfer progress and cancel**: queued transfers report live progress (“2 sent · 2.0 MB”) by polling the new `fs.transferProgress`, and the queue dialog gained a cancel button backed by `fs.transferCancel`; a cancelled run keeps the files already landed and says so.
+- **Batch rename**: with several entries selected the row menu offers “Batch rename selected (N)…” — numbering mode (prefix + start + padding, extension kept) or find-and-replace, with a live preview that flags empty names and duplicates before anything is renamed.
+- **Hover tooltips with mtime**: hovering a row now appends “modified …” and the size to the path tooltip, fetched on demand and cached for 5 s.
+- **Welcome card again**: the settings header gained a “Show the welcome card again” button.
+- **Consistent dialogs**: the confirm dialogs use the plugin's own modal styling (blurred backdrop, rounded card) instead of the host's plain white box.
 - **New folder on the remote side**: the remote path picker gained a “New folder” button (backed by the new `hosts.mkdir` host method), matching the local picker — type a name, press Enter or “Create”, and the picker lands inside the folder it just made. Duplicates report “remote directory already exists”, and names containing `/`, `\` or `..` are refused.
 - **Long paths no longer push the buttons out**: the remote path line ellipsizes in place (hover for the full path), so “New folder” and “Use this directory” always stay visible.
 - **Dropped the redundant “Open” button**: the local path field no longer needs it — Enter navigates to the typed path; the desktop “Browse…” system picker stays.

@@ -228,6 +228,7 @@ window.__ModuleLoader__.load({
       welcomePasswordWhere: '添加工作区时直接填 SSH 密码，只保存在本机',
       welcomeStar: '★ 点个 Star',
       welcomeDone: '知道了',
+      welcomeReplay: '再次查看欢迎卡片',
       intro: '把 SSH 连接变成工作区：联动工作区把本地目录与远端目录配对，远程工作区让会话直接运行在远端目录。会话都能读取、搜索和编辑远端文件。',
       addWorkspace: '添加工作区',
       addLinked: '添加联动工作区',
@@ -337,6 +338,14 @@ window.__ModuleLoader__.load({
       filterPlaceholder: '按名称过滤…',
       filterEmpty: '没有匹配当前过滤条件的条目',
       searchTruncated: '结果过多，仅显示前 200 条；请输入更精确的关键词',
+      searchTruncatedFiles: '文件太多，搜索结果不完整；请缩小目录范围或换个关键词',
+      searchTruncatedBytes: '读取的文件总量已达上限，搜索结果不完整；请缩小目录范围',
+      searchTruncatedDeadline: '搜索超时，结果不完整；请缩小目录范围或换个关键词',
+      searchCase: '区分大小写',
+      searchRegex: '正则表达式',
+      searchScopeAll: '整个工作区',
+      searchScopeHere: '只搜当前目录',
+      searchScopeLabel: '范围：{{scope}}',
       findPlaceholder: '查找…',
       replacePlaceholder: '替换为…',
       findCounter: '第 {{index}} / {{total}} 个',
@@ -418,6 +427,24 @@ window.__ModuleLoader__.load({
       searchModeContent: '内容',
       searchPlaceholderContent: '在文件内容中搜索…',
       queueRetry: '重试',
+      rowModifiedAt: '修改于 {{when}}',
+      ctxRenameSelected: '批量重命名所选的 {{count}} 项…',
+      renameManyTitle: '批量重命名 {{count}} 项',
+      renameManyPattern: '按序号',
+      renameManyReplace: '查找替换',
+      renameManyPrefix: '前缀',
+      renameManyStart: '起始序号',
+      renameManyPad: '序号位数',
+      renameManyFind: '查找',
+      renameManyReplaceWith: '替换为',
+      renameManyEmpty: '（名称不能为空）',
+      renameManyConflict: '有重名，先调整规则再重命名',
+      renameManyApply: '重命名 {{count}} 项',
+      renameManyDone: '已重命名 {{count}} 项',
+      queueCancel: '取消',
+      queueProgress: '已传 {{files}} 个 · {{size}}',
+      queueCancelling: '正在取消…',
+      queueCancelled: '已取消（已传 {{files}} 个）',
       shortcutWebNote: 'Web GUI 中 Ctrl+W、Ctrl+Tab 由浏览器占用，请在 DSH 桌面端使用这些快捷键。',
       themeTitle: '编辑器主题',
       themeHint: '远程文件编辑器的配色；主题只影响本插件的远程文件视图。',
@@ -660,6 +687,7 @@ window.__ModuleLoader__.load({
       welcomePasswordWhere: 'Type the SSH password when adding a workspace; it stays on this machine',
       welcomeStar: '★ Star the repo',
       welcomeDone: 'Got it',
+      welcomeReplay: 'Show the welcome card again',
       intro: 'Turn an SSH connection into a workspace: a linked workspace pairs a local folder with a remote folder, and a remote workspace runs sessions directly inside the remote folder. Either way sessions can read, search and edit remote files.',
       addWorkspace: 'Add workspace',
       addRemoteDir: 'Add remote directory',
@@ -770,6 +798,14 @@ window.__ModuleLoader__.load({
       filterPlaceholder: 'Filter by name…',
       filterEmpty: 'No entries match the current filter',
       searchTruncated: 'Too many results; showing the first 200. Narrow the query.',
+      searchTruncatedFiles: 'Too many files were scanned; results are incomplete. Narrow the folder or the query.',
+      searchTruncatedBytes: 'The byte budget ran out; results are incomplete. Narrow the folder.',
+      searchTruncatedDeadline: 'The search timed out; results are incomplete. Narrow the folder or the query.',
+      searchCase: 'Match case',
+      searchRegex: 'Regular expression',
+      searchScopeAll: 'Whole workspace',
+      searchScopeHere: 'Current folder only',
+      searchScopeLabel: 'Scope: {{scope}}',
       findPlaceholder: 'Find…',
       replacePlaceholder: 'Replace with…',
       findCounter: '{{index}} / {{total}}',
@@ -851,6 +887,24 @@ window.__ModuleLoader__.load({
       searchModeContent: 'Content',
       searchPlaceholderContent: 'Search file contents…',
       queueRetry: 'Retry',
+      rowModifiedAt: 'Modified {{when}}',
+      ctxRenameSelected: 'Rename the {{count}} selected…',
+      renameManyTitle: 'Rename {{count}} entries',
+      renameManyPattern: 'Numbering',
+      renameManyReplace: 'Find and replace',
+      renameManyPrefix: 'Prefix',
+      renameManyStart: 'Start at',
+      renameManyPad: 'Digits',
+      renameManyFind: 'Find',
+      renameManyReplaceWith: 'Replace with',
+      renameManyEmpty: '(name cannot be empty)',
+      renameManyConflict: 'Two entries would share a name — adjust the rule first',
+      renameManyApply: 'Rename {{count}}',
+      renameManyDone: 'Renamed {{count}} entries',
+      queueCancel: 'Cancel',
+      queueProgress: '{{files}} sent · {{size}}',
+      queueCancelling: 'Cancelling…',
+      queueCancelled: 'Cancelled ({{files}} sent)',
       shortcutWebNote: 'In the Web GUI, Ctrl+W and Ctrl+Tab are reserved by the browser; use these shortcuts in the DSH desktop app.',
       themeTitle: 'Editor theme',
       themeHint: 'Colors of the remote file editor. Themes affect this plugin’s remote file views only.',
@@ -1622,6 +1676,7 @@ window.__ModuleLoader__.load({
       '.rw-menu-backdrop{position:fixed;inset:0;z-index:40}',
       '.rw-searchbar{display:flex;align-items:center;gap:6px;margin:6px 8px 0;padding:0 8px;height:30px;border:1px solid var(--dsw-alias-border-l2);border-radius:8px;background:var(--dsw-alias-bg-layer-1);flex:none}',
       '.rw-searchbar input{flex:1 1 auto;border:0;outline:0;background:transparent;color:var(--dsw-alias-label-primary);font:inherit;font-size:12px;min-width:0}',
+      '.rw-search-flags{display:inline-flex;align-items:center;gap:2px;flex:none}',
       '.rw-chips{display:flex;gap:4px;padding:6px 8px 0;overflow:auto;flex:none}',
       '.rw-chip-btn{display:inline-flex;align-items:center;gap:4px;max-width:190px;padding:2px 8px;border-radius:999px;border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-secondary);font:inherit;font-size:11px;line-height:16px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:none}',
       '.rw-chip-btn.is-on{border-color:var(--dsw-alias-brand-primary);color:var(--dsw-alias-label-primary);background:color-mix(in srgb,var(--dsw-alias-brand-primary) 10%,transparent)}',
@@ -1642,6 +1697,10 @@ window.__ModuleLoader__.load({
       '.rw-change-meta{flex:none;font-size:10.5px;color:var(--dsw-alias-label-tertiary)}',
       '.rw-search-results{flex:1 1 auto;min-height:0;overflow:auto;padding:6px 8px}',
       '.rw-result-row{display:flex;align-items:center;gap:6px;width:100%;padding:4px;border:0;border-radius:5px;background:transparent;color:var(--dsw-alias-label-primary);font:inherit;font-size:12px;cursor:pointer;text-align:left}',
+      '.rw-result-row.is-content{flex-direction:column;align-items:stretch;gap:1px}',
+      '.rw-result-head{display:flex;align-items:center;gap:6px;min-width:0}',
+      '.rw-result-line{flex:none;font-size:11px;color:var(--dsw-alias-label-secondary)}',
+      '.rw-result-preview{display:block;font-size:11px;line-height:15px;color:var(--dsw-alias-label-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
       '.rw-result-row:hover{background:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.12))}',
       '.rw-hint-row{padding:9px 6px;font-size:11.5px;line-height:17px;color:var(--dsw-alias-label-tertiary)}',
       '.rw-linked-notice{margin:6px 8px 0}',
@@ -1736,13 +1795,15 @@ window.__ModuleLoader__.load({
       '.rw-ctx-arrow{display:inline-flex;color:var(--dsw-alias-label-tertiary)}',
       '.rw-ctx-sub{display:none;position:absolute;left:100%;top:-5px;min-width:150px;padding:4px 0;border:1px solid var(--dsw-alias-border-l2);border-radius:7px;background:var(--dsw-alias-bg-overlay);box-shadow:0 12px 36px rgba(0,0,0,.3)}',
       '.rw-ctx-item.has-sub:hover .rw-ctx-sub{display:block}',
-      '.rw-dialog-backdrop{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.32);display:flex;align-items:center;justify-content:center}',
-      '.rw-dialog{width:min(430px,calc(100vw - 48px));max-height:min(72vh,560px);overflow:auto;border:1px solid var(--dsw-alias-border-l2);border-radius:11px;background:var(--dsw-alias-bg-overlay);box-shadow:0 18px 50px rgba(0,0,0,.34);padding:14px}',
-      '.rw-dialog-title{font-size:13px;font-weight:600;line-height:20px;margin-bottom:9px}',
+      '.rw-dialog-backdrop{position:fixed;inset:0;z-index:80;padding:24px;background:rgba(0,0,0,.34);backdrop-filter:blur(2px);display:flex;align-items:center;justify-content:center}',
+      // D4: dialogs share the add-workspace modal's frame so a confirm never
+      // looks like a foreign panel next to it.
+      '.rw-dialog{width:min(460px,calc(100vw - 48px));max-height:min(80vh,620px);overflow:auto;border:1px solid var(--dsw-alias-border-l2);border-radius:16px;background:var(--dsw-alias-bg-overlay);box-shadow:0 18px 60px rgba(0,0,0,.35);padding:18px 20px}',
+      '.rw-dialog-title{font-size:15px;font-weight:600;line-height:22px;margin-bottom:10px}',
       '.rw-dialog-label{display:block;margin:7px 0 4px;font-size:11.5px;color:var(--dsw-alias-label-tertiary)}',
       '.rw-dialog-input{width:100%;box-sizing:border-box;padding:6px 9px;border:1px solid var(--dsw-alias-border-l2);border-radius:6px;background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);font:inherit;font-size:12px;outline:none}',
-      '.rw-dialog-actions{display:flex;justify-content:flex-end;gap:7px;margin-top:12px}',
-      '.rw-dialog-message{font-size:12px;line-height:18px;color:var(--dsw-alias-label-secondary)}',
+      '.rw-dialog-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}',
+      '.rw-dialog-message{font-size:13px;line-height:19px;color:var(--dsw-alias-label-secondary)}',
       // First-run welcome card: sits in shell.overlay, so the backdrop is its own.
       '.rw-welcome-backdrop{position:fixed;inset:0;z-index:2000;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(0,0,0,.42)}',
       '.rw-welcome{position:relative;width:min(470px,100%);max-height:min(86vh,700px);overflow:auto;box-sizing:border-box;padding:22px 22px 18px;border:1px solid var(--dsw-alias-border-l2);border-radius:18px;background:var(--dsw-alias-bg-layer-2);box-shadow:0 26px 70px rgba(0,0,0,.42);color:var(--dsw-alias-label-primary)}',
@@ -1779,6 +1840,12 @@ window.__ModuleLoader__.load({
       '.rw-csv-table tr:nth-child(even) td{background:color-mix(in srgb,var(--dsw-alias-bg-layer-1) 52%,transparent)}',
       '.rw-csv-note{padding:5px 9px;font-size:10.5px;color:var(--dsw-alias-label-tertiary);border-top:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1)}',
       '.rw-queue-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--dsw-alias-border-l1);font-size:12px}',
+      '.rw-rename-preview{max-height:min(38vh,300px);overflow:auto;border:1px solid var(--dsw-alias-border-l1);border-radius:10px;padding:4px 8px;margin:2px 0 10px}',
+      '.rw-rename-row{display:flex;align-items:center;gap:6px;padding:3px 0;font-size:12px;line-height:18px}',
+      '.rw-rename-row.is-bad{color:var(--dsw-alias-state-error-primary)}',
+      '.rw-rename-from{flex:1 1 0;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--dsw-alias-label-secondary)}',
+      '.rw-rename-arrow{flex:none;color:var(--dsw-alias-label-tertiary)}',
+      '.rw-rename-to{flex:1 1 0;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}',
       '.rw-queue-label{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
       '.rw-queue-state{flex:none;font-size:10.5px;color:var(--dsw-alias-label-tertiary)}',
     ].join('\n');
@@ -3027,6 +3094,31 @@ window.__ModuleLoader__.load({
       return nodes;
     }
 
+    // Rows are plain buttons, so ↑/↓/Home/End only have to move focus; the
+    // browser keeps the click and Enter behaviour for free.
+    var LIST_KEY_STEP = { ArrowDown: 1, ArrowUp: -1 };
+
+    function handleListKeys(event, container, selector) {
+      if (!container) return false;
+      if (event.ctrlKey || event.metaKey || event.altKey) return false;
+      var step = LIST_KEY_STEP[event.key];
+      var isHome = event.key === 'Home';
+      var isEnd = event.key === 'End';
+      if (step === undefined && !isHome && !isEnd) return false;
+      var rows = Array.prototype.slice.call(container.querySelectorAll(selector));
+      if (rows.length === 0) return false;
+      var index = rows.indexOf(document.activeElement);
+      var next;
+      if (isHome) next = 0;
+      else if (isEnd) next = rows.length - 1;
+      else if (index === -1) next = step > 0 ? 0 : rows.length - 1;
+      else next = Math.min(rows.length - 1, Math.max(0, index + step));
+      event.preventDefault();
+      event.stopPropagation();
+      rows[next].focus();
+      return true;
+    }
+
     function RemoteFileEditor(props) {
       var ctx = props.ctx;
       var t = props.t;
@@ -3085,6 +3177,45 @@ window.__ModuleLoader__.load({
       useEffect(function () {
         if (typeof props.onDirtyChange === 'function') props.onDirtyChange(dirty);
       }, [dirty]);
+
+      // A content-search hit opens the file at the matching line: place the
+      // caret on it and centre the row, but only once per (file, line) pair so
+      // typing and saving never yank the viewport back.
+      var jumpedRef = useRef('');
+      useEffect(function () {
+        var target = Number(props.focusLine) || 0;
+        if (target <= 0 || load.loading || load.error || content === '') return undefined;
+        var stamp = filePath + '#' + target;
+        if (jumpedRef.current === stamp) return undefined;
+        // The textarea can mount one commit after the content arrives, so retry
+        // for a few frames instead of giving up on the first pass.
+        var tries = 0;
+        var timers = [];
+        function attempt() {
+          if (jumpedRef.current === stamp) return;
+          var area = textareaRef.current;
+          if (!area) {
+            if (tries < 12) { tries += 1; timers.push(setTimeout(attempt, 40)); }
+            return;
+          }
+          jumpedRef.current = stamp;
+          var lines = String(content).split('\n');
+          var offset = 0;
+          var last = Math.min(Math.max(target - 1, 0), Math.max(lines.length - 1, 0));
+          for (var index = 0; index < last; index += 1) offset += lines[index].length + 1;
+          var end = offset + (lines[last] ? lines[last].length : 0);
+          try {
+            area.focus();
+            area.setSelectionRange(offset, end);
+          } catch (error) { /* not focusable yet */ }
+          var lineHeight = 18;
+          area.scrollTop = Math.max(0, (last - 4) * lineHeight);
+          if (highlightRef.current) highlightRef.current.scrollTop = area.scrollTop;
+          if (gutterRef.current) gutterRef.current.scrollTop = area.scrollTop;
+        }
+        attempt();
+        return function () { timers.forEach(function (timer) { clearTimeout(timer); }); };
+      }, [filePath, props.focusLine, load.loading, load.error, content]);
 
       useEffect(function () {
         if (!sidebar || typeof sidebar.updateTab !== 'function' || !props.tabId) return;
@@ -3664,6 +3795,7 @@ window.__ModuleLoader__.load({
         className: 'rw-tree',
         role: 'tree',
         'aria-label': t('allFiles'),
+        onKeyDown: function (event) { handleListKeys(event, event.currentTarget, '[role="treeitem"]'); },
         onDragOver: function (event) {
           if (!props.onDropOnPath) return;
           event.preventDefault();
@@ -3697,6 +3829,7 @@ window.__ModuleLoader__.load({
         selectedPath: props.selectedPath || '',
         selectedSet: props.selectedPaths && props.selectedPaths.length > 0 ? new Set(props.selectedPaths) : null,
         siblings: rootSiblings,
+        statSide: props.kind || 'remote',
       }));
     }
 
@@ -3826,6 +3959,8 @@ window.__ModuleLoader__.load({
       var t = props.t;
       var locale = props.locale;
       var state = props.state;
+      var contentMode = props.mode === 'content';
+      var resultsRef = useRef(null);
       var groups = [
         { side: 'remote', label: t('remoteTree'), entries: state.remote || [] },
         { side: 'local', label: t('localTree'), entries: props.hasLocal ? state.local || [] : [] },
@@ -3843,26 +3978,46 @@ window.__ModuleLoader__.load({
         });
       }
       var total = groups.reduce(function (sum, group) { return sum + group.entries.length; }, 0);
-      return h('div', { className: 'rw-search-results' },
+      // The Host reports *why* it stopped, because "too many results" and "the
+      // search timed out" need different advice from the user.
+      var reasonKey = state.truncatedReason === 'files' ? 'searchTruncatedFiles'
+        : state.truncatedReason === 'bytes' ? 'searchTruncatedBytes'
+          : state.truncatedReason === 'deadline' ? 'searchTruncatedDeadline'
+            : 'searchTruncated';
+      return h('div', {
+        className: 'rw-search-results',
+        ref: resultsRef,
+        onKeyDown: function (event) { handleListKeys(event, resultsRef.current, '.rw-result-row'); },
+      },
         state.error ? h(Banner, { kind: 'error' }, state.error) : null,
         state.loading ? h('div', { className: 'rw-hint-row' }, Spinner(12), t('loading')) : null,
         !state.loading && total === 0 ? h('div', { className: 'rw-hint-row' }, t('searchEmpty')) : null,
-        !state.loading && state.truncated ? h('div', { className: 'rw-hint-row' }, t('searchTruncated')) : null,
+        !state.loading && state.truncated ? h('div', { className: 'rw-hint-row' }, t(reasonKey)) : null,
         groups.map(function (group) {
           if (group.entries.length === 0) return null;
           return h('div', { key: group.side, className: 'rw-change-group' },
             h('div', { className: 'rw-change-group-title' }, group.label, h('span', { className: 'rw-change-meta' }, String(group.entries.length))),
             group.entries.map(function (entry) {
+              var line = Number(entry.line) || 0;
               return h('button', {
-                key: group.side + ':' + entry.path,
+                key: group.side + ':' + entry.path + ':' + line,
                 type: 'button',
-                className: 'rw-result-row',
-                title: entry.path,
+                className: 'rw-result-row' + (contentMode ? ' is-content' : ''),
+                title: line > 0 ? entry.path + ':' + line : entry.path,
                 onClick: function () { props.onOpen(group.side, entry.path, entry); },
               },
-                h(FileGlyph, { name: entry.relative || entry.path, size: 13 }),
-                h('span', { className: 'rw-change-path' }, entry.relative || entry.path),
-                h('span', { className: 'rw-change-meta' }, group.side === 'remote' ? t('sideRemote') : t('sideLocal')));
+                contentMode
+                  ? h('span', { className: 'rw-result-head' },
+                    h(FileGlyph, { name: entry.relative || entry.path, size: 13 }),
+                    h('span', { className: 'rw-change-path' }, entry.relative || entry.path),
+                    line > 0 ? h('span', { className: 'rw-result-line' }, ':' + line) : null,
+                    h('span', { className: 'rw-change-meta' }, group.side === 'remote' ? t('sideRemote') : t('sideLocal')))
+                  : [
+                    h(FileGlyph, { name: entry.relative || entry.path, size: 13 }),
+                    h('span', { className: 'rw-change-path' }, entry.relative || entry.path),
+                    h('span', { className: 'rw-change-meta' }, group.side === 'remote' ? t('sideRemote') : t('sideLocal')),
+                  ],
+                contentMode && entry.preview ? h('span', { className: 'rw-result-preview' }, entry.preview) : null);
             }));
         }));
     }
@@ -4012,6 +4167,9 @@ window.__ModuleLoader__.load({
     // Shown once per browser profile: the flag lives in localStorage so the
     // dialog never reopens on refresh, and a fresh DSH install opens it again.
     var WELCOME_KEY = 'dsh-linked-workspace:welcome';
+    // F6: the settings page can replay the card, so the flag is cleared and an
+    // event wakes the overlay instead of the user hunting for local storage.
+    var WELCOME_EVENT = 'dsh-linked-workspace:welcome-open';
 
     function welcomeSeen() {
       try {
@@ -4041,6 +4199,11 @@ window.__ModuleLoader__.load({
       var open = state[0];
       var setOpen = state[1];
       function close() { welcomeRemember(); setOpen(false); }
+      useEffect(function () {
+        function onReplay() { setOpen(true); }
+        window.addEventListener(WELCOME_EVENT, onReplay);
+        return function () { window.removeEventListener(WELCOME_EVENT, onReplay); };
+      }, []);
       useEffect(function () {
         if (!open) return undefined;
         function onKey(event) {
@@ -4157,6 +4320,129 @@ window.__ModuleLoader__.load({
           h('button', { type: 'button', className: 'rw-btn rw-btn-sm rw-btn-danger', onClick: props.onConfirm }, props.confirmLabel)));
     }
 
+    // F2: renaming a dozen files one by one is the slowest thing left in the
+    // tree, so a multi-selection gets a single batch dialog with a live preview.
+    function BatchRenameDialog(props) {
+      var t = props.t;
+      var entries = props.entries || [];
+      var modeState = useState('pattern');
+      var mode = modeState[0];
+      var setMode = modeState[1];
+      var prefixState = useState('');
+      var prefix = prefixState[0];
+      var setPrefix = prefixState[1];
+      var startState = useState('1');
+      var start = startState[0];
+      var setStart = startState[1];
+      var padState = useState('2');
+      var pad = padState[0];
+      var setPad = padState[1];
+      var findState = useState('');
+      var find = findState[0];
+      var setFind = findState[1];
+      var replaceState = useState('');
+      var replaceWith = replaceState[0];
+      var setReplaceWith = replaceState[1];
+      var busyState = useState(false);
+      var busy = busyState[0];
+      var setBusy = busyState[1];
+
+      function splitName(name) {
+        var dot = String(name).lastIndexOf('.');
+        if (dot <= 0) return { base: String(name), ext: '' };
+        return { base: String(name).slice(0, dot), ext: String(name).slice(dot) };
+      }
+
+      var pairs = entries.map(function (entry, index) {
+        var parts = splitName(entry.name);
+        var next = '';
+        if (mode === 'pattern') {
+          var number = String(Number(start || 0) + index).padStart(Math.max(1, Number(pad) || 1), '0');
+          next = prefix + number + (entry.isDir ? '' : parts.ext);
+        } else {
+          next = find === '' ? entry.name : String(entry.name).split(find).join(replaceWith);
+        }
+        return { entry: entry, from: entry.name, to: next };
+      });
+      var seen = {};
+      var conflict = false;
+      var invalid = false;
+      pairs.forEach(function (pair) {
+        if (pair.to === '') invalid = true;
+        if (seen[pair.to]) conflict = true;
+        seen[pair.to] = true;
+        if (pair.to !== pair.from && pairs.some(function (other) { return other.entry.name === pair.to; })) conflict = true;
+      });
+      var changed = pairs.filter(function (pair) { return pair.to !== pair.from; }).length;
+
+      function apply() {
+        if (busy || invalid || conflict || changed === 0) return;
+        setBusy(true);
+        props.onApply(pairs.filter(function (pair) { return pair.to !== pair.from; })).then(function () {
+          setBusy(false);
+          props.onClose();
+        }).catch(function () { setBusy(false); });
+      }
+
+      return h(DialogShell, { title: t('renameManyTitle', { count: entries.length }), onClose: props.onClose },
+        h('div', { className: 'rw-inline', style: { gap: 6, marginBottom: 10 } },
+          h('button', {
+            type: 'button',
+            className: 'rw-chip-btn' + (mode === 'pattern' ? ' is-on' : ''),
+            'aria-pressed': mode === 'pattern',
+            onClick: function () { setMode('pattern'); },
+          }, t('renameManyPattern')),
+          h('button', {
+            type: 'button',
+            className: 'rw-chip-btn' + (mode === 'replace' ? ' is-on' : ''),
+            'aria-pressed': mode === 'replace',
+            onClick: function () { setMode('replace'); },
+          }, t('renameManyReplace'))),
+        mode === 'pattern'
+          ? h('div', { className: 'rw-inline', style: { gap: 6, marginBottom: 10 } },
+            h('input', {
+              className: 'rw-input', style: { flex: '2 1 0', minWidth: 0 }, value: prefix,
+              placeholder: t('renameManyPrefix'), 'aria-label': t('renameManyPrefix'),
+              onChange: function (event) { var value = event.currentTarget.value; setPrefix(value); },
+            }),
+            h('input', {
+              className: 'rw-input rw-input-mono', style: { flex: '1 1 0', minWidth: 0 }, value: start,
+              placeholder: t('renameManyStart'), 'aria-label': t('renameManyStart'),
+              onChange: function (event) { var value = event.currentTarget.value; setStart(value.replace(/[^0-9]/g, '')); },
+            }),
+            h('input', {
+              className: 'rw-input rw-input-mono', style: { flex: '1 1 0', minWidth: 0 }, value: pad,
+              placeholder: t('renameManyPad'), 'aria-label': t('renameManyPad'),
+              onChange: function (event) { var value = event.currentTarget.value; setPad(value.replace(/[^0-9]/g, '')); },
+            }))
+          : h('div', { className: 'rw-inline', style: { gap: 6, marginBottom: 10 } },
+            h('input', {
+              className: 'rw-input', style: { flex: '1 1 0', minWidth: 0 }, value: find,
+              placeholder: t('renameManyFind'), 'aria-label': t('renameManyFind'),
+              onChange: function (event) { var value = event.currentTarget.value; setFind(value); },
+            }),
+            h('input', {
+              className: 'rw-input', style: { flex: '1 1 0', minWidth: 0 }, value: replaceWith,
+              placeholder: t('renameManyReplaceWith'), 'aria-label': t('renameManyReplaceWith'),
+              onChange: function (event) { var value = event.currentTarget.value; setReplaceWith(value); },
+            })),
+        h('div', { className: 'rw-rename-preview' }, pairs.slice(0, 50).map(function (pair) {
+          return h('div', { key: pair.entry.path, className: 'rw-rename-row' + (pair.to === '' || seen[pair.to] > 1 ? ' is-bad' : '') },
+            h('span', { className: 'rw-rename-from', title: pair.entry.path }, pair.from),
+            h('span', { className: 'rw-rename-arrow' }, '→'),
+            h('span', { className: 'rw-rename-to' }, pair.to === '' ? t('renameManyEmpty') : pair.to));
+        })),
+        conflict ? h('div', { className: 'rw-dialog-message rw-dialog-error' }, t('renameManyConflict')) : null,
+        h('div', { className: 'rw-dialog-actions' },
+          h('button', { type: 'button', className: 'rw-btn rw-btn-sm', onClick: props.onClose }, t('cancel')),
+          h('button', {
+            type: 'button',
+            className: 'rw-btn rw-btn-sm rw-btn-primary',
+            disabled: busy || invalid || conflict || changed === 0,
+            onClick: apply,
+          }, t(busy ? 'loading' : 'renameManyApply', { count: changed }))));
+    }
+
     function PropertiesDialog(props) {
       return h(DialogShell, { title: props.title, onClose: props.onClose },
         h('div', { className: 'rw-props' }, props.rows.map(function (row) {
@@ -4256,6 +4542,14 @@ window.__ModuleLoader__.load({
             return h('div', { key: entry.id, className: 'rw-queue-row' },
               h('span', { className: 'rw-queue-label', title: entry.path }, entry.label),
               h('span', { className: 'rw-queue-state' }, entry.message || entry.state),
+              entry.state === 'running' && props.onCancel
+                ? h('button', {
+                  type: 'button',
+                  className: 'rw-btn rw-btn-sm',
+                  disabled: Boolean(entry.cancelling),
+                  onClick: function () { props.onCancel(entry); },
+                }, props.t('queueCancel'))
+                : null,
               entry.state === 'error' && props.onRetry
                 ? h('button', {
                   type: 'button',
@@ -4673,7 +4967,16 @@ window.__ModuleLoader__.load({
       var searchModeState = useState('name');
       var searchMode = searchModeState[0];
       var setSearchMode = searchModeState[1];
-      var searchState = useState({ loading: false, remote: [], local: [], error: null });
+      var searchCaseState = useState(false);
+      var searchCase = searchCaseState[0];
+      var setSearchCase = searchCaseState[1];
+      var searchRegexState = useState(false);
+      var searchRegex = searchRegexState[0];
+      var setSearchRegex = searchRegexState[1];
+      var searchHereState = useState(false);
+      var searchHere = searchHereState[0];
+      var setSearchHere = searchHereState[1];
+      var searchState = useState({ loading: false, remote: [], local: [], truncated: false, truncatedReason: '', error: null });
       var search = searchState[0];
       var setSearch = searchState[1];
       var gitState = useState({ loading: false, remote: null, local: null, error: null });
@@ -4973,6 +5276,12 @@ window.__ModuleLoader__.load({
         setOpenFiles(function (previous) {
           var existing = previous.filter(function (file) { return file.key === key; })[0];
           if (existing) {
+            var wanted = Number(opts.line) || 0;
+            if (wanted > 0 && existing.line !== wanted) {
+              // Re-opening the same file from another hit must move the caret,
+              // so the line travels with the tab instead of being dropped.
+              return previous.map(function (file) { return file.key === key ? Object.assign({}, file, { line: wanted, pinned: Boolean(opts.pinned) || file.pinned }) : file; });
+            }
             if (opts.pinned && !existing.pinned) {
               return previous.map(function (file) { return file.key === key ? Object.assign({}, file, { pinned: true }) : file; });
             }
@@ -4985,13 +5294,13 @@ window.__ModuleLoader__.load({
               var active = previous[activeIndex];
               if (!active.pinned && !fileDirty[active.key]) {
                 var replaced = previous.slice();
-                replaced[activeIndex] = { key: key, side: side, path: filePath, name: basename(filePath), pinned: false };
+                replaced[activeIndex] = { key: key, side: side, path: filePath, name: basename(filePath), pinned: false, line: Number(opts.line) || 0 };
                 setFileDirty(function (dirtyMap) { var copy = Object.assign({}, dirtyMap); delete copy[active.key]; return copy; });
                 return replaced;
               }
             }
           }
-          return previous.concat([{ key: key, side: side, path: filePath, name: basename(filePath), pinned: Boolean(opts.pinned) }]);
+          return previous.concat([{ key: key, side: side, path: filePath, name: basename(filePath), pinned: Boolean(opts.pinned), line: Number(opts.line) || 0 }]);
         });
         setActiveFileKey(key);
         setDirectoryOpen(true);
@@ -5155,15 +5464,27 @@ window.__ModuleLoader__.load({
       function enqueueTransfer(side, filePath, name) {
         var entry = {
           id: String(Date.now()) + Math.random().toString(16).slice(2),
+          jobId: 'job-' + String(Date.now()) + '-' + Math.random().toString(16).slice(2, 8),
           side: side || 'remote',
           path: filePath,
           label: name,
           state: 'queued',
+          files: 0,
+          bytes: 0,
           message: t('queueQueued'),
         };
         queueRef.current = queueRef.current.concat([entry]);
         setQueueList(queueRef.current.slice());
         pumpQueue();
+      }
+
+      /** Ask the Host to stop a running transfer after the current file. */
+      function cancelTransfer(entry) {
+        if (!entry || !entry.jobId) return;
+        entry.cancelling = true;
+        entry.message = t('queueCancelling');
+        setQueueList(queueRef.current.slice());
+        apiCall('fs.transferCancel', { jobId: entry.jobId }).catch(function () { /* the transfer may be over */ });
       }
 
       function pumpQueue() {
@@ -5172,17 +5493,34 @@ window.__ModuleLoader__.load({
         if (!next) return;
         queueRunning.current = true;
         next.state = 'running';
+        next.files = 0;
+        next.bytes = 0;
         next.message = t('queueRunning');
         setQueueList(queueRef.current.slice());
-        apiCall('fs.transfer', Object.assign({ side: next.side || 'remote', path: next.path }, scopeParams(scopeRef))).then(function (result) {
+        // Poll the Host while the transfer runs: a folder can take minutes and
+        // the row otherwise sits on “running” with no evidence of progress.
+        var poll = setInterval(function () {
+          apiCall('fs.transferProgress', { jobId: next.jobId }).then(function (result) {
+            var job = result && result.job;
+            if (!job || next.state !== 'running') return;
+            next.files = job.files;
+            next.bytes = job.bytes;
+            next.message = t('queueProgress', { files: job.files, size: formatBytes(job.bytes) });
+            setQueueList(queueRef.current.slice());
+          }).catch(function () { /* progress is best-effort */ });
+        }, 700);
+        apiCall('fs.transfer', Object.assign({ side: next.side || 'remote', path: next.path, jobId: next.jobId }, scopeParams(scopeRef))).then(function (result) {
           next.state = 'done';
           next.message = t('transferDone', { files: result.files, size: formatBytes(result.bytes) }) + (result.truncated ? t('transferTruncated') : '');
           showNotice('success', next.message);
           refreshTree();
         }).catch(function (error) {
-          next.state = 'error';
-          next.message = messageOf(error, t, locale);
+          var cancelled = error && error.code === 'CANCELLED';
+          next.state = cancelled ? 'cancelled' : 'error';
+          next.message = cancelled ? t('queueCancelled', { files: next.files }) : messageOf(error, t, locale);
         }).then(function () {
+          clearInterval(poll);
+          next.cancelling = false;
           setQueueList(queueRef.current.slice());
           queueRunning.current = false;
           pumpQueue();
@@ -5506,6 +5844,32 @@ window.__ModuleLoader__.load({
         }).catch(noticeError);
       }
 
+      /**
+       * F2: rename sequentially so one failure (a clash on disk) does not leave
+       * the rest half-applied without a word.
+       */
+      function renameManyEntries(side, pairs) {
+        var method = side === 'remote' ? 'fs.rename' : 'local.rename';
+        var done = 0;
+        return pairs.reduce(function (chain, pair) {
+          return chain.then(function () {
+            var target = joinChildPath(parentPathOf(pair.entry.path, side), pair.to, side);
+            var params = side === 'remote'
+              ? Object.assign({ from: pair.entry.path, to: target }, scopeParams(scopeRef))
+              : { from: pair.entry.path, to: target };
+            return apiCall(method, params).then(function () { done += 1; });
+          });
+        }, Promise.resolve()).then(function () {
+          showNotice('success', t('renameManyDone', { count: done }));
+          refreshTree();
+          return done;
+        }).catch(function (error) {
+          if (done > 0) showNotice('success', t('renameManyDone', { count: done }));
+          noticeError(error);
+          throw error;
+        });
+      }
+
       function pathUnder(filePath, parentPath) {
         if (!filePath || !parentPath) return false;
         var normalized = String(filePath).replace(/\\/g, '/').replace(/\/+$/, '');
@@ -5567,6 +5931,9 @@ window.__ModuleLoader__.load({
                 kind: 'move', side: menu.side, entries: batch, name: menu.name, isDir: true,
                 initialPath: parentPathOf(menu.path, menu.side),
               });
+            } });
+            items.push({ label: t('ctxRenameSelected', { count: batch.length }), onSelect: function () {
+              setDialog({ kind: 'renameMany', side: menu.side, entries: batch });
             } });
           }
           items.push({ separator: true });
@@ -5680,6 +6047,7 @@ window.__ModuleLoader__.load({
               setQueueList(queueRef.current.slice());
             },
             onRetry: function (entry) { enqueueTransfer(entry.side, entry.path, entry.label); },
+            onCancel: cancelTransfer,
           });
         }
         if (dialog.kind === 'delete') {
@@ -5728,6 +6096,14 @@ window.__ModuleLoader__.load({
             onPick: function (targetDir) { moveEntries(dialog.side, moveTargets, targetDir); },
           });
         }
+        if (dialog.kind === 'renameMany') {
+          return h(BatchRenameDialog, {
+            t: t,
+            entries: dialog.entries,
+            onClose: function () { setDialog(null); },
+            onApply: function (pairs) { return renameManyEntries(dialog.side, pairs); },
+          });
+        }
         if (dialog.kind === 'closeDirty') {
           return h(ConfirmDialog, {
             t: t,
@@ -5774,26 +6150,50 @@ window.__ModuleLoader__.load({
         return function () { alive = false; };
       }, [mode, selectedKey, version]);
 
+      // F3: when the user ticks “current folder only”, the sweep starts from the
+      // row they have selected (its parent when the row is a file).
+      var searchRootPath = '';
+      if (selected && selected.kind !== 'workspace' && selectedEntry && selectedEntry.side === 'remote' && selected.remotePath) {
+        var entryPath = String(selectedEntry.path || '');
+        var rootPrefix = String(selected.remotePath).replace(/\/+$/, '');
+        if (entryPath === rootPrefix) {
+          searchRootPath = '';
+        } else if (entryPath.indexOf(rootPrefix + '/') === 0) {
+          var inside = entryPath.slice(rootPrefix.length + 1);
+          searchRootPath = selectedEntry.isDir === false ? parentPathOf(inside, 'remote') : inside;
+        }
+      }
+
       useEffect(function () {
         if (!searchOpen) {
-          setSearch({ loading: false, remote: [], local: [], error: null });
+          setSearch({ loading: false, remote: [], local: [], truncated: false, truncatedReason: '', error: null });
           return undefined;
         }
         var query = searchQuery.trim();
         if (query.length < 2 || !selected) {
-          setSearch({ loading: false, remote: [], local: [], error: null });
+          setSearch({ loading: false, remote: [], local: [], truncated: false, truncatedReason: '', error: null });
           return undefined;
         }
         var alive = true;
         var timer = setTimeout(function () {
-          setSearch(function (previous) { return { loading: true, remote: previous.remote, local: previous.local, truncated: false, error: null }; });
+          setSearch(function (previous) { return { loading: true, remote: previous.remote, local: previous.local, truncated: false, truncatedReason: '', error: null }; });
           var scopeNow = sourceScopeOf(selected);
-          var method = searchMode === 'content' ? 'fs.grep' : 'fs.search';
-          var jobs = [apiCall(method, Object.assign({ side: 'remote', query: query, maxResults: 200 }, scopeParams(scopeNow))).catch(function (error) {
+          var contentMode = searchMode === 'content';
+          var method = contentMode ? 'fs.grep' : 'fs.search';
+          var extra = { side: 'remote', query: query, maxResults: 200 };
+          if (contentMode) {
+            // F3: narrow the sweep to the folder the user is standing in.
+            if (searchHere && searchRootPath !== '') extra.path = searchRootPath;
+            extra.ignoreCase = !searchCase;
+            extra.regex = searchRegex;
+          }
+          var jobs = [apiCall(method, Object.assign(extra, scopeParams(scopeNow))).catch(function (error) {
             return { ok: false, entries: [], error: messageOf(error, t, locale) };
           })];
           if (selected.kind === 'linked') {
-            jobs.push(apiCall(method, Object.assign({ side: 'local', query: query, maxResults: 200 }, scopeParams(scopeNow))).catch(function (error) {
+            var localExtra = Object.assign({}, extra, { side: 'local' });
+            if (contentMode) localExtra.ignoreCase = !searchCase;
+            jobs.push(apiCall(method, Object.assign(localExtra, scopeParams(scopeNow))).catch(function (error) {
               return { ok: false, entries: [], error: messageOf(error, t, locale) };
             }));
           } else {
@@ -5806,12 +6206,13 @@ window.__ModuleLoader__.load({
               remote: results[0] && results[0].entries ? results[0].entries : [],
               local: results[1] && results[1].entries ? results[1].entries : [],
               truncated: Boolean((results[0] && results[0].truncated) || (results[1] && results[1].truncated)),
+              truncatedReason: (results[0] && results[0].truncatedReason) || (results[1] && results[1].truncatedReason) || '',
               error: (results[0] && results[0].error) || (results[1] && results[1].error) || null,
             });
           });
         }, 320);
         return function () { alive = false; clearTimeout(timer); };
-      }, [searchOpen, searchQuery, selectedKey, version, searchMode]);
+      }, [searchOpen, searchQuery, selectedKey, version, searchMode, searchCase, searchRegex, searchHere]);
 
       if (!selected) {
       return h('div', { className: 'rw-workbench rw-workspace', ref: workbenchRef },
@@ -5831,9 +6232,13 @@ window.__ModuleLoader__.load({
       if (searchOpen && searchQuery.trim().length >= 2) {
         body = h(SearchResults, {
           t: t, locale: locale, state: search,
+          mode: searchMode,
           hasLocal: selected.kind === 'linked',
           showHidden: showHidden,
-          onOpen: openByMode,
+          onOpen: function (side, filePath, entry) {
+            var line = entry && Number(entry.line) ? Number(entry.line) : 0;
+            openByMode(side, filePath, line > 0 ? { pinned: true, line: line } : undefined);
+          },
         });
       } else if (mode !== 'files') {
         body = h(GitChangesView, {
@@ -5893,6 +6298,10 @@ window.__ModuleLoader__.load({
 
       var activeFile = openFiles.filter(function (file) { return file.key === activeFileKey; })[0] || null;
       var activeDocKind = activeFile ? documentKindOf(activeFile.name) : '';
+      // A hit that carries a line number needs the code view: the document pane
+      // has no caret, so the jump would be lost on Markdown/HTML files.
+      var activeForceCode = Boolean(activeFile && Number(activeFile.line) > 0);
+      if (activeForceCode) activeDocKind = '';
       var contentArea = activeFile
         ? (activeDocKind === 'image'
           ? h(ImagePreview, {
@@ -5935,6 +6344,7 @@ window.__ModuleLoader__.load({
           local: activeFile.side === 'local',
           readOnly: remoteOnly,
           hideHeader: true,
+          focusLine: activeFile.line || 0,
           onSaveReady: function (handler) {
             if (handler) saveHandlersRef.current[activeFile.key] = handler;
             else delete saveHandlersRef.current[activeFile.key];
@@ -6001,7 +6411,42 @@ window.__ModuleLoader__.load({
               spellCheck: false,
               autoFocus: true,
               onChange: function (event) { setSearchQuery(event.currentTarget.value); },
+              onKeyDown: function (event) {
+                if (event.key !== 'ArrowDown') return;
+                // Landing on the first hit without leaving the keyboard is the
+                // whole point of the list shortcuts.
+                var list = document.querySelector('.rw-search-results');
+                var first = list && list.querySelector('.rw-result-row');
+                if (!first) return;
+                event.preventDefault();
+                first.focus();
+              },
             }),
+            searchMode === 'content'
+              ? h('span', { className: 'rw-search-flags' },
+                h('button', {
+                  type: 'button',
+                  className: 'rw-chip-btn' + (searchCase ? ' is-on' : ''),
+                  title: t('searchCase'),
+                  'aria-pressed': searchCase ? 'true' : 'false',
+                  onClick: function () { setSearchCase(!searchCase); },
+                }, 'Aa'),
+                h('button', {
+                  type: 'button',
+                  className: 'rw-chip-btn' + (searchRegex ? ' is-on' : ''),
+                  title: t('searchRegex'),
+                  'aria-pressed': searchRegex ? 'true' : 'false',
+                  onClick: function () { setSearchRegex(!searchRegex); },
+                }, '.*'),
+                h('button', {
+                  type: 'button',
+                  className: 'rw-chip-btn' + (searchHere ? ' is-on' : ''),
+                  title: searchHere ? t('searchScopeHere') : t('searchScopeAll'),
+                  'aria-pressed': searchHere ? 'true' : 'false',
+                  disabled: searchRootPath === '',
+                  onClick: function () { setSearchHere(!searchHere); },
+                }, IconFolderTree(11)))
+              : null,
             h('button', {
               type: 'button', className: 'rw-icon-btn', title: t('cancel'),
               onClick: function () { setSearchOpen(false); setSearchQuery(''); },
@@ -6087,6 +6532,39 @@ window.__ModuleLoader__.load({
 
     // ── tree ───────────────────────────────────────────────────────────────
 
+    // F5: the row tooltip shows where a file lives, which is the one thing a
+    // hover cannot tell you about time. One stat per row per 5 s is cheap and
+    // keeps the tree quiet otherwise.
+    var ROW_STAT_TTL_MS = 5000;
+    var rowStatCache = new Map();
+
+    function rowStatKey(side, filePath) {
+      return (side === 'remote' ? 'r:' : 'l:') + filePath;
+    }
+
+    function decorateRowStat(row, side, filePath, scope, t, locale) {
+      if (!row || !filePath) return;
+      var key = rowStatKey(side, filePath);
+      var cached = rowStatCache.get(key);
+      if (cached && Date.now() - cached.at < ROW_STAT_TTL_MS) {
+        row.title = cached.text;
+        return;
+      }
+      row.title = filePath;
+      var method = side === 'remote' ? 'fs.stat' : 'local.stat';
+      var params = side === 'remote'
+        ? Object.assign({ path: filePath }, scopeParams(scope))
+        : { path: filePath };
+      apiCall(method, params).then(function (result) {
+        var stamp = Number(result && result.mtime);
+        var when = stamp > 0 ? new Date(stamp).toLocaleString() : '-';
+        var text = filePath + '\n' + t('rowModifiedAt', { when: when })
+          + (result && result.type === 'dir' ? '' : ' · ' + formatBytes(result && result.size));
+        rowStatCache.set(key, { at: Date.now(), text: text });
+        if (row.isConnected) row.title = text;
+      }).catch(function () { /* a tooltip is not worth a notice */ });
+    }
+
     function TreeDirectory(props) {
       var path = props.path;
       var name = props.name;
@@ -6157,6 +6635,7 @@ window.__ModuleLoader__.load({
                 selectedPath: selectedPath,
                 selectedSet: props.selectedSet,
                 siblings: childSiblings,
+                statSide: props.statSide || 'remote',
               }));
             } else if (child.type === 'file' || child.type === 'symlink') {
               var active = selectedPath === child.path || Boolean(props.selectedSet && props.selectedSet.has(child.path));
@@ -6178,6 +6657,25 @@ window.__ModuleLoader__.load({
                   if (event.detail !== 2) onSelect(child.path);
                 },
                 onDoubleClick: function () { if (onPin) onPin(child.path); },
+                onMouseEnter: function (event) {
+                  decorateRowStat(event.currentTarget, props.statSide || 'remote', child.path, source, t, locale);
+                },
+                onKeyDown: function (event) {
+                  // ← on a file folds the focus back onto its parent folder,
+                  // which is what a file tree is expected to do.
+                  if (event.key !== 'ArrowLeft') return;
+                  var owner = event.currentTarget.closest('[data-dir-path]');
+                  // The folder header is the wrapper's previous sibling, not a
+                  // child of it, so look sideways first and fall back inside.
+                  var header = owner ? owner.previousElementSibling : null;
+                  if (!header || String(header.getAttribute('role')) !== 'treeitem') {
+                    header = owner ? owner.querySelector('[data-dir-path]') : null;
+                  }
+                  if (!header) return;
+                  event.preventDefault();
+                  event.stopPropagation();
+                  header.focus();
+                },
                 onContextMenu: function (event) {
                   if (!onContextMenu) return;
                   event.preventDefault();
@@ -6213,6 +6711,7 @@ window.__ModuleLoader__.load({
           role: 'treeitem',
           'aria-level': depth + 1,
           'aria-expanded': isOpen,
+          'data-dir-path': path,
           className: 'rw-row' + (selectedPath === path || (props.selectedSet && props.selectedSet.has(path)) ? ' is-active' : ''),
           style: { paddingLeft: 6 + depth * 12 },
           title: path,
@@ -6223,6 +6722,9 @@ window.__ModuleLoader__.load({
           onClick: function (event) {
             if (onSelectPath) onSelectPath({ path: path, name: name, isDir: true, siblings: props.siblings || [], event: event });
             if (event.detail !== 2) toggle(path);
+          },
+          onMouseEnter: function (event) {
+            decorateRowStat(event.currentTarget, props.statSide || 'remote', path, source, t, locale);
           },
           onKeyDown: function (event) {
             if (event.key === 'ArrowRight' && !isOpen) { event.preventDefault(); toggle(path); }
@@ -6266,7 +6768,9 @@ window.__ModuleLoader__.load({
           h('span', { className: 'rw-chevron' + (isOpen ? ' is-open' : '') }, IconChevron(12)),
           h(FileGlyph, { name: name, dir: true, open: isOpen, size: 13 }),
           h('span', { className: 'rw-row-name' }, name)),
-        children);
+        // The wrapper carries the folder path so a child row can walk back up
+        // to the folder that owns it (← from a file focuses its folder).
+        children.length > 0 ? h('div', { className: 'rw-tree-children', 'data-dir-path': path }, children) : null);
     }
 
     function WorkspaceTreeSource(props) {
@@ -6401,7 +6905,14 @@ window.__ModuleLoader__.load({
               + (source.kind === 'linked' ? ' · ' + t('linkedChip') : source.kind === 'remote' ? ' · ' + t('remoteChip') : ''))),
           h(StatusPill, { status: source.status, t: t })),
         open
-          ? h('div', { className: 'rw-tree-body', role: 'tree', 'aria-label': source.name },
+          ? h('div', {
+            className: 'rw-tree-body',
+            role: 'tree',
+            'aria-label': source.name,
+            // D3: ↑/↓/Home/End walk the visible rows; ←/→ are handled per row
+            // (expand/collapse a folder, fold back up from a file).
+            onKeyDown: function (event) { handleListKeys(event, event.currentTarget, '[role="treeitem"]'); },
+          },
             h(TreeDirectory, {
               path: source.remotePath,
               name: '/',
@@ -6416,6 +6927,7 @@ window.__ModuleLoader__.load({
               loadMore: loadMore,
               onSelect: props.onSelect,
               selectedPath: props.selectedPath,
+              statSide: 'remote',
             }))
           : null);
     }
@@ -7603,7 +8115,20 @@ window.__ModuleLoader__.load({
             h('button', {
               type: 'button', className: 'rw-btn' + (adding === 'remote' ? '' : ' rw-btn-primary'),
               onClick: function () { toggleAdding('remote'); },
-            }, adding === 'remote' ? IconClose(13) : IconRemoteWorkspace(13), t('createRemote')))),
+            }, adding === 'remote' ? IconClose(13) : IconRemoteWorkspace(13), t('createRemote')),
+            // F6: the welcome card only shows once, so offer a way back to it.
+            h('button', {
+              type: 'button', className: 'rw-btn rw-btn-sm',
+              title: t('welcomeReplay'),
+              onClick: function () {
+                try { if (window.localStorage) window.localStorage.removeItem(WELCOME_KEY); } catch (error) { /* ignore */ }
+                // The card sits under the settings overlay, so close it first.
+                dismissSettingsOverlay();
+                setTimeout(function () {
+                  try { window.dispatchEvent(new CustomEvent(WELCOME_EVENT)); } catch (error) { /* ignore */ }
+                }, 60);
+              },
+            }, IconAlert(13), t('welcomeReplay')))),
         !sidebarAvailable ? h(Banner, { kind: 'warn' }, t('needsSidebar')) : null,
         h(ThemeGroup, { t: t, locale: locale }),
         h(EditorSettingsGroup, { t: t, locale: locale }),

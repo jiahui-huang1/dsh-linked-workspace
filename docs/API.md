@@ -92,11 +92,13 @@ scope root, or absolute inside it.
 | `skills.read` | `{ linkedId, name }` | `{ name, description, content, path }` |
 | `git.status` | `{ linkedId?/remoteId?, side: 'remote'|'local' }` | `{ ok, repo, root, branch, changes, error? }` (remote workspaces only support `side: 'remote'`) |
 | `fs.search` | `{ linkedId?/remoteId?, side, query, maxResults? }` | `{ ok, query, entries, truncated }` (matches **file names**, not contents; use `fs.grep` for contents) |
-| `fs.grep` | `{ linkedId?/remoteId?, side, query, maxResults? }` | `{ ok, query, entries, truncated }` (searches file **contents**; local scans stop at 1 MB per file, 2000 files, 8 MB and 5 s; remote uses `grep -rIl`; max 1000 rows) |
+| `fs.grep` | `{ linkedId?/remoteId?, side, query, maxResults?, path?, ignoreCase?, regex? }` | `{ ok, query, entries: [{ path, relative, size, line, preview }], truncated, truncatedReason }` (searches file **contents**; `path` narrows the scan to a sub-folder; `ignoreCase` defaults to `true`; `regex` treats `query` as a regular expression; limits are 1 MB per file, 2000 files, 8 MB and 5 s for both sides, and `truncatedReason` is one of `files`, `bytes`, `deadline`, `results`; max 1000 rows) |
 | `fs.compare` | `{ linkedId?, path? }` | `{ path, relative, localPath, localMissing, counts: { onlyLocal, onlyRemote, changed, same }, onlyLocal, onlyRemote, changed, truncated, remoteTruncated, localTruncated, skippedLinks }` (linked workspaces only; excludes `.git`, `node_modules`, `.local`, `.remote`; 4000 files and depth 12 **per side**, 200 rows per group; `skippedLinks` counts symlinks and non-regular files) |
 | `fs.pullToLocal` | `{ linkedId?, path, targetDir?, conflict? }` | `{ path, relative, size, mtime }` (linked workspaces only; single file, ≤64 MB; `targetDir` must stay inside the local root; `conflict` is `error` (default), `overwrite` or `unique`) |
 | `fs.upload` | `{ linkedId?/remoteId?, path, paths, conflict? }` | `{ side: 'remote', target, files, bytes, skipped }` (≤50 local files, 64 MB each; `conflict` is `error` (default), `overwrite` or `unique`; a missing target directory is created) |
-| `fs.transfer` | `{ linkedId?/remoteId?, path }` | `{ files, bytes, skipped, truncated, dest }` |
+| `fs.transfer` | `{ linkedId?/remoteId?, path, jobId? }` | `{ files, bytes, skipped, truncated, dest }` (with `jobId` the run is tracked and can be polled/cancelled) |
+| `fs.transferProgress` | `{ jobId }` | `{ job: { id, files, bytes, skipped, state, cancelled, reason } \| null }` (`state` is `running`, `done`, `cancelled` or `failed`; jobs are dropped after 5 minutes) |
+| `fs.transferCancel` | `{ jobId }` | `{ cancelled }` (asks the running transfer to stop; it finishes the file in flight, then reports `CANCELLED`) |
 | `fs.download` | `{ linkedId?/remoteId?, path }` | `{ path, files, bytes, skipped, truncated }` |
 | `fs.edit` | `{ linkedId?/remoteId?, path, app? }` | `{ localPath, size }` (opens Notepad/default app) |
 | `fs.copy` | `{ linkedId?/remoteId?, path, targetDir? }` | `{ path, files }` |

@@ -481,6 +481,46 @@ async function main() {
     await ok('fs.delete', { linkedId: link.id, path: `${REMOTE_LINK_DIR}/upload.txt` })
     step('context ops: transfer/download/copy/chmod/delete', started)
 
+    // 13a2. Content search reports line numbers and honours the new options
+    started = Date.now()
+    const grepPlain = await ok('fs.grep', { linkedId: link.id, side: 'remote', query: 'alpha' })
+    assert.ok(grepPlain.entries.length >= 1, 'content search returns matches')
+    assert.ok(grepPlain.entries[0].line >= 1, 'a match carries its line number')
+    assert.ok(typeof grepPlain.entries[0].preview === 'string' && grepPlain.entries[0].preview.length > 0, 'a match carries a preview')
+    const grepCaseSensitive = await ok('fs.grep', { linkedId: link.id, side: 'remote', query: 'ALPHA', ignoreCase: false })
+    assert.equal(grepCaseSensitive.entries.length, 0, 'case sensitive search skips the lower-case match')
+    const grepInsensitive = await ok('fs.grep', { linkedId: link.id, side: 'remote', query: 'ALPHA', ignoreCase: true })
+    assert.ok(grepInsensitive.entries.length >= 1, 'case insensitive search finds it again')
+    const grepRegex = await ok('fs.grep', { linkedId: link.id, side: 'remote', query: '^beta$', regex: true })
+    assert.ok(grepRegex.entries.length >= 1, 'a regular expression matches a whole line')
+    await fail('fs.grep', { linkedId: link.id, side: 'remote', query: '(', regex: true }, 400)
+    const grepScoped = await ok('fs.grep', { linkedId: link.id, side: 'remote', query: 'alpha', path: REMOTE_LINK_DIR })
+    assert.ok(grepScoped.entries.every((entry) => entry.relative.startsWith('.') === false), 'scoped search stays inside the folder')
+    step('fs.grep content options', started, `${grepPlain.entries.length} matches`)
+
+    // 13a3. Transfers expose progress and can be cancelled
+    started = Date.now()
+    const transferJobId = 'job-smoke-1'
+    const tracked = await ok('fs.transfer', { linkedId: link.id, side: 'local', path: join(localRoot, 'upload.txt'), jobId: transferJobId })
+    assert.equal(tracked.files, 1)
+    const progress = await ok('fs.transferProgress', { jobId: transferJobId })
+    assert.ok(progress.job, 'the transfer job is tracked')
+    assert.equal(progress.job.state, 'done')
+    assert.equal(progress.job.files, 1)
+    const cancelDone = await ok('fs.transferCancel', { jobId: transferJobId })
+    assert.equal(typeof cancelDone.cancelled, 'boolean')
+    await ok('fs.delete', { linkedId: link.id, path: `${REMOTE_LINK_DIR}/upload.txt` })
+    step('fs.transfer progress + cancel', started)
+
+    // 13a4. Remote folder creation from the picker
+    started = Date.now()
+    const madeFolder = await ok('hosts.mkdir', { hostId: host.id, path: REMOTE_LINK_DIR, name: 'from-picker' })
+    assert.equal(madeFolder.path, `${REMOTE_LINK_DIR}/from-picker`)
+    await fail('hosts.mkdir', { hostId: host.id, path: REMOTE_LINK_DIR, name: 'from-picker' }, 409)
+    await fail('hosts.mkdir', { hostId: host.id, path: REMOTE_LINK_DIR, name: '../escape' }, 400)
+    await ok('fs.delete', { linkedId: link.id, path: `${REMOTE_LINK_DIR}/from-picker` })
+    step('hosts.mkdir', started)
+
     // 13b2. Local read/write (the workbench content pane edits local files too)
     started = Date.now()
     const localEditPath = join(localRoot, 'local-edit.txt')
