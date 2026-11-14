@@ -54,6 +54,7 @@ scope root, or absolute inside it.
 | `hosts.list` | `{ refresh? }` | `{ hosts: HostInfo[] }` (`HostInfo` carries `authType`, `hasCredential`, `hasStoredPassword`) |
 | `hosts.credentials` | `{ hostId, password?, passphrase?, privateKey?, clear? }` | `{ hostId, authType, hasCredential, hasStoredPassword }` (stores the secret in the plugin's own `ssh-credentials.json`; `clear: true` deletes it) |
 | `hosts.browse` | `{ hostId, path? }` | `{ path, parent, home, entries }` (dirs + files) |
+| `workspaces.sessions` | `{}` | `{ workspaces: [{ workspaceId, path, title, sessionIds }] }` (DSH's own workspace→session grouping from `$DSH_HOME/storages/workspace.json`, archived ids already removed; used for the hover-card session count) |
 | `remote_workspaces.list` | `{}` | `{ workspaces: RemoteWorkspaceInfo[] }` |
 | `remote_workspaces.create` | `{ hostId, remotePath, name? }` | `{ workspace }` |
 | `remote_workspaces.get` | `{ id }` | `{ workspace }` |

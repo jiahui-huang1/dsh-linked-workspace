@@ -1878,6 +1878,37 @@ window.__ModuleLoader__.load({
     // outside React and needs direct access to the session registry.
     var pluginContext = null;
 
+    // The host keeps the authoritative grouping (`workspaces.sessions`): every
+    // workspace owns an ordered session list with archived ids already removed.
+    // Counting there is the only way to match the sidebar exactly — the session
+    // catalog also holds drafts, subagent runs and conversations that merely
+    // share the folder.
+    var hostedSessions = {};
+    var hostedSessionsPending = false;
+
+    function rememberHostedSessions(list) {
+      var next = {};
+      for (var index = 0; index < list.length; index += 1) {
+        var entry = list[index] || {};
+        var key = linkedScopeKey(entry.path || '');
+        if (key === '') continue;
+        next[key] = entry.sessionIds || [];
+      }
+      hostedSessions = next;
+    }
+
+    function refreshHostedSessions() {
+      if (hostedSessionsPending) return;
+      hostedSessionsPending = true;
+      apiCall('workspaces.sessions', {}).then(function (result) {
+        hostedSessionsPending = false;
+        rememberHostedSessions((result && result.workspaces) || []);
+        queueWorkspaceRowTips();
+      }, function () {
+        hostedSessionsPending = false;
+      });
+    }
+
     function sessionCountForScope(scopeKey) {
       if (scopeKey === '') return 0;
       var real = 0;
@@ -1897,12 +1928,25 @@ window.__ModuleLoader__.load({
             : null;
           if (activeRow) activeId = activeRow.getAttribute('data-row-key').slice('session:'.length);
         } catch (error) { /* no tree: no active session */ }
-        Object.keys(byId).forEach(function (sessionId) {
+        // When the host workspace store knows this folder, its session list is the
+        // candidate set: the tree renders exactly those ids that still have a
+        // loadable record. Otherwise fall back to every session under the folder.
+        var candidates = hostedSessions[scopeKey] || null;
+        if (candidates) candidates.forEach(function (sessionId) {
           var record = byId[sessionId];
           if (!record) return;
-          // Sessions belong to a workspace by their exact working directory; the
-          // sidebar never nests a workspace's children under it.
-          if (linkedScopeKey(record.cwd || '') !== scopeKey) return;
+          var projections = record.projectionValues || {};
+          if (projections.subagent) return;
+          if (!record.blank) { real += 1; return; }
+          if (sessionId === activeId) draftHere = 1;
+        });
+        else Object.keys(byId).forEach(function (sessionId) {
+          var record = byId[sessionId];
+          if (!record) return;
+          // A session belongs to the workspace whose folder contains its working
+          // directory — the tree also shows sessions started in a subdirectory.
+          var key = linkedScopeKey(record.cwd || '');
+          if (!(key === scopeKey || key.indexOf(scopeKey + '/') === 0)) return;
           var projections = record.projectionValues || {};
           // A subagent run is its own session record but not a row in the host tree.
           if (projections.subagent) return;
@@ -2089,6 +2133,10 @@ window.__ModuleLoader__.load({
         return { id: entry.id, disconnected: isDisconnected(item) };
       });
       workspaceHoverRecords = records;
+      // The session counts come from the host's workspace store; fetching them on
+      // every publish keeps the card in step with sessions created or archived
+      // since the last one.
+      refreshHostedSessions();
       applyWorkspaceRowTips();
       watchWorkspaceRows();
       watchHoverCards();
@@ -7675,8 +7723,9 @@ window.__ModuleLoader__.load({
 
     // `sessions` is a core client service (the sidebar shell injects it too):
     // the directory entries need the focused session's cwd/workspaceId to
-    // decide whether they belong in the "+" menu.
-    var inject = ['slots', 'locale', 'sessions'];
+    // decide whether they belong in the "+" menu. `workspaces` owns the
+    // authoritative workspace-to-session grouping the sidebar tree renders.
+    var inject = ['slots', 'locale', 'sessions', 'workspaces'];
 
     function apply(ctx) {
       pluginContext = ctx;
