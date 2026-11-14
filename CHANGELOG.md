@@ -2,6 +2,13 @@
 
 English · [简体中文](CHANGELOG.zh.md)
 
+## Unreleased
+
+- **New folder on the remote side**: the remote path picker gained a “New folder” button (backed by the new `hosts.mkdir` host method), matching the local picker — type a name, press Enter or “Create”, and the picker lands inside the folder it just made. Duplicates report “remote directory already exists”, and names containing `/`, `\` or `..` are refused.
+- **Long paths no longer push the buttons out**: the remote path line ellipsizes in place (hover for the full path), so “New folder” and “Use this directory” always stay visible.
+- **Dropped the redundant “Open” button**: the local path field no longer needs it — Enter navigates to the typed path; the desktop “Browse…” system picker stays.
+- **Fixed**: typing in any picker's filter or folder-name box used to crash the whole “Add workspace” dialog (the React event object was read inside a state updater). The value is now captured before the update.
+
 ## 0.13.0 — 2026-11-14
 
 - **Batch drag and move**: dragging inside one tree is now a move instead of a dead end — remote-to-remote in a linked or remote workspace, local-to-local in a linked workspace — and a multi-selection travels as one gesture in both directions (one request per entry, so a failure leaves the rest untouched and the notice reports how many landed). The row menu gained “Move selected (N)…” for the same job without dragging.

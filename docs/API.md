@@ -54,6 +54,7 @@ scope root, or absolute inside it.
 | `hosts.list` | `{ refresh? }` | `{ hosts: HostInfo[] }` (`HostInfo` carries `authType`, `hasCredential`, `hasStoredPassword`) |
 | `hosts.credentials` | `{ hostId, password?, passphrase?, privateKey?, clear? }` | `{ hostId, authType, hasCredential, hasStoredPassword }` (stores the secret in the plugin's own `ssh-credentials.json`; `clear: true` deletes it) |
 | `hosts.browse` | `{ hostId, path? }` | `{ path, parent, home, entries }` (dirs + files) |
+| `hosts.mkdir` | `{ hostId, path?, name }` | `{ path }` (creates `name` inside `path`; defaults to the login home; `409`/`FS_EXISTS` when it already exists) |
 | `remote_workspaces.list` | `{}` | `{ workspaces: RemoteWorkspaceInfo[] }` |
 | `remote_workspaces.create` | `{ hostId, remotePath, name? }` | `{ workspace }` |
 | `remote_workspaces.get` | `{ id }` | `{ workspace }` |
