@@ -505,7 +505,6 @@ window.__ModuleLoader__.load({
       rename: '重命名',
       pathLocalShort: '本地',
       pathRemoteShort: '远端',
-      hoverSessionLine: '{{host}} · {{count}} 个会话',
       flowTitle: '添加工作区',
       flowLocal: '本地工作区',
       localDirStep: '1. 本地目录',
@@ -939,7 +938,6 @@ window.__ModuleLoader__.load({
       rename: 'Rename',
       pathLocalShort: 'Local',
       pathRemoteShort: 'Remote',
-      hoverSessionLine: '{{host}} · {{count}} sessions',
       flowTitle: 'Add workspace',
       flowLocal: 'Local workspace',
       localDirStep: '1. Local directory',
@@ -1467,10 +1465,9 @@ window.__ModuleLoader__.load({
       '.rw-path{font-family:ui-monospace,"Cascadia Code",Consolas,monospace;font-size:12px;line-height:18px;color:var(--dsw-alias-label-secondary);word-break:break-all}',
       // Injected into the host's workspace hover preview, which always paints on
       // a fixed dark card, so these colours cannot follow the theme tokens.
-      '.rw-hover-status{margin:1px 0 0;font-size:12px;line-height:18px;color:rgb(207,211,214)}',
       '.rw-hover-host{margin:1px 0 0;font-size:12px;line-height:18px;color:rgb(207,211,214)}',
-      '.rw-hover-status.is-on{color:#3fb950}',
-      '.rw-hover-status.is-off{color:#f85149}',
+      '.rw-hover-host.is-on{color:#3fb950}',
+      '.rw-hover-host.is-off{color:#f85149}',
       '.rw-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}',
       '.rw-meta-text{font-size:12px;line-height:18px;color:var(--dsw-alias-label-tertiary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
       '.rw-pair{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}',
@@ -1874,90 +1871,6 @@ window.__ModuleLoader__.load({
     var workspaceRowObserver = null;
     var workspaceRowTimer = null;
     var workspaceHoverRecords = {};
-    // Set by `apply`; the hover card is drawn by the host, so it is decorated
-    // outside React and needs direct access to the session registry.
-    var pluginContext = null;
-
-    // The host keeps the authoritative grouping (`workspaces.sessions`): every
-    // workspace owns an ordered session list with archived ids already removed.
-    // Counting there is the only way to match the sidebar exactly — the session
-    // catalog also holds drafts, subagent runs and conversations that merely
-    // share the folder.
-    var hostedSessions = {};
-    var hostedSessionsPending = false;
-
-    function rememberHostedSessions(list) {
-      var next = {};
-      for (var index = 0; index < list.length; index += 1) {
-        var entry = list[index] || {};
-        var key = linkedScopeKey(entry.path || '');
-        if (key === '') continue;
-        next[key] = entry.sessionIds || [];
-      }
-      hostedSessions = next;
-    }
-
-    function refreshHostedSessions() {
-      if (hostedSessionsPending) return;
-      hostedSessionsPending = true;
-      apiCall('workspaces.sessions', {}).then(function (result) {
-        hostedSessionsPending = false;
-        rememberHostedSessions((result && result.workspaces) || []);
-        queueWorkspaceRowTips();
-      }, function () {
-        hostedSessionsPending = false;
-      });
-    }
-
-    function sessionCountForScope(scopeKey) {
-      if (scopeKey === '') return 0;
-      var real = 0;
-      var draftHere = 0;
-      try {
-        var ctx = pluginContext;
-        var sessions = ctx ? (ctx.sessions || (ctx.get && ctx.get('sessions'))) : null;
-        var list = sessions && sessions.list ? sessions.list : sessions;
-        var state = list && typeof list.getSnapshot === 'function' ? list.getSnapshot() : null;
-        var byId = state && state.byId ? state.byId : {};
-        var activeId = '';
-        try {
-          // The tree is the source of truth for which session the user is sitting in;
-          // the sidebar service snapshot can lag behind a click.
-          var activeRow = typeof document !== 'undefined'
-            ? document.querySelector('[data-row-key^="session:"][aria-selected="true"]')
-            : null;
-          if (activeRow) activeId = activeRow.getAttribute('data-row-key').slice('session:'.length);
-        } catch (error) { /* no tree: no active session */ }
-        // When the host workspace store knows this folder, its session list is the
-        // candidate set: the tree renders exactly those ids that still have a
-        // loadable record. Otherwise fall back to every session under the folder.
-        var candidates = hostedSessions[scopeKey] || null;
-        if (candidates) candidates.forEach(function (sessionId) {
-          var record = byId[sessionId];
-          if (!record) return;
-          var projections = record.projectionValues || {};
-          if (projections.subagent) return;
-          if (!record.blank) { real += 1; return; }
-          if (sessionId === activeId) draftHere = 1;
-        });
-        else Object.keys(byId).forEach(function (sessionId) {
-          var record = byId[sessionId];
-          if (!record) return;
-          // A session belongs to the workspace whose folder contains its working
-          // directory — the tree also shows sessions started in a subdirectory.
-          var key = linkedScopeKey(record.cwd || '');
-          if (!(key === scopeKey || key.indexOf(scopeKey + '/') === 0)) return;
-          var projections = record.projectionValues || {};
-          // A subagent run is its own session record but not a row in the host tree.
-          if (projections.subagent) return;
-          if (!record.blank) { real += 1; return; }
-          // Unused sessions stay in the catalog forever, but the tree only shows the
-          // draft the user is currently sitting in — count just that one.
-          if (sessionId === activeId) draftHere = 1;
-        });
-      } catch (error) { /* sessions unavailable: no count */ }
-      return real + draftHere;
-    }
 
     function applyWorkspaceRowTips() {
       if (typeof document === 'undefined') return;
@@ -2037,24 +1950,16 @@ window.__ModuleLoader__.load({
       var remote = record.remotePath;
       var local = record.localPath || '';
 
-      var status = document.createElement('div');
-      status.className = 'rw-hover-status' + (record.disconnected ? ' is-off' : record.connected ? ' is-on' : '');
-      status.setAttribute(HOVER_LINE_ATTR, '1');
-      status.textContent = record.status;
+      // Second line: the SSH host that backs this workspace plus its live
+      // connection state, e.g. "RTX-PRO-6000-1 · 已连接". Both pieces come from
+      // the same record, so a host without a name still shows the state alone.
+      var stateLine = document.createElement('div');
+      stateLine.className = 'rw-hover-host' + (record.disconnected ? ' is-off' : record.connected ? ' is-on' : '');
+      stateLine.setAttribute(HOVER_LINE_ATTR, '1');
+      stateLine.textContent = record.host ? record.host + ' · ' + record.status : record.status;
       var titleEl = card.querySelector('[class*="hoverTitle"]');
       var anchor = titleEl || pathEl;
-      // Second line: which SSH host backs this workspace and how many sessions
-      // it currently holds. Inserted between the title and the status line.
-      var inserted = anchor;
-      if (record.host) {
-        var sessionsLine = document.createElement('div');
-        sessionsLine.className = 'rw-hover-host';
-        sessionsLine.setAttribute(HOVER_LINE_ATTR, '1');
-        sessionsLine.textContent = t('hoverSessionLine', { host: record.host, count: sessionCountForScope(record.scopeKey) });
-        anchor.parentNode.insertBefore(sessionsLine, anchor.nextSibling);
-        inserted = sessionsLine;
-      }
-      anchor.parentNode.insertBefore(status, inserted.nextSibling);
+      anchor.parentNode.insertBefore(stateLine, anchor.nextSibling);
 
       if (record.kind === 'linked' && local !== '') {
         pathEl.textContent = t('pathRemoteShort') + ' ' + remote;
@@ -2122,7 +2027,6 @@ window.__ModuleLoader__.load({
             kind: entry.kind,
             name: item.name,
             host: item.hostName || item.host || '',
-            scopeKey: key,
             remotePath: item.remotePath || '',
             localPath: linked ? (item.localPath || '') : '',
             status: statusLabel(t, item),
@@ -2133,10 +2037,6 @@ window.__ModuleLoader__.load({
         return { id: entry.id, disconnected: isDisconnected(item) };
       });
       workspaceHoverRecords = records;
-      // The session counts come from the host's workspace store; fetching them on
-      // every publish keeps the card in step with sessions created or archived
-      // since the last one.
-      refreshHostedSessions();
       applyWorkspaceRowTips();
       watchWorkspaceRows();
       watchHoverCards();
@@ -7723,12 +7623,10 @@ window.__ModuleLoader__.load({
 
     // `sessions` is a core client service (the sidebar shell injects it too):
     // the directory entries need the focused session's cwd/workspaceId to
-    // decide whether they belong in the "+" menu. `workspaces` owns the
-    // authoritative workspace-to-session grouping the sidebar tree renders.
-    var inject = ['slots', 'locale', 'sessions', 'workspaces'];
+    // decide whether they belong in the "+" menu.
+    var inject = ['slots', 'locale', 'sessions'];
 
     function apply(ctx) {
-      pluginContext = ctx;
       ctx.effect(installStyles, 'dsh-linked-workspace: styles');
       ctx.effect(function () {
         var lastDark = null;
