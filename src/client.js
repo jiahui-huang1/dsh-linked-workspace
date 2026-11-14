@@ -6194,6 +6194,15 @@ window.__ModuleLoader__.load({
       var checkState = useState({ busy: false, ok: false, message: '' });
       var check = checkState[0];
       var setCheck = checkState[1];
+      var inputRef = useRef(null);
+      // Selecting a host that still needs a secret should put the cursor in the
+      // password box, so the dialog asks for it instead of leaving the user to
+      // find the field.
+      useEffect(function () {
+        if (!needed && !stored) return;
+        var node = inputRef.current;
+        if (node && typeof node.focus === 'function') node.focus();
+      }, [host.id, needed, stored]);
       function verify() {
         if (check.busy || props.busy) return;
         var value = props.value || '';
@@ -6216,6 +6225,7 @@ window.__ModuleLoader__.load({
           h('input', {
             className: 'rw-input',
             type: 'password',
+            ref: inputRef,
             value: props.value || '',
             placeholder: stored ? t('sshPasswordStored') : t('sshPasswordPlaceholder'),
             autoComplete: 'new-password',
