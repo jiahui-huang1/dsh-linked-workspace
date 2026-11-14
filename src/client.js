@@ -357,6 +357,10 @@ window.__ModuleLoader__.load({
       sshPasswordStored: '已保存密码，留空则保持不变',
       sshPasswordStoredHint: '已保存密码。想更换就重新输入，留空则继续使用原密码。',
       sshPasswordRequired: '请先在下面填写这台 SSH 主机的密码',
+      sshVerify: '验证密码',
+      sshVerifying: '验证中…',
+      sshPasswordOk: '密码可用，可以继续创建。',
+      sshPasswordFailed: '验证失败：',
       sourceManagerShort: 'SSH',
       linkedGroup: '联动工作区',
       linkedEmpty: '还没有联动工作区。联动工作区会把本地目录与远端目录配对，会话可直接编辑远端文件。',
@@ -769,6 +773,10 @@ window.__ModuleLoader__.load({
       sshPasswordStored: 'Password stored — leave empty to keep it',
       sshPasswordStoredHint: 'A password is already stored. Type a new one to replace it, or leave empty to keep it.',
       sshPasswordRequired: 'Enter the password for this SSH host below first',
+      sshVerify: 'Check password',
+      sshVerifying: 'Checking…',
+      sshPasswordOk: 'The password works — you can create the workspace now.',
+      sshPasswordFailed: 'Check failed:',
       sourceManagerShort: 'SSH',
       linkedGroup: 'Linked workspaces',
       linkedEmpty: 'No linked workspaces yet. A linked workspace pairs a local folder with a remote folder so sessions can edit remote files directly.',
@@ -1142,8 +1150,13 @@ window.__ModuleLoader__.load({
     function messageOf(error, t, locale) {
       if (!error) return '';
       var known = error.code ? (locale === 'zh' ? CODE_TEXT.zh : CODE_TEXT.en)[error.code] : '';
-      if (known) return error.code === 'BAD_REQUEST' && error.message ? error.message : known;
-      return error.message || String(error);
+      if (!known) return error.message || String(error);
+      if (error.code === 'BAD_REQUEST' && error.message) return error.message;
+      // Keep the server's own wording: "All configured authentication methods
+      // failed" tells the user far more than the generic code text alone.
+      var detail = typeof error.message === 'string' ? error.message.trim() : '';
+      if (!detail || detail === known) return known;
+      return known + (locale === 'zh' ? '：' : ': ') + detail;
     }
 
     function documentKindOf(path) {
@@ -6178,20 +6191,48 @@ window.__ModuleLoader__.load({
       var stored = host.hasStoredPassword === true;
       var needed = host.hasCredential === false || host.authType === 'password';
       if (!needed && !stored) return null;
+      var checkState = useState({ busy: false, ok: false, message: '' });
+      var check = checkState[0];
+      var setCheck = checkState[1];
+      function verify() {
+        if (check.busy || props.busy) return;
+        var value = props.value || '';
+        if (value === '') { setCheck({ busy: false, ok: false, message: t('sshPasswordRequired') }); return; }
+        setCheck({ busy: true, ok: false, message: '' });
+        apiCall('hosts.credentials', { hostId: host.id, password: value })
+          .then(function () { return apiCall('hosts.browse', { hostId: host.id, path: '' }); })
+          .then(function () {
+            setCheck({ busy: false, ok: true, message: t('sshPasswordOk') });
+            if (props.onVerified) props.onVerified();
+          })
+          .catch(function (err) {
+            setCheck({ busy: false, ok: false, message: t('sshPasswordFailed') + ' ' + messageOf(err, t, props.locale) });
+            if (props.onVerified) props.onVerified();
+          });
+      }
       return h('div', { className: 'rw-field' },
         h('div', { className: 'rw-label' }, t('sshPassword')),
-        h('input', {
-          className: 'rw-input',
-          type: 'password',
-          value: props.value || '',
-          placeholder: stored ? t('sshPasswordStored') : t('sshPasswordPlaceholder'),
-          autoComplete: 'new-password',
-          spellCheck: false,
-          disabled: props.busy,
-          onChange: function (event) { props.onChange(event.currentTarget.value); },
-          onKeyDown: function (event) { if (event.key === 'Enter' && props.onSubmit) props.onSubmit(); },
-        }),
-        h('div', { className: 'rw-hint' }, needed && !stored ? t('sshPasswordHint') : t('sshPasswordStoredHint')));
+        h('div', { className: 'rw-inline' },
+          h('input', {
+            className: 'rw-input',
+            type: 'password',
+            value: props.value || '',
+            placeholder: stored ? t('sshPasswordStored') : t('sshPasswordPlaceholder'),
+            autoComplete: 'new-password',
+            spellCheck: false,
+            disabled: props.busy,
+            onChange: function (event) { props.onChange(event.currentTarget.value); },
+            onKeyDown: function (event) { if (event.key === 'Enter' && props.onSubmit) props.onSubmit(); },
+          }),
+          h('button', {
+            type: 'button',
+            className: 'rw-btn rw-btn-sm',
+            disabled: check.busy || props.busy,
+            onClick: verify,
+          }, check.busy ? t('sshVerifying') : t('sshVerify'))),
+        check.message
+          ? h('div', { className: 'rw-hint', style: check.ok ? { color: '#3fb950' } : { color: '#f85149' } }, check.message)
+          : h('div', { className: 'rw-hint' }, needed && !stored ? t('sshPasswordHint') : t('sshPasswordStoredHint')));
     }
 
     function AddWorkspaceFlow(props) {      var ctx = props.ctx;
@@ -6313,8 +6354,8 @@ window.__ModuleLoader__.load({
           h(HostList, { t: t, hosts: hostData.hosts, loading: hostData.loading, selectedId: selectedHostId, onSelect: chooseHost }),
           hostData.error ? h(Banner, { kind: 'error' }, t('hostsFailed') + '：' + messageOf(hostData.error, t, locale)) : null),
         h(SshCredentialField, {
-          t: t, host: selectedHost(), value: password, busy: busy,
-          onChange: setPassword, onSubmit: submit,
+          t: t, locale: locale, host: selectedHost(), value: password, busy: busy,
+          onChange: setPassword, onSubmit: submit, onVerified: loadHosts,
         }),
         h('div', { className: 'rw-field' },
           h('div', { className: 'rw-label' }, t('stepPath')),
@@ -6497,8 +6538,8 @@ window.__ModuleLoader__.load({
           h(HostList, { t: t, hosts: hostData.hosts, loading: hostData.loading, selectedId: selectedHostId, onSelect: chooseHost }),
           hostData.error ? h(Banner, { kind: 'error' }, t('hostsFailed') + '：' + messageOf(hostData.error, t, locale)) : null),
         h(SshCredentialField, {
-          t: t, host: selectedHost(), value: password, busy: busy,
-          onChange: setPassword, onSubmit: submit,
+          t: t, locale: locale, host: selectedHost(), value: password, busy: busy,
+          onChange: setPassword, onSubmit: submit, onVerified: loadHosts,
         }),
         h('div', { className: 'rw-field' },
           h('div', { className: 'rw-label' }, t('stepPath')),

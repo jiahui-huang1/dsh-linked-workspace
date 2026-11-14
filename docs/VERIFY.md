@@ -48,6 +48,7 @@ Host code (lib/) reloads live with `plugin_manager set_plugin include:linked-wor
 
 1. **没有私钥的主机不再置灰**：在 `~/.ssh/config` 里写一个没有 `IdentityFile` 的 Host（例如 `Host demo` / `HostName 10.9.9.9` / `User dev`），重启后「添加工作区」弹窗里该主机可点选，右侧 chip 显示「需要密码」，主机列表下方出现「SSH 密码」输入框与「密码只保存在本机…不需要安装 SSH Manager 插件」的提示。
 2. **保存后立即生效**：填入任意密码点「创建」（远端目录不可达时创建会失败，但凭据已写入）——该主机 chip 变回 `~/.ssh/config`，hint 变「已保存密码。想更换就重新输入，留空则继续使用原密码。」；`$DSH_HOME/linked-workspace/ssh-credentials.json` 出现 `{"version":1,"byHostId":{"sshconfig:demo":{"password":"…"}}}`，权限 `0600`。
+2b. **验证密码按钮**：填一个错误密码点「验证密码」→ 输入框下方出现红字「验证失败：SSH 认证失败，请检查主机凭据：… All configured authentication methods failed.」；填对后显示绿色「密码可用，可以继续创建。」。
 3. **主机状态跟着变**：`hosts.list` 里该主机 `authType` 从 `agent` 变 `password`、`hasCredential` 与 `hasStoredPassword` 均为 `true`；再连会进入真实网络（错误是连接层面的 `SSH_CONNECT`，而不是「没有密码」）。
 4. **清除**：`hosts.credentials` 传 `{ hostId, clear: true }` → 返回 `authType: 'agent'`、`hasCredential: false`，文件里的条目被删掉，弹窗里又显示「需要密码」。
 5. **不装 dsh-ssh-tunnel 也照常**：没有 SSH Manager 时上述流程全部可用；`identityFile` 与 agent 的主机行为不变，仍显示 `~/.ssh/config`。

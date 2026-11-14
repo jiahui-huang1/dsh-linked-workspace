@@ -6,6 +6,7 @@
 
 ## Unreleased
 
+- **密码排错**：SSH 失败时在中文提示后面补上服务器自己的原因（例如「SSH 认证失败，请检查主机凭据：… All configured authentication methods failed.」）；「添加工作区」弹窗新增**验证密码**按钮，先落盘凭据再开一条探测连接，密码不对能在建工作区之前就发现。密码登录现在也会回应 `keyboard-interactive` 询问（PAM 类服务器常走这条）。
 - **本机 SSH 凭据**：`~/.ssh/config` 里没有 `IdentityFile` 的主机，过去必须装 `dsh-ssh-tunnel` 才能用密码登录；现在「添加工作区」弹窗把它们显示为「需要密码」而不是置灰，填一次密码即可，密码保存在插件自己的 `$DSH_HOME/linked-workspace/ssh-credentials.json`（权限 `0600`，只有 Host 进程读取）。新增 API `hosts.credentials`（`{ hostId, password?, passphrase?, privateKey?, clear? }`）；`hosts.list` 增加 `hasStoredPassword`，之后再建工作区留空密码即沿用已保存的密码。
 - **设置导航图标**：设置左侧列表里的「联动工作区」改用插件自己的层叠纸张图标（通过宿主的 `settings.section.icon` 插槽注册），不再显示默认齿轮。
 
