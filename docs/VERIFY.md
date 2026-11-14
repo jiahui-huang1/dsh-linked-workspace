@@ -36,7 +36,7 @@ Host code (lib/) reloads live with `plugin_manager set_plugin include:linked-wor
 7. **远端目录必须已存在**：填一个不存在的路径 → 报错 `FS_NOT_FOUND`（不会自动创建）。
 8. **标签常驻**：当前会话属于联动工作区时，设置页仍能打开远程工作区目录树（不再依赖会话 scope 才注册标签）。
 
-## 首次运行欢迎卡片（Unreleased）
+## 首次运行欢迎卡片（0.13.0）
 
 1. **首次打开会弹出**：清掉 `localStorage` 里的 `dsh-linked-workspace:welcome`（或换一个全新 profile）后刷新页面——中央出现一张卡片：标签 `DSH-LINKED-WORKSPACE`、标题「欢迎使用联动工作区插件」、一段说明、四条「做什么 + 在哪」（创建工作区 / 浏览远端文件 / 让模型读写远端代码 / 不用 SSH Manager 也能连），底部「★ 点个 Star」与「知道了」。
 2. **三种关闭方式**：点「知道了」、按 `Esc`、点卡片外的遮罩都能关闭；关闭后 `localStorage.dsh-linked-workspace:welcome === "1"`。
@@ -240,7 +240,7 @@ Host code (lib/) reloads live with `plugin_manager set_plugin include:linked-wor
 10. **悬停展开**：拖拽停在折叠目录行 700 ms：该目录应自动展开。
 11. **host-api**：`node test/host-api.mjs` 应为 28 步全部通过。
 
-## 批量拖拽与移动（Unreleased）
+## 批量拖拽与移动（0.13.0）
 
 1. **远端内移动**：联动工作区或远程工作区里，把远端文件拖到另一个远端目录：应提示「已移动」，文件只在目标目录出现。
 2. **本地内移动**：联动工作区里把本地文件拖到另一个本地目录：同上，提示「已移动」。

@@ -2,7 +2,7 @@
 
 English · [简体中文](CHANGELOG.zh.md)
 
-## Unreleased
+## 0.13.0 — 2026-11-14
 
 - **Batch drag and move**: dragging inside one tree is now a move instead of a dead end — remote-to-remote in a linked or remote workspace, local-to-local in a linked workspace — and a multi-selection travels as one gesture in both directions (one request per entry, so a failure leaves the rest untouched and the notice reports how many landed). The row menu gained “Move selected (N)…” for the same job without dragging.
 - **Hover card host line**: the host's workspace hover preview now shows the SSH host of the connection together with its live state, on one line right under the workspace name (`RTX-PRO-6000-1 · Connected` / `RTX-PRO-6000-1 · Connection lost`), for both linked and remote workspaces. The line is green while the connection is up and red once it drops; the previous standalone state line and the session counter are gone.
