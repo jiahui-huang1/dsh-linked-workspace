@@ -4,6 +4,7 @@ English · [简体中文](CHANGELOG.zh.md)
 
 ## Unreleased
 
+- **A stale Host is called out**: a new `meta.info` check (`{ version, apiRevision, startedAt }`) means a DSH process that still runs an older copy of the plugin now shows a banner in the directory pane (quit and restart DSH), instead of failing later with something like `ENOENT ... C:\shared_data_...`.
 - **Remote workspace files are editable**: a remote workspace’s remote tree now behaves like the remote side of a linked workspace — files open in the built-in editor, `Ctrl/Cmd+S` (and autosave) write straight back to the host, save conflicts are detected the usual way, and Markdown / Word / Excel / PowerPoint / PDF documents open in their document panes. Only the features that need a local directory stay linked-only: transfer to the local mirror, the transfer queue, two-way comparison, and the local terminal / local pane (the transfer button is disabled there and its tooltip says so).
 - **`docs.*` accepts `remoteId`**: the document methods used to ignore `remoteId`, so remote documents were resolved as local absolute paths and failed; they now resolve the remote scope exactly like the `fs.*` methods do.
 

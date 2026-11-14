@@ -165,6 +165,15 @@ async function main() {
   assert.equal(host.privateKeyPath, undefined, 'credentials never cross the API')
   step('hosts.list', started, `${hostList.hosts.length} hosts, using "${host.name}"`)
 
+  // 1b. Build info: the client compares apiRevision with its own to warn about
+  // a DSH process that is still running an older copy of this plugin.
+  started = Date.now()
+  const meta = await ok('meta.info', {})
+  assert.ok(Number(meta.apiRevision) >= 2, 'apiRevision is at least 2')
+  assert.equal(typeof meta.startedAt, 'string', 'startedAt is reported')
+  assert.ok(!Number.isNaN(Date.parse(meta.startedAt)), 'startedAt is an ISO timestamp')
+  step('meta.info', started, `apiRevision ${meta.apiRevision}, started ${meta.startedAt}`)
+
   // 2. Directory browsing during setup
   started = Date.now()
   const home = await ok('hosts.browse', { hostId: host.id })
