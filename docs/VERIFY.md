@@ -27,7 +27,7 @@ Host code (lib/) reloads live with `plugin_manager set_plugin include:linked-wor
 7. 远程页签：`1. 选择 SSH 连接 / 2. 远程目录 / 3. 工作区名称`（编号连续、无本地目录步骤）→ 创建后左侧出现占位目录工作区。
 8. 已有旧工作区若标题仍带 `⇄ `：Host 启动约 1 s 内自动去掉前缀（`linked.list` 的 `workspaceTitle` 同步更新）。
 
-## 远程工作区（0.11.0）
+## 远程工作区（0.11.0，0.15.0 起可编辑）
 
 1. **设置页分组**：设置 → 联动工作区 →「远程工作区」组显示计数与说明「会话运行在远端目录：DSH 不在本地创建项目文件，模型通过 remote_workspace 与 linked_workspace 工具读写远端。」；无记录时显示「还没有远程工作区…」。
 2. **创建**：顶部「创建远程工作区」→ 选主机、填已存在的远端目录、名称 → 卡片出现，左侧工作区列表同步新增同名 DSH 工作区。
@@ -248,7 +248,15 @@ Host code (lib/) reloads live with `plugin_manager set_plugin include:linked-wor
 8. **注册工作区**：联动记录的 `workspaceId` 为空时，设置页应显示「注册为工作区」，点击后变为正常的工作区信息。
 9. **拖拽提示**：拖本地目录到远端、拖远端目录到本地：应分别给出「暂不支持把本地目录拖拽到远端…」「暂不支持把远程目录拖拽到本地…」（同一棵树内拖拽是移动，见下一节）。
 10. **悬停展开**：拖拽停在折叠目录行 700 ms：该目录应自动展开。
-11. **host-api**：`node test/host-api.mjs` 应为 28 步全部通过。
+11. **host-api**：`node test/host-api.mjs` 应为 33 步全部通过（0.15.0 起含 `meta.info`）。
+
+## 旧 Host 自检（0.15.0）
+
+1. **正常时不打扰**：插件已重启过后打开任意目录树，顶部**不应**出现任何黄色提示条。
+2. **旧进程会被指出来**：把 `lib/index.js` 的 `const API_REVISION` 临时改成比客户端 `HOST_API_REVISION`（`src/client.js`）小的值，`npm run build` 后重启实例、打开目录树：顶部出现黄色提示「DSH 的插件进程仍在运行旧版代码，请完全退出并重启 DSH 后再试」。改回原值并重启后提示消失。
+3. **方法缺失同样算旧**：让 Host 不提供 `meta.info`（例如回退到 0.14.0 的 `lib/index.js`）时，客户端收到 `unknown method`，同样显示上面那条提示，而不是把后续操作失败暴露成 `ENOENT` 之类的原始错误。
+4. **接口自检**：`curl` 或 Debug 面板调用 `meta.info` 应返回 `{ version, apiRevision, startedAt }`，`apiRevision` 与客户端常量一致。
+5. **host-api**：`node test/host-api.mjs` 应包含并通过 `meta.info` 一步（33 步全部通过）。
 
 ## 批量拖拽与移动（0.13.0）
 

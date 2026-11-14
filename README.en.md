@@ -208,7 +208,10 @@ Web browsers do not expose dropped file paths; the notice tells you to use the d
 `Ctrl+W` and `Ctrl+Tab` are taken by the browser; use the DSH desktop app for those shortcuts.
 
 **Changed the code but the UI is unchanged?**
-Run `npm run build` to regenerate `lib/client.js`, then restart the DSH client; Host changes require a process restart.
+Run `npm run build` to regenerate `lib/client.js`, then restart the DSH client. Host changes are loaded when the DSH **process** starts; refreshing the page only swaps the browser half.
+
+**The directory pane says “the plugin host is still running older code”?**
+The copy of the plugin on disk is newer than the Host loaded by this DSH process. Quit DSH completely and open it again (a page refresh is not enough, and the plugin does not need reinstalling). Every directory pane compares versions through `meta.info`, so the notice never shows up on a matching install.
 
 ## Architecture and development
 
