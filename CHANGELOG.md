@@ -5,6 +5,7 @@ English · [简体中文](CHANGELOG.zh.md)
 ## Unreleased
 
 - **Batch drag and move**: dragging inside one tree is now a move instead of a dead end — remote-to-remote in a linked or remote workspace, local-to-local in a linked workspace — and a multi-selection travels as one gesture in both directions (one request per entry, so a failure leaves the rest untouched and the notice reports how many landed). The row menu gained “Move selected (N)…” for the same job without dragging.
+- **Hover card host line**: the host's workspace hover preview now carries the SSH host of the connection and how many sessions the workspace currently holds (`RTX-PRO-6000-1 · 3 sessions`), placed right under the workspace name and above the connection state, for both linked and remote workspaces.
 - **First-run welcome card**: the first time the plugin loads in a browser profile it shows one card that says what the plugin does, where to create a linked or remote workspace, where the two remote trees live, and that an SSH password can be kept on this machine — plus a “Star the repo” link. Dismissing it (button, `Esc`, or clicking the backdrop) is remembered in `localStorage`, so it never reopens; a fresh DSH profile shows it once again.
 
 ## 0.12.0 — 2026-11-14

@@ -505,6 +505,7 @@ window.__ModuleLoader__.load({
       rename: '重命名',
       pathLocalShort: '本地',
       pathRemoteShort: '远端',
+      hoverSessionLine: '{{host}} · {{count}} 个会话',
       flowTitle: '添加工作区',
       flowLocal: '本地工作区',
       localDirStep: '1. 本地目录',
@@ -938,6 +939,7 @@ window.__ModuleLoader__.load({
       rename: 'Rename',
       pathLocalShort: 'Local',
       pathRemoteShort: 'Remote',
+      hoverSessionLine: '{{host}} · {{count}} sessions',
       flowTitle: 'Add workspace',
       flowLocal: 'Local workspace',
       localDirStep: '1. Local directory',
@@ -1466,6 +1468,7 @@ window.__ModuleLoader__.load({
       // Injected into the host's workspace hover preview, which always paints on
       // a fixed dark card, so these colours cannot follow the theme tokens.
       '.rw-hover-status{margin:1px 0 0;font-size:12px;line-height:18px;color:rgb(207,211,214)}',
+      '.rw-hover-host{margin:1px 0 0;font-size:12px;line-height:18px;color:rgb(207,211,214)}',
       '.rw-hover-status.is-on{color:#3fb950}',
       '.rw-hover-status.is-off{color:#f85149}',
       '.rw-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}',
@@ -1871,6 +1874,28 @@ window.__ModuleLoader__.load({
     var workspaceRowObserver = null;
     var workspaceRowTimer = null;
     var workspaceHoverRecords = {};
+    // Set by `apply`; the hover card is drawn by the host, so it is decorated
+    // outside React and needs direct access to the session registry.
+    var pluginContext = null;
+
+    function sessionCountForScope(scopeKey) {
+      if (scopeKey === '') return 0;
+      var count = 0;
+      try {
+        var ctx = pluginContext;
+        var sessions = ctx ? (ctx.sessions || (ctx.get && ctx.get('sessions'))) : null;
+        var list = sessions && sessions.list ? sessions.list : sessions;
+        var state = list && typeof list.getSnapshot === 'function' ? list.getSnapshot() : null;
+        var byId = state && state.byId ? state.byId : {};
+        Object.keys(byId).forEach(function (sessionId) {
+          var record = byId[sessionId];
+          if (!record) return;
+          var key = linkedScopeKey(record.cwd || '');
+          if (key === scopeKey || key.indexOf(scopeKey + '/') === 0) count += 1;
+        });
+      } catch (error) { /* sessions unavailable: no count */ }
+      return count;
+    }
 
     function applyWorkspaceRowTips() {
       if (typeof document === 'undefined') return;
@@ -1956,7 +1981,18 @@ window.__ModuleLoader__.load({
       status.textContent = record.status;
       var titleEl = card.querySelector('[class*="hoverTitle"]');
       var anchor = titleEl || pathEl;
-      anchor.parentNode.insertBefore(status, anchor.nextSibling);
+      // Second line: which SSH host backs this workspace and how many sessions
+      // it currently holds. Inserted between the title and the status line.
+      var inserted = anchor;
+      if (record.host) {
+        var sessionsLine = document.createElement('div');
+        sessionsLine.className = 'rw-hover-host';
+        sessionsLine.setAttribute(HOVER_LINE_ATTR, '1');
+        sessionsLine.textContent = t('hoverSessionLine', { host: record.host, count: sessionCountForScope(record.scopeKey) });
+        anchor.parentNode.insertBefore(sessionsLine, anchor.nextSibling);
+        inserted = sessionsLine;
+      }
+      anchor.parentNode.insertBefore(status, inserted.nextSibling);
 
       if (record.kind === 'linked' && local !== '') {
         pathEl.textContent = t('pathRemoteShort') + ' ' + remote;
@@ -2023,6 +2059,8 @@ window.__ModuleLoader__.load({
           records[key] = {
             kind: entry.kind,
             name: item.name,
+            host: item.hostName || item.host || '',
+            scopeKey: key,
             remotePath: item.remotePath || '',
             localPath: linked ? (item.localPath || '') : '',
             status: statusLabel(t, item),
@@ -7623,6 +7661,7 @@ window.__ModuleLoader__.load({
     var inject = ['slots', 'locale', 'sessions'];
 
     function apply(ctx) {
+      pluginContext = ctx;
       ctx.effect(installStyles, 'dsh-linked-workspace: styles');
       ctx.effect(function () {
         var lastDark = null;
