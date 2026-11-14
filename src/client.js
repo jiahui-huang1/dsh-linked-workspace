@@ -1880,21 +1880,39 @@ window.__ModuleLoader__.load({
 
     function sessionCountForScope(scopeKey) {
       if (scopeKey === '') return 0;
-      var count = 0;
+      var real = 0;
+      var draftHere = 0;
       try {
         var ctx = pluginContext;
         var sessions = ctx ? (ctx.sessions || (ctx.get && ctx.get('sessions'))) : null;
         var list = sessions && sessions.list ? sessions.list : sessions;
         var state = list && typeof list.getSnapshot === 'function' ? list.getSnapshot() : null;
         var byId = state && state.byId ? state.byId : {};
+        var activeId = '';
+        try {
+          // The tree is the source of truth for which session the user is sitting in;
+          // the sidebar service snapshot can lag behind a click.
+          var activeRow = typeof document !== 'undefined'
+            ? document.querySelector('[data-row-key^="session:"][aria-selected="true"]')
+            : null;
+          if (activeRow) activeId = activeRow.getAttribute('data-row-key').slice('session:'.length);
+        } catch (error) { /* no tree: no active session */ }
         Object.keys(byId).forEach(function (sessionId) {
           var record = byId[sessionId];
           if (!record) return;
-          var key = linkedScopeKey(record.cwd || '');
-          if (key === scopeKey || key.indexOf(scopeKey + '/') === 0) count += 1;
+          // Sessions belong to a workspace by their exact working directory; the
+          // sidebar never nests a workspace's children under it.
+          if (linkedScopeKey(record.cwd || '') !== scopeKey) return;
+          var projections = record.projectionValues || {};
+          // A subagent run is its own session record but not a row in the host tree.
+          if (projections.subagent) return;
+          if (!record.blank) { real += 1; return; }
+          // Unused sessions stay in the catalog forever, but the tree only shows the
+          // draft the user is currently sitting in — count just that one.
+          if (sessionId === activeId) draftHere = 1;
         });
       } catch (error) { /* sessions unavailable: no count */ }
-      return count;
+      return real + draftHere;
     }
 
     function applyWorkspaceRowTips() {
