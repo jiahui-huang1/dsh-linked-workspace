@@ -20,11 +20,11 @@ Codes: `BAD_REQUEST`, `NOT_FOUND`, `SSH_CONNECT`, `AUTH_FAILED`,
 
 | Method | Params | Result |
 | --- | --- | --- |
-| `docs.read` | `{ path, linkedId?, workspaceId? }` | kind-specific document model |
-| `docs.write` | `{ path, data, expectedMtime?, linkedId?, workspaceId? }` | `{ kind, path, size, mtime }` |
-| `docs.create` | `{ path, kind?, linkedId?, workspaceId? }` | `{ kind, path, size, mtime }` |
-| `docs.mdPreview` | `{ path, text?, linkedId?, workspaceId? }` | `{ kind, html }` |
-| `docs.mdPdf` | `{ path, text?, linkedId?, workspaceId? }` | `{ kind: "pdf", path, size, mtime }` |
+| `docs.read` | `{ path, linkedId?, remoteId? }` | kind-specific document model |
+| `docs.write` | `{ path, data, expectedMtime?, linkedId?, remoteId? }` | `{ kind, path, size, mtime }` |
+| `docs.create` | `{ path, kind?, linkedId?, remoteId? }` | `{ kind, path, size, mtime }` |
+| `docs.mdPreview` | `{ path, text?, linkedId?, remoteId? }` | `{ kind, html }` |
+| `docs.mdPdf` | `{ path, text?, linkedId?, remoteId? }` | `{ kind: "pdf", path, size, mtime }` |
 
 ## Records
 

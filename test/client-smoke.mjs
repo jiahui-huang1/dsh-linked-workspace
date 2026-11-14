@@ -90,6 +90,8 @@ assert.match(bundleSource, /rw-image-canvas/, 'image zoom canvas is part of the 
 assert.match(bundleSource, /htmlScriptsDisabled/, 'HTML preview safety note is part of the client bundle')
 assert.match(bundleSource, /newEntryMenuItems/, 'direct new-entry menu actions are part of the client bundle')
 assert.match(bundleSource, /createOnly: true/, 'remote new files are created without overwriting existing targets')
+assert.doesNotMatch(bundleSource, /readOnly:\s*remoteOnly/, 'the editor is never gated by the remote-only tree')
+assert.match(bundleSource, /transferNeedsLinked/, 'the disabled transfer button explains the linked-workspace requirement')
 
 assert.ok(captured, 'the bundle registered itself with the module loader')
 assert.equal(captured.id, 'dsh-linked-workspace')

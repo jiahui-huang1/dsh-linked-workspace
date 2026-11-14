@@ -655,6 +655,7 @@ window.__ModuleLoader__.load({
       queueClear: '清空已完成',
       tooManyTabs: '同时打开的文件标签已达上限（12 个），请先关闭一些标签。',
       transferSelected: '传输所选文件/文件夹',
+      transferNeedsLinked: '传输只在联动工作区可用（远端 → 本地）',
       selectFirst: '先在目录树中选择一个远端文件或文件夹。',
       showHidden: '显示隐藏的文件',
       hideHidden: '隐藏隐藏的文件',
@@ -1115,6 +1116,7 @@ window.__ModuleLoader__.load({
       queueClear: 'Clear finished',
       tooManyTabs: 'At most 12 file tabs can be open at once; close one first.',
       transferSelected: 'Transfer the selected file/folder',
+      transferNeedsLinked: 'Transfer needs a linked workspace (remote → local)',
       selectFirst: 'Select a remote file or folder in the tree first.',
       showHidden: 'Show hidden files',
       hideHidden: 'Hide hidden files',
@@ -3125,7 +3127,6 @@ window.__ModuleLoader__.load({
       var locale = props.locale;
       var scope = props.scope;
       var local = props.local === true;
-      var readOnly = props.readOnly === true;
       var filePath = props.path;
       var sidebar = sidebarService(ctx);
       var settings = useRuntimeSettings();
@@ -3153,7 +3154,7 @@ window.__ModuleLoader__.load({
       var gutterRef = useRef(null);
       var baseTitle = basename(filePath) || t('fileTabTitle');
       var params = scopeParams(scope);
-      var editable = Boolean(load.file && load.file.editable) && !readOnly;
+      var editable = Boolean(load.file && load.file.editable);
 
       var loadFile = useCallback(function () {
         if (!filePath || (!local && !scope)) {
@@ -3225,7 +3226,7 @@ window.__ModuleLoader__.load({
       }, [dirty, baseTitle]);
 
       function saveFile(force) {
-        if (readOnly || !load.file || load.file.binary || load.file.tooLarge || save.saving) return Promise.resolve(false);
+        if (!load.file || load.file.binary || load.file.tooLarge || save.saving) return Promise.resolve(false);
         setSave({ saving: true, conflict: false, error: '', ok: false });
         var payload = local ? { path: filePath, content: content } : Object.assign({ path: filePath, content: content }, params);
         if (!force && load.file && typeof load.file.mtime === 'number') payload.expectedMtime = load.file.mtime;
@@ -3550,7 +3551,7 @@ window.__ModuleLoader__.load({
                 h('textarea', {
                   ref: textareaRef,
                   className: 'rw-textarea',
-                  readOnly: readOnly || !editable,
+                  readOnly: !editable,
                   value: content,
                   spellCheck: false,
                   wrap: 'off',
@@ -3591,9 +3592,7 @@ window.__ModuleLoader__.load({
           h('span', { className: 'rw-status-chip' }, formatBytes(file.size)),
           dirty
             ? h('span', { className: 'rw-status-chip rw-status-warn' }, t('dirty'))
-            : readOnly
-              ? h('span', { className: 'rw-status-chip rw-status-error' }, t('readOnly'))
-              : file.tooLarge || file.truncated || file.binary
+            : file.tooLarge || file.truncated || file.binary
               ? h('span', { className: 'rw-status-chip rw-status-error' }, t('readOnly'))
               : h('span', { className: 'rw-status-chip rw-status-ok' }, theme.label ? (locale === 'zh' ? theme.label.zh : theme.label.en) : theme.id),
           h('span', { className: 'rw-fill', style: { flex: '1 1 auto' } })));
@@ -3942,7 +3941,7 @@ window.__ModuleLoader__.load({
           h('button', {
             type: 'button',
             className: 'rw-icon-btn',
-            title: t('transferSelected'),
+            title: props.transferTitle || t('transferSelected'),
             disabled: !props.transferEnabled,
             style: props.transferEnabled ? undefined : { opacity: 0.42, cursor: 'default' },
             onClick: props.transferSelected,
@@ -5907,23 +5906,19 @@ window.__ModuleLoader__.load({
 
       function buildContextItems(menu) {
         var isRemote = menu.side === 'remote';
-        if (remoteOnly) {
-          var readOnlyItems = [];
-          if (isRemote) readOnlyItems.push({ label: t('ctxDownload'), onSelect: function () { downloadEntry(menu); } });
-          if (!menu.isDir) readOnlyItems.push({ label: t('ctxOpen'), onSelect: function () { openByMode(menu.side, menu.path); } });
-          readOnlyItems.push({ separator: true });
-          readOnlyItems.push({ label: t('ctxCopyPath'), onSelect: function () { copyPathToClipboard(menu.path); } });
-          readOnlyItems.push({ separator: true });
-          readOnlyItems.push({ label: t('ctxProperties'), onSelect: function () { showProperties(menu.side, menu.path); } });
-          return readOnlyItems;
-        }
+        // Transfer, compare and the local terminal need a local directory, so
+        // they only show up for a linked workspace; everything else works on
+        // both kinds (a remote workspace just has the remote side).
+        var hasLocal = Boolean(selected && selected.kind === 'linked');
         var canPaste = clipboard !== null && clipboard.side === menu.side && menu.isDir;
         var items = [];
         var batch = multi.filter(function (item) { return item.side === menu.side; });
         if (batch.length > 1) {
-          items.push({ label: t('ctxTransferSelected', { count: batch.length }), onSelect: function () {
-            batch.forEach(function (item) { enqueueTransfer(item.side, item.path, item.name); });
-          } });
+          if (hasLocal) {
+            items.push({ label: t('ctxTransferSelected', { count: batch.length }), onSelect: function () {
+              batch.forEach(function (item) { enqueueTransfer(item.side, item.path, item.name); });
+            } });
+          }
           items.push({ label: t('ctxDeleteSelected', { count: batch.length }), onSelect: deleteSelection });
           if (batch.some(function (item) { return item.path === menu.path; })) {
             items.push({ label: t('ctxMoveSelected', { count: batch.length }), onSelect: function () {
@@ -5939,9 +5934,13 @@ window.__ModuleLoader__.load({
           items.push({ separator: true });
         }
         if (isRemote) {
-          items.push({ label: t('ctxTransfer'), onSelect: function () { enqueueTransfer('remote', menu.path, menu.name); } });
+          if (hasLocal) {
+            items.push({ label: t('ctxTransfer'), onSelect: function () { enqueueTransfer('remote', menu.path, menu.name); } });
+          }
           items.push({ label: t('ctxDownload'), onSelect: function () { downloadEntry(menu); } });
-          items.push({ label: t('ctxQueue'), onSelect: function () { setDialog({ kind: 'queue' }); } });
+          if (hasLocal) {
+            items.push({ label: t('ctxQueue'), onSelect: function () { setDialog({ kind: 'queue' }); } });
+          }
           items.push({ separator: true });
         } else {
           items.push({ label: t('ctxTransferLocal'), onSelect: function () { enqueueTransfer('local', menu.path, menu.name); } });
@@ -5984,7 +5983,7 @@ window.__ModuleLoader__.load({
           items.push({ label: t('ctxTerminalHere'), onSelect: function () { openTerminal(menu.side, menu.path); } });
           items = items.concat(newEntryMenuItems(menu, t, setDialog));
         }
-        if (menu.isDir && menu.side === 'remote' && selected && selected.kind === 'linked') {
+        if (menu.isDir && menu.side === 'remote' && hasLocal) {
           items.push({ label: t('ctxCompare'), onSelect: function () { openCompare(menu.path); } });
         }
         items.push({ separator: true });
@@ -6342,7 +6341,6 @@ window.__ModuleLoader__.load({
           scope: activeFile.side === 'remote' ? sourceScopeOf(selected) : undefined,
           path: activeFile.path,
           local: activeFile.side === 'local',
-          readOnly: remoteOnly,
           hideHeader: true,
           focusLine: activeFile.line || 0,
           onSaveReady: function (handler) {
@@ -6376,7 +6374,8 @@ window.__ModuleLoader__.load({
           localEnabled: !remoteOnly && selected.kind === 'linked',
           showHidden: showHidden,
           onToggleHidden: function () { setShowHidden(!showHidden); },
-          transferEnabled: !remoteOnly && (multi.length > 0 || Boolean(selectedEntry)),
+          transferEnabled: selected.kind === 'linked' && (multi.length > 0 || Boolean(selectedEntry)),
+          transferTitle: selected.kind === 'linked' ? undefined : t('transferNeedsLinked'),
           transferSelected: function () {
             if (multi.length === 0 && !selectedEntry) {
               showNotice('info', t('selectFirst'));

@@ -89,8 +89,10 @@ Selecting several rows (`Ctrl/Cmd`-click toggles, `Shift`-click selects a range)
 Appears automatically for sessions that belong to a remote workspace (and can be opened any time from the settings card):
 
 - A **single remote tree** with no local pane; it is rooted at “All files” and the header shows `user@host · Remote`.
-- Files open **read-only** in the built-in editor (encoding, line endings, line count and size are still shown) and are never written back locally.
-- Context menu, search (name / content), hidden-file toggle and the 15-second refresh throttle match the remote tree of a linked workspace; transfer, two-way comparison and local-side actions are unavailable in this mode.
+- Files are **editable in the built-in editor and saved straight back to the host** (Ctrl/Cmd+S, autosave, save-conflict prompt, find & replace and jump-to-match all behave like the linked workspace). Read-only protection still follows each file: binaries, files over 2 MB and truncated reads show “Read-only” and reject typing.
+- Markdown, Word, Excel, PowerPoint and PDF documents open in their own panes and save back to the host as well.
+- The context menu, search (name / content, including case, regex and “search this folder only”), hidden-file toggle and the 15-second refresh throttle match the linked workspace's remote tree: open, edit in Notepad, copy / paste, copy path, move to…, rename, delete, change permissions, open terminal here, new file / folder, properties, download, plus the batch “delete selected”, “move selected” and “rename selected”.
+- Only the four features that need a local directory stay linked-only: **transfer to the local mirror, the transfer queue, two-way comparison, and the local terminal / local pane** (in a remote workspace the transfer button is disabled and its tooltip reads “Transfer needs a linked workspace (remote → local)”).
 - Both directory tabs (linked and remote) register eagerly, so a remote tree can be opened from settings even while the current session belongs to a linked workspace.
 
 ### Transfer, comparison and conflicts

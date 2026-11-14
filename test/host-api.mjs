@@ -282,6 +282,24 @@ async function main() {
     await fail('fs.read', { remoteId, path: '/etc/passwd' }, 400)
     step('path containment', started)
 
+    // 10b. Documents in a remote workspace
+    started = Date.now()
+    const remoteDocDir = `${ROOT}/.dshrw-doc-${SUFFIX}`
+    await ok('fs.mkdir', { remoteId, path: remoteDocDir })
+    const remoteDocPath = `${remoteDocDir}/note.md`
+    await ok('docs.create', { remoteId, path: remoteDocPath, kind: 'markdown' })
+    const remoteDocText = '# remote doc\n\nwritten through docs.write\n'
+    await ok('docs.write', { remoteId, path: remoteDocPath, data: { text: remoteDocText } })
+    const remoteDocRead = await ok('docs.read', { remoteId, path: remoteDocPath })
+    assert.equal(remoteDocRead.kind, 'markdown')
+    assert.equal(remoteDocRead.text, remoteDocText, 'docs.read returned the remote document')
+    const remoteDocRaw = await ok('fs.read', { remoteId, path: remoteDocPath })
+    assert.equal(remoteDocRaw.content, remoteDocText, 'the document landed on the remote host')
+    await fail('docs.read', { remoteId, path: '/etc/passwd' }, 400)
+    await ok('fs.delete', { remoteId, path: remoteDocPath })
+    await ok('fs.delete', { remoteId, path: remoteDocDir })
+    step('docs.* remote scope', started)
+
     // 11. stat / mkdir / rename / delete
     started = Date.now()
     const stat = await ok('fs.stat', { remoteId, path: TEST_FILE })
