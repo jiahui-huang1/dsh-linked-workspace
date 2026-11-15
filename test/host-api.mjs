@@ -248,6 +248,9 @@ async function main() {
   step('remote_workspaces.create + get', started, remoteId)
 
   try {
+    // A previous aborted run can leave the scratch tree behind: clear it up
+    // front so a re-run starts from a known state (D5).
+    await ok('fs.delete', { remoteId, path: REMOTE_LINK_DIR }).catch(() => null)
     // 6. List the workspace root
     started = Date.now()
     const listing = await ok('fs.list', { remoteId, path: '' })
@@ -548,6 +551,15 @@ async function main() {
     await ok('fs.delete', { linkedId: link.id, path: `${REMOTE_LINK_DIR}/from-picker` })
     step('hosts.mkdir', started)
 
+    // 13a5. Free space on the remote volume (shown in the tree header)
+    started = Date.now()
+    const diskInfo = await ok('hosts.df', { hostId: host.id, path: REMOTE_LINK_DIR })
+    assert.ok(diskInfo.disk, 'df reports the volume behind the path')
+    assert.ok(diskInfo.disk.size > 0, 'the volume has a size')
+    assert.ok(diskInfo.disk.avail >= 0, 'free space is reported')
+    assert.ok(diskInfo.disk.percent >= 0 && diskInfo.disk.percent <= 100, 'usage percentage is sane')
+    step('hosts.df', started, `${Math.round(diskInfo.disk.avail / 1048576)} MB free, ${diskInfo.disk.percent}% used`)
+
     // 13b2. Local read/write (the workbench content pane edits local files too)
     started = Date.now()
     const localEditPath = join(localRoot, 'local-edit.txt')
@@ -715,13 +727,15 @@ async function main() {
     assert.equal(existsSync(join(localRoot, '.remote')), false)
     assert.equal((await ok('linked.list', {})).links.length, 0)
     step('linked.remove', started)
-
-    // Cleanup the remote linked tree.
-    await ok('fs.delete', { remoteId, path: `${REMOTE_LINK_DIR}/a.txt` })
-    await ok('fs.delete', { remoteId, path: `${REMOTE_LINK_DIR}/b.txt` })
-    await ok('fs.delete', { remoteId, path: REMOTE_LINK_DIR })
   } finally {
-    // Cleanup: remove the workspace record and any remote leftovers.
+    // Cleanup: remove the workspace record and any remote leftovers. The
+    // scratch tree is removed here rather than at the end of the happy path so
+    // a failed assertion cannot leave it on the server (D5).
+    try {
+      await ok('fs.delete', { remoteId, path: REMOTE_LINK_DIR })
+    } catch (error) {
+      console.error('cleanup: could not remove the remote scratch tree', error && error.message ? error.message : error)
+    }
     try {
       await ok('remote_workspaces.remove', { id: remoteId })
     } catch (error) {

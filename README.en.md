@@ -60,6 +60,9 @@ The plugin takes over the DSH sidebar/hero directory-selection hole; the dialog 
 
 ### Sidebar: “Linked Workspace Directory”
 
+The heading shows the free space of the remote volume that holds the workspace;
+hover it for the total size and the used percentage.
+
 - Fixed on the far right of the sidebar: **remote tree on top, local tree below**, both rooted at “All files”; the plugin's `.local`/`.remote` internal folders are hidden from the local tree.
 - **Single-click opens, double-click pins**: single-click a folder to expand/collapse; single-click a file to open it in the content panel, replacing the current unpinned preview. Double-click a file to pin it so later single clicks do not replace it; double-clicking a folder only keeps it expanded.
 - Toolbar (top right of the sidebar):

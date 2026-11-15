@@ -2,6 +2,32 @@
 
 English · [简体中文](CHANGELOG.zh.md)
 
+## Unreleased
+
+- Tree header shows the free space of the remote volume the workspace lives on
+  (`hosts.df`) and refreshes with the tree.
+- "Download to the default folder" reports what actually landed — file count and
+  size — and warns when the 150-file / 15 MB cap cut the run short or a single
+  file over 20 MB was skipped. Multi-select can download every selected remote
+  entry at once ("Download N selected").
+- Every confirmation dialog answers Escape, keeps Tab inside the dialog and
+  returns focus to the row that opened it.
+- Notices can be closed by hand and are announced to screen readers; error
+  notices no longer vanish after 4.2 seconds, so a long SSH message can be read
+  and copied.
+- Content search remembers the last eight queries and offers them as chips when
+  the box is empty; inside the editor Ctrl+Up / Ctrl+Down walk the hits of the
+  query that opened the file.
+- The transfer dialog keeps the last 20 finished transfers, so closing it no
+  longer loses the record.
+- The context menu gains "Copy ssh command" for remote folders — a ready to
+  paste `ssh host -t 'cd <dir> && exec $SHELL -l'`.
+- "Open a copy in Notepad" is labelled as such (the copy is never written back)
+  and copies older than a day are swept on start, so the temp folder stops
+  growing forever.
+- The host API suite removes its remote scratch tree in `finally` and clears
+  leftovers before it starts, so a failed run cannot leave debris behind.
+
 ## 0.15.0 — 2026-11-15
 
 - **Remote workspace files are editable**: a remote workspace’s remote tree now behaves like the remote side of a linked workspace — files open in the built-in editor, `Ctrl/Cmd+S` (and autosave) write straight back to the host, save conflicts are detected the usual way, and Markdown / Word / Excel / PowerPoint / PDF documents open in their document panes. Only the features that need a local directory stay linked-only: transfer to the local mirror, the transfer queue, two-way comparison, and the local terminal / local pane (the transfer button is disabled there and its tooltip says so).
