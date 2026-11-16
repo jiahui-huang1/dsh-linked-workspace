@@ -4,6 +4,7 @@ English · [简体中文](CHANGELOG.zh.md)
 
 ## Unreleased
 
+- The workspace root no longer offers “Change permissions”, and the Host rejects it too: a stray 644 on the root makes the whole workspace look empty.
 - The workspace root no longer offers “Rename” or “Delete”: the Host rejects both, so the old menu only produced a confirm dialog followed by an error.
 - “Change permissions” starts from the right default per kind — 755 for folders (with a note that the execute bit matters) and 644 for files; the dialog also explains why 644 on a folder makes it look empty.
 - Permission failures now name the usual cause (a folder missing its execute bit — set 755 again) in the editor panel, inside dialogs and in the banner.

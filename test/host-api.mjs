@@ -488,6 +488,9 @@ async function main() {
     assert.equal(remoteCopy.files, 1)
     await ok('fs.chmod', { linkedId: link.id, path: remoteCopy.path, mode: '600' })
     await ok('fs.delete', { linkedId: link.id, path: remoteCopy.path })
+    // A 644 on the workspace root would hide the whole tree, so the Host refuses.
+    const rootChmod = await fail('fs.chmod', { linkedId: link.id, path: link.remotePath, mode: '644' }, 400)
+    assert.match(String(rootChmod.message || ''), /根目录/)
     const ctxDir = `${REMOTE_LINK_DIR}/ctxdir`
     await ok('fs.mkdir', { linkedId: link.id, path: ctxDir })
     await ok('fs.write', { linkedId: link.id, path: `${ctxDir}/nested.txt`, content: 'nested' })
