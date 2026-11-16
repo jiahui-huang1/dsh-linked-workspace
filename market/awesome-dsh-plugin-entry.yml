@@ -1,5 +1,6 @@
 url: https://github.com/jiahui-huang1/dsh-linked-workspace
 name: jiahui-huang1/dsh-linked-workspace
+title: dsh-local-remote-linked-workspace
 category: remote
 description:
   en: 'SSH-backed remote directories and linked local⇄remote workspaces: read-only remote browsing, an editable linked workbench, bidirectional SFTP transfer, mirroring and a linked_workspace tool.'
