@@ -4,6 +4,12 @@ English · [简体中文](CHANGELOG.zh.md)
 
 ## Unreleased
 
+- The workspace root no longer offers “Rename” or “Delete”: the Host rejects both, so the old menu only produced a confirm dialog followed by an error.
+- “Change permissions” starts from the right default per kind — 755 for folders (with a note that the execute bit matters) and 644 for files; the dialog also explains why 644 on a folder makes it look empty.
+- Permission failures now name the usual cause (a folder missing its execute bit — set 755 again) in the editor panel, inside dialogs and in the banner.
+- The hidden-file toggle is remembered in localStorage, so it survives reopening the tab; its tooltip no longer reads like a stutter.
+- Starting a new action (open a file, refresh the tree, run a search) clears the previous error banner instead of leaving it pinned.
+- The transfer queue reports throughput (for example `12.4 MB/s`) next to the byte count.
 - Tree header shows the free space of the remote volume the workspace lives on
   (`hosts.df`) and refreshes with the tree.
 - "Download to the default folder" reports what actually landed — file count and

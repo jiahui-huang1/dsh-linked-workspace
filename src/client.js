@@ -648,6 +648,7 @@ window.__ModuleLoader__.load({
       nameLabel: '名称',
       chmodTitle: '更改权限',
       chmodLabel: '八进制权限（如 644 / 0755）',
+      chmodLabelDir: '目录权限（需要含 7 才有进入权限，如 755）',
       propsTitle: '属性',
       propsName: '名称',
       propsPath: '路径',
@@ -664,6 +665,7 @@ window.__ModuleLoader__.load({
       deleteDone: '已删除',
       chmodDone: '权限已更新',
       actionFailed: '操作失败',
+      permissionHint: '（目录可能缺少执行位：用「更改权限」改回 755 即可恢复）',
       close: '关闭',
       confirm: '确定',
       queueClear: '清空已完成',
@@ -671,8 +673,8 @@ window.__ModuleLoader__.load({
       transferSelected: '传输所选文件/文件夹',
       transferNeedsLinked: '传输只在联动工作区可用（远端 → 本地）',
       selectFirst: '先在目录树中选择一个远端文件或文件夹。',
-      showHidden: '显示隐藏的文件',
-      hideHidden: '隐藏隐藏的文件',
+      showHidden: '显示以 . 开头的文件',
+      hideHidden: '不显示以 . 开头的文件',
       syncStarting: '正在启动同步…',
       syncRunning: '同步中：{{files}} 个文件 / {{size}}',
       syncDone2: '同步完成：{{files}} 个文件（{{size}}）',
@@ -1123,6 +1125,7 @@ window.__ModuleLoader__.load({
       nameLabel: 'Name',
       chmodTitle: 'Change permissions',
       chmodLabel: 'Octal permissions (e.g. 644 / 0755)',
+      chmodLabelDir: 'Directory permissions (needs a 7 to stay enterable, e.g. 755)',
       propsTitle: 'Properties',
       propsName: 'Name',
       propsPath: 'Path',
@@ -1139,6 +1142,7 @@ window.__ModuleLoader__.load({
       deleteDone: 'Deleted',
       chmodDone: 'Permissions updated',
       actionFailed: 'Action failed',
+      permissionHint: ' (a folder without the execute bit — use “Change permissions” and set 755 again)',
       close: 'Close',
       confirm: 'OK',
       queueClear: 'Clear finished',
@@ -1146,8 +1150,8 @@ window.__ModuleLoader__.load({
       transferSelected: 'Transfer the selected file/folder',
       transferNeedsLinked: 'Transfer needs a linked workspace (remote → local)',
       selectFirst: 'Select a remote file or folder in the tree first.',
-      showHidden: 'Show hidden files',
-      hideHidden: 'Hide hidden files',
+      showHidden: 'Show dotfiles (names starting with .)',
+      hideHidden: 'Hide dotfiles (names starting with .)',
       syncStarting: 'Starting sync…',
       syncRunning: 'Syncing: {{files}} files / {{size}}',
       syncDone2: 'Sync finished: {{files}} files ({{size}})',
@@ -1299,8 +1303,11 @@ window.__ModuleLoader__.load({
       // Keep the server's own wording: "All configured authentication methods
       // failed" tells the user far more than the generic code text alone.
       var detail = typeof error.message === 'string' ? error.message.trim() : '';
-      if (!detail || detail === known) return known;
-      return known + (locale === 'zh' ? '：' : ': ') + detail;
+      // A folder without the execute bit looks empty instead of failing loudly,
+      // so name the usual cause and the way back whenever this code shows up.
+      var hint = error.code === 'FS_PERMISSION' ? t('permissionHint') : '';
+      if (!detail || detail === known) return known + hint;
+      return known + (locale === 'zh' ? '：' : ': ') + detail + hint;
     }
 
     function documentKindOf(path) {
@@ -4258,6 +4265,26 @@ window.__ModuleLoader__.load({
     // F6: the settings page can replay the card, so the flag is cleared and an
     // event wakes the overlay instead of the user hunting for local storage.
     var WELCOME_EVENT = 'dsh-linked-workspace:welcome-open';
+var SHOW_HIDDEN_KEY = 'dsh-linked-workspace:show-hidden';
+
+function readShowHidden() {
+  try {
+    var stored = window.localStorage.getItem(SHOW_HIDDEN_KEY);
+    if (stored === '0') return false;
+    if (stored === '1') return true;
+  } catch (error) {
+    /* private mode: fall through to the default */
+  }
+  return true;
+}
+
+function rememberShowHidden(value) {
+  try {
+    window.localStorage.setItem(SHOW_HIDDEN_KEY, value ? '1' : '0');
+  } catch (error) {
+    /* ignore quota / private mode */
+  }
+}
 
     function welcomeSeen() {
       try {
@@ -5207,7 +5234,7 @@ window.__ModuleLoader__.load({
       var setMulti = multiState[1];
       // Anchor for Shift+click range selection (a ref: it must not re-render).
       var selectionAnchorRef = useRef(null);
-      var showHiddenState = useState(true);
+      var showHiddenState = useState(readShowHidden);
       var showHidden = showHiddenState[0];
       var setShowHidden = showHiddenState[1];
       // A refresh only reloads this bundle, so the running Host may be older.
@@ -5431,6 +5458,7 @@ window.__ModuleLoader__.load({
       }
 
       function refreshTree() {
+        clearStaleError();
         bumpVersion(function (value) { return value + 1; });
         data.reload();
       }
@@ -5480,6 +5508,7 @@ window.__ModuleLoader__.load({
 
       function openByMode(side, filePath, options) {
         if (!selected || !filePath) return;
+        clearStaleError();
         var openMode = settings.fileOpenMode || 'editor';
         if (openMode === 'copy') {
           try {
@@ -5618,6 +5647,14 @@ window.__ModuleLoader__.load({
         showNotice('error', t('actionFailed') + '：' + messageOf(error, t, locale));
       }
 
+      // Errors stay on screen until the user closes them, so anything that
+      // navigates or starts a new job drops the old one first.
+      function clearStaleError() {
+        setNotice(function (previous) {
+          return previous && previous.kind === 'error' ? null : previous;
+        });
+      }
+
       // Ctrl/Cmd-click toggles an entry in the multi-selection; a plain click
       // collapses the selection to that entry (Shift extends it).
       function updateSelection(side, info) {
@@ -5742,6 +5779,7 @@ window.__ModuleLoader__.load({
         next.files = 0;
         next.bytes = 0;
         next.message = t('queueRunning');
+        next.startedAt = Date.now();
         setQueueList(queueRef.current.slice());
         // Poll the Host while the transfer runs: a folder can take minutes and
         // the row otherwise sits on “running” with no evidence of progress.
@@ -5751,7 +5789,9 @@ window.__ModuleLoader__.load({
             if (!job || next.state !== 'running') return;
             next.files = job.files;
             next.bytes = job.bytes;
-            next.message = t('queueProgress', { files: job.files, size: formatBytes(job.bytes) });
+            var span = (Date.now() - (next.startedAt || Date.now())) / 1000;
+            next.message = t('queueProgress', { files: job.files, size: formatBytes(job.bytes) })
+              + (span >= 1 && job.bytes > 0 ? ' · ' + formatBytes(job.bytes / span) + '/s' : '');
             setQueueList(queueRef.current.slice());
           }).catch(function () { /* progress is best-effort */ });
         }, 700);
@@ -6266,14 +6306,20 @@ window.__ModuleLoader__.load({
             });
           } });
         }
-        items.push({ label: t('ctxRename'), onSelect: function () {
-          setDialog({ kind: 'rename', side: menu.side, path: menu.path, value: menu.name, title: t('renameTitle'), label: t('renameLabel') });
-        } });
-        items.push({ label: t('ctxDelete'), onSelect: function () {
-          setDialog({ kind: 'delete', side: menu.side, path: menu.path, name: menu.name, isDir: menu.isDir });
-        } });
+        if (menu.path !== rootPath) {
+          items.push({ label: t('ctxRename'), onSelect: function () {
+            setDialog({ kind: 'rename', side: menu.side, path: menu.path, value: menu.name, title: t('renameTitle'), label: t('renameLabel') });
+          } });
+          items.push({ label: t('ctxDelete'), onSelect: function () {
+            setDialog({ kind: 'delete', side: menu.side, path: menu.path, name: menu.name, isDir: menu.isDir });
+          } });
+        }
         items.push({ label: t('ctxChmod'), onSelect: function () {
-          setDialog({ kind: 'chmod', side: menu.side, path: menu.path, title: t('chmodTitle'), label: t('chmodLabel'), value: '644' });
+          setDialog({
+            kind: 'chmod', side: menu.side, path: menu.path, title: t('chmodTitle'),
+            label: menu.isDir ? t('chmodLabelDir') : t('chmodLabel'),
+            value: menu.isDir ? '755' : '644',
+          });
         } });
         if (menu.isDir) {
           items.push({ separator: true });
@@ -6473,6 +6519,7 @@ window.__ModuleLoader__.load({
         }
         var alive = true;
         var timer = setTimeout(function () {
+          clearStaleError();
           setSearch(function (previous) { return { loading: true, remote: previous.remote, local: previous.local, truncated: false, truncatedReason: '', error: null }; });
           var scopeNow = sourceScopeOf(selected);
           var contentMode = searchMode === 'content';
@@ -6686,7 +6733,11 @@ window.__ModuleLoader__.load({
           onOpenTerminal: openTerminal,
           localEnabled: !remoteOnly && selected.kind === 'linked',
           showHidden: showHidden,
-          onToggleHidden: function () { setShowHidden(!showHidden); },
+          onToggleHidden: function () {
+          var next = !showHidden;
+          rememberShowHidden(next);
+          setShowHidden(next);
+        },
           transferEnabled: selected.kind === 'linked' && (multi.length > 0 || Boolean(selectedEntry)),
           transferTitle: selected.kind === 'linked' ? undefined : t('transferNeedsLinked'),
           transferSelected: function () {
