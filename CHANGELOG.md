@@ -2,7 +2,7 @@
 
 English · [简体中文](CHANGELOG.zh.md)
 
-## Unreleased
+## 0.16.0 — 2026-11-16
 
 - The workspace root no longer offers “Change permissions”, and the Host rejects it too: a stray 644 on the root makes the whole workspace look empty.
 - The workspace root no longer offers “Rename” or “Delete”: the Host rejects both, so the old menu only produced a confirm dialog followed by an error.
