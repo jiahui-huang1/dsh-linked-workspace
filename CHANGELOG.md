@@ -2,6 +2,11 @@
 
 English · [简体中文](CHANGELOG.zh.md)
 
+## Unreleased
+
+- HTML preview is no longer blocked by the editor's 2 MB ceiling: it reads with `preview`, which raises the cap to the 8 MB read cap, so a 7 MB plotly page opens; only files above 8 MB show "download it to the default folder and open it in a browser", and the doubled "无法预览网页：无法预览网页" wording is gone.
+- HTML preview now uses `sandbox="allow-scripts"`: the page's own scripts run in a separate opaque origin (charts are no longer blank) and still cannot reach the DSH UI, host storage or tabs; the status chip reads "Sandboxed preview (scripts run, no access to the DSH UI)".
+
 ## 0.16.0 — 2026-11-16
 
 - The workspace root no longer offers “Change permissions”, and the Host rejects it too: a stray 644 on the root makes the whole workspace look empty.

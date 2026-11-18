@@ -288,6 +288,15 @@ async function main() {
     assert.equal(forced.content, 'force saved\n')
     step('fs.write force', started)
 
+    // 9b. Preview reads use the 8 MB cap instead of the editor's 2 MB one
+    started = Date.now()
+    const previewed = await ok('fs.read', { remoteId, path: TEST_FILE, preview: true })
+    assert.equal(previewed.content, 'force saved\n')
+    assert.equal(previewed.truncated, false)
+    assert.equal(previewed.tooLarge, false)
+    assert.equal(previewed.editable, true)
+    step('fs.read preview cap', started)
+
     // 10. Path containment
     started = Date.now()
     await fail('fs.list', { remoteId, path: '../../etc' }, 400)
@@ -318,6 +327,20 @@ async function main() {
     assert.equal(stat.type, 'file')
     const dir = `${ROOT}/.dshrw-dir-${SUFFIX}`
     await ok('fs.mkdir', { remoteId, path: dir })
+
+    // 10a. A 3 MB page fails the editor's 2 MB ceiling but previews whole
+    started = Date.now()
+    const bigBody = `${'x'.repeat(3 * 1024 * 1024)}\n`
+    await ok('fs.write', { remoteId, path: `${dir}/big.html`, content: bigBody })
+    const bigEditor = await ok('fs.read', { remoteId, path: `${dir}/big.html` })
+    assert.equal(bigEditor.tooLarge, true)
+    assert.equal(bigEditor.editable, false)
+    const bigPreview = await ok('fs.read', { remoteId, path: `${dir}/big.html`, preview: true })
+    assert.equal(bigPreview.tooLarge, false)
+    assert.equal(bigPreview.truncated, false)
+    assert.equal(bigPreview.content.length, bigBody.length)
+    await ok('fs.delete', { remoteId, path: `${dir}/big.html` })
+    step('fs.read preview lifts the 2 MB cap', started)
     await ok('fs.rename', { remoteId, from: TEST_FILE, to: `${dir}/renamed.txt` })
     const moved = await ok('fs.read', { remoteId, path: `${dir}/renamed.txt` })
     assert.equal(moved.content, 'force saved\n')
