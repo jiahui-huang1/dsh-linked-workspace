@@ -2,6 +2,11 @@
 
 English · [简体中文](CHANGELOG.zh.md)
 
+## 0.20.1 — 2026-11-19
+
+- **Overlays now live in the browser top layer.** The add-workspace dialog, every confirm/prompt dialog and the welcome card render into a `<dialog>` element with `showModal()`, so no neighbouring column (the right pane or the chat composer) can cover them. The old `z-index` values only worked inside one stacking context, which is why the same dialog was sometimes clipped.
+- Esc still closes these overlays, and it now hangs off the top-layer host itself: cancelling goes through React, so the overlay is removed from the DOM instead of leaving a closed dialog behind.
+
 ## 0.20.0 — 2026-11-19
 
 - **Host key policy**: new `hostKeyPolicy` setting — `tofu` (default: trust and remember the first key) or `strict` (refuse any key we have never seen, which also covers a man-in-the-middle on the very first connection).
