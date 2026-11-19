@@ -590,6 +590,32 @@ window.__ModuleLoader__.load({
       autoSaveHint: '编辑停顿约 1 秒后自动保存；关闭后请按 Ctrl+S 手动保存。',
       autoSaveLabel: '开启自动保存',
       autoSaveSaved: '自动保存设置已保存',
+      syncTitle: '把本地改动推回远端',
+      syncNeedsLinked: '只有联动工作区有本地目录可以推送',
+      syncSummary: '新增 {{added}} · 修改 {{changed}} · 冲突 {{conflict}} · 远端已删 {{removed}}',
+      syncNothing: '本地与远端一致，没有需要推送的文件。',
+      syncTruncated: '文件太多，只比较了前 {{max}} 个；请先清理或分批推送。',
+      syncSkipped: '跳过了 {{count}} 个（过大或无法读取）。',
+      syncAdded: '新增',
+      syncChanged: '修改',
+      syncConflict: '冲突',
+      syncRemoved: '远端已删',
+      syncMore: '还有 {{count}} 个未列出…',
+      syncPushSkip: '推送（跳过冲突）',
+      syncPushOverwrite: '推送并覆盖冲突',
+      syncPushing: '正在推送…',
+      syncPushed: '已推送 {{pushed}} 个文件',
+      syncConflictLeft: '{{count}} 个冲突未处理',
+      ctxPushThis: '把这个推送到远端',
+      autoPushTitle: '自动推回远端',
+      autoPushLabel: '开启自动推送',
+      autoPushWarn: '开启后，本地目录里保存的文件会在停止编辑约 1.5 秒后自动写回远端；如果同一文件在远端也被改过，会保留远端版本（不覆盖）。',
+      autoPushConfirm: '我明白，开启自动推送',
+      autoPushCancel: '先不开',
+      autoPushIncludeLabel: '只推送这些路径（每行一个，支持 *）',
+      autoPushExcludeLabel: '不要推送这些路径（每行一个，支持 *）',
+      autoPushDebounceLabel: '停止编辑后等待（毫秒）',
+      autoPushSaved: '自动推送设置已保存',
       execTitle: '远端命令执行',
       execHint: '默认关闭。开启后，会话里的模型可以通过 linked_workspace 的 exec 动作在远端跑命令；只对下面勾选的主机/工作区生效，每次尝试（含被拒）都记进审计日志。',
       execEnabledLabel: '允许在远端执行命令',
@@ -1088,6 +1114,32 @@ window.__ModuleLoader__.load({
       autoSaveHint: 'Saves about one second after you stop typing. When off, press Ctrl+S to save.',
       autoSaveLabel: 'Enable auto save',
       autoSaveSaved: 'Auto-save setting saved',
+      syncTitle: 'Push local changes back to the remote side',
+      syncNeedsLinked: 'Only a linked workspace has a local directory to push',
+      syncSummary: 'added {{added}} · changed {{changed}} · conflict {{conflict}} · gone upstream {{removed}}',
+      syncNothing: 'Local and remote agree; nothing to push.',
+      syncTruncated: 'Too many files; only the first {{max}} were compared. Tidy up or push in batches.',
+      syncSkipped: '{{count}} skipped (too large or unreadable).',
+      syncAdded: 'added',
+      syncChanged: 'changed',
+      syncConflict: 'conflict',
+      syncRemoved: 'gone upstream',
+      syncMore: '{{count}} more not listed…',
+      syncPushSkip: 'Push (skip conflicts)',
+      syncPushOverwrite: 'Push and overwrite conflicts',
+      syncPushing: 'Pushing…',
+      syncPushed: 'Pushed {{pushed}} file(s)',
+      syncConflictLeft: '{{count}} conflict(s) left',
+      ctxPushThis: 'Push this to the remote side',
+      autoPushTitle: 'Push back automatically',
+      autoPushLabel: 'Enable automatic push',
+      autoPushWarn: 'Once enabled, files saved locally are written back about 1.5 s after you stop editing. If the same file also changed on the remote side, the remote version is kept (never overwritten).',
+      autoPushConfirm: 'I understand, enable it',
+      autoPushCancel: 'Not now',
+      autoPushIncludeLabel: 'Only push these paths (one per line, * allowed)',
+      autoPushExcludeLabel: 'Never push these paths (one per line, * allowed)',
+      autoPushDebounceLabel: 'Wait after editing stops (ms)',
+      autoPushSaved: 'Automatic push settings saved',
       execTitle: 'Remote command execution',
       execHint: 'Off by default. When on, the model can run commands on the remote host through the linked_workspace "exec" action — only for the hosts and workspaces ticked below, and every attempt (refusals included) is audited.',
       execEnabledLabel: 'Allow running commands remotely',
@@ -1292,7 +1344,7 @@ window.__ModuleLoader__.load({
      * Host methods the running DSH process does not have yet, the directory
      * pane says so instead of surfacing an unrelated error.
      */
-    var HOST_API_REVISION = 4;
+    var HOST_API_REVISION = 5;
     var hostInfoProbe = null;
 
     function probeHostInfo() {
@@ -1771,6 +1823,11 @@ window.__ModuleLoader__.load({
       '.rw-warn-box{padding:8px 10px;border-radius:8px;border:1px solid color-mix(in srgb,var(--dsw-alias-state-warn-primary) 45%,transparent);background:color-mix(in srgb,var(--dsw-alias-state-warn-primary) 8%,var(--dsw-alias-bg-layer-1));font-size:12px;line-height:18px}',
       '.rw-setting-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--dsw-alias-border-l1);border-radius:9px;background:var(--dsw-alias-bg-layer-1)}',
       '.rw-exec-list{display:flex;flex-direction:column;gap:4px;margin-top:8px}',
+    '.rw-sync-list{display:flex;flex-direction:column;gap:2px;max-height:260px;overflow:auto;margin:8px 0;padding:6px 8px;border-radius:10px;background:var(--dsw-alias-bg-base)}',
+    '.rw-sync-row{display:flex;align-items:center;gap:8px;font-size:12px;line-height:20px}',
+    '.rw-sync-tag{flex:none;min-width:52px;color:rgb(150,150,152)}',
+    '.rw-sync-path{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--dsw-font-mono,monospace)}',
+    '.rw-autopush-list{width:100%;resize:vertical;font-family:var(--dsw-font-mono,monospace);font-size:12px}',
       '.rw-exec-item{display:flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid var(--dsw-alias-border-l1);border-radius:8px;background:var(--dsw-alias-bg-layer-1);cursor:pointer;font-size:13px}',
       '.rw-exec-item input[type=checkbox]{margin:0;flex:none}',
       '.rw-exec-name{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
@@ -4171,6 +4228,14 @@ window.__ModuleLoader__.load({
           }, IconDownload(14)),
           h('button', {
             type: 'button',
+            className: 'rw-icon-btn' + (props.syncBusy ? ' is-on' : ''),
+            title: props.syncTitle || t('syncTitle'),
+            disabled: !props.syncEnabled,
+            style: props.syncEnabled ? undefined : { opacity: 0.42, cursor: 'default' },
+            onClick: props.onSync,
+          }, IconSync(14)),
+          h('button', {
+            type: 'button',
             className: 'rw-icon-btn',
             title: t('refreshTree'),
             onClick: props.onRefresh,
@@ -4850,6 +4915,50 @@ function rememberShowHidden(value) {
         picker,
         h('div', { className: 'rw-dialog-actions' },
           h('button', { type: 'button', className: 'rw-btn rw-btn-sm', onClick: props.onClose }, props.t('cancel'))));
+    }
+
+    function SyncPlanDialog(props) {
+      var t = props.t;
+      var plan = props.plan;
+      var rows = []
+        .concat((plan.added || []).map(function (item) { return { tag: t('syncAdded'), item: item }; }))
+        .concat((plan.changed || []).map(function (item) { return { tag: t('syncChanged'), item: item }; }))
+        .concat((plan.conflict || []).map(function (item) { return { tag: t('syncConflict'), item: item }; }))
+        .concat((plan.removed || []).map(function (item) { return { tag: t('syncRemoved'), item: item }; }));
+      var busy = Boolean(props.busy);
+      return h(DialogShell, { title: t('syncTitle'), onClose: busy ? function () {} : props.onClose },
+        h('div', { className: 'rw-dialog-message' },
+          t('syncSummary', {
+            added: (plan.added || []).length,
+            changed: (plan.changed || []).length,
+            conflict: (plan.conflict || []).length,
+            removed: (plan.removed || []).length,
+          })),
+        plan.truncated ? h('div', { className: 'rw-dialog-message rw-warn-text' }, t('syncTruncated', { max: plan.maxFiles })) : null,
+        plan.skipped ? h('div', { className: 'rw-dialog-message' }, t('syncSkipped', { count: plan.skipped })) : null,
+        rows.length === 0
+          ? h('div', { className: 'rw-dialog-message' }, t('syncNothing'))
+          : h('div', { className: 'rw-sync-list' }, rows.slice(0, 40).map(function (row) {
+            return h('div', { key: row.tag + row.item.relative, className: 'rw-sync-row' },
+              h('span', { className: 'rw-sync-tag' }, row.tag),
+              h('span', { className: 'rw-sync-path', title: row.item.relative }, row.item.relative));
+          })),
+        rows.length > 40 ? h('div', { className: 'rw-dialog-message' }, t('syncMore', { count: rows.length - 40 })) : null,
+        props.message ? h('div', { className: 'rw-dialog-message' }, props.message) : null,
+        h('div', { className: 'rw-dialog-actions' },
+          h('button', { type: 'button', className: 'rw-btn rw-btn-sm', disabled: busy, onClick: props.onClose }, t('cancel')),
+          h('button', {
+            type: 'button',
+            className: 'rw-btn rw-btn-sm',
+            disabled: busy || plan.pending === 0,
+            onClick: function () { props.onPush('skip'); },
+          }, t('syncPushSkip')),
+          h('button', {
+            type: 'button',
+            className: 'rw-btn rw-btn-sm rw-btn-primary',
+            disabled: busy,
+            onClick: function () { props.onPush('overwrite'); },
+          }, t('syncPushOverwrite'))));
     }
 
     function QueueDialog(props) {
@@ -6020,6 +6129,40 @@ function rememberShowHidden(value) {
         });
       }
 
+      /** Open the diff preview for the whole workspace (or the given paths). */
+      function openSyncPlan(paths) {
+        var scope = sourceScopeOf(selected);
+        if (!scope || scope.kind !== 'linked') return;
+        apiCall('linked.plan', { id: scope.id, maxFiles: 2000 }).then(function (plan) {
+          setDialog({
+            kind: 'syncPlan',
+            plan: plan,
+            paths: Array.isArray(paths) && paths.length > 0 ? paths : null,
+            busy: false,
+            message: '',
+          });
+        }).catch(noticeError);
+      }
+
+      /** Push the planned files back to the remote directory. */
+      function pushPlan(plan, conflict, paths) {
+        var scope = sourceScopeOf(selected);
+        if (!scope || scope.kind !== 'linked') return;
+        setDialog({ kind: 'syncPlan', plan: plan, paths: paths || null, busy: true, message: t('syncPushing') });
+        var jobId = 'push-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
+        var params = { id: scope.id, conflict: conflict, jobId: jobId };
+        if (Array.isArray(paths) && paths.length > 0) params.paths = paths;
+        apiCall('linked.push', params).then(function (result) {
+          setDialog(null);
+          var text = t('syncPushed', { pushed: result.pushed, skipped: result.skipped });
+          if (result.conflictsLeft > 0) text += ' · ' + t('syncConflictLeft', { count: result.conflictsLeft });
+          showNotice(result.pushed > 0 ? 'success' : 'warn', text);
+          refreshTree();
+        }).catch(function (error) {
+          setDialog({ kind: 'syncPlan', plan: plan, paths: paths || null, busy: false, message: messageOf(error, t, locale) });
+        });
+      }
+
       function editNotepad(side, filePath) {
         var method = side === 'remote' ? 'fs.edit' : 'local.edit';
         var params = side === 'remote'
@@ -6455,6 +6598,15 @@ function rememberShowHidden(value) {
         if (menu.side === 'remote' && menu.isDir) {
           items.push({ label: t('ctxCopySsh'), onSelect: function () { copySshCommand(menu.path); } });
         }
+        if (selected.kind === 'linked' && menu.side === 'remote') {
+          var remoteRoot = selected.remotePath;
+          var relativePath = menu.path.indexOf(remoteRoot) === 0
+            ? menu.path.slice(remoteRoot.length).replace(/^\/+/, '')
+            : '';
+          if (relativePath !== '') {
+            items.push({ label: t('ctxPushThis'), onSelect: function () { openSyncPlan([relativePath]); } });
+          }
+        }
         items.push({ separator: true });
         var rootPath = menu.side === 'remote' ? selected.remotePath : selected.localPath;
         if (menu.path !== rootPath) {
@@ -6598,6 +6750,16 @@ function rememberShowHidden(value) {
             initialPath: dialog.initialPath,
             onClose: function () { setDialog(null); },
             onPick: function (targetDir) { moveEntries(dialog.side, moveTargets, targetDir); },
+          });
+        }
+        if (dialog.kind === 'syncPlan') {
+          return h(SyncPlanDialog, {
+            t: t,
+            plan: dialog.plan,
+            busy: Boolean(dialog.busy),
+            message: dialog.message,
+            onClose: function () { if (!dialog.busy) setDialog(null); },
+            onPush: function (conflict) { return pushPlan(dialog.plan, conflict, dialog.paths); },
           });
         }
         if (dialog.kind === 'renameMany') {
@@ -6929,6 +7091,9 @@ function rememberShowHidden(value) {
           onToggleSearch: function () { setSearchOpen(!searchOpen); },
           onOpenMode: updateOpenMode,
           onRefresh: refreshAll,
+          syncEnabled: selected.kind === 'linked',
+          syncTitle: selected.kind === 'linked' ? t('syncTitle') : t('syncNeedsLinked'),
+          onSync: function () { openSyncPlan(null); },
         }),
         searchOpen
           ? h('div', { className: 'rw-searchbar' },
@@ -8861,6 +9026,163 @@ function rememberShowHidden(value) {
       return h('div', { className: 'rw-group' }, children);
     }
 
+    function AutoPushSettingsGroup(props) {
+      var t = props.t;
+      var locale = props.locale;
+      var localState = useState({ loading: true, saving: false, message: null, asking: false });
+      var local = localState[0];
+      var setLocal = localState[1];
+      var valuesState = useState({
+        autoPushEnabled: false,
+        autoPushDebounceMs: 1500,
+        autoPushInclude: '',
+        autoPushExclude: '',
+      });
+      var values = valuesState[0];
+      var setValues = valuesState[1];
+
+      useEffect(function () {
+        var alive = true;
+        apiCall('settings.get', {}).then(function (settings) {
+          if (!alive) return;
+          setValues({
+            autoPushEnabled: settings.autoPushEnabled === true,
+            autoPushDebounceMs: Number(settings.autoPushDebounceMs) || 1500,
+            autoPushInclude: (settings.autoPushInclude || []).join('\n'),
+            autoPushExclude: (settings.autoPushExclude || []).join('\n'),
+          });
+          setLocal(function (previous) { return Object.assign({}, previous, { loading: false }); });
+        }).catch(function () {
+          if (alive) setLocal(function (previous) { return Object.assign({}, previous, { loading: false }); });
+        });
+        return function () { alive = false; };
+      }, []);
+
+      function save(patch, okText) {
+        setLocal(function (previous) { return Object.assign({}, previous, { saving: true, message: null }); });
+        apiCall('settings.update', patch).then(function (settings) {
+          setValues({
+            autoPushEnabled: settings.autoPushEnabled === true,
+            autoPushDebounceMs: Number(settings.autoPushDebounceMs) || 1500,
+            autoPushInclude: (settings.autoPushInclude || []).join('\n'),
+            autoPushExclude: (settings.autoPushExclude || []).join('\n'),
+          });
+          setLocal({ loading: false, saving: false, asking: false, message: { kind: 'success', text: okText } });
+        }).catch(function (error) {
+          setLocal({
+            loading: false,
+            saving: false,
+            asking: false,
+            message: { kind: 'error', text: messageOf(error, t, locale) },
+          });
+        });
+      }
+
+      function toggle(next) {
+        if (next === true && values.autoPushEnabled === false) {
+          // Turning it on writes files behind the user's back: ask once, in
+          // place, before the switch actually flips.
+          setLocal(function (previous) { return Object.assign({}, previous, { asking: true, message: null }); });
+          return;
+        }
+        save({ autoPushEnabled: Boolean(next) }, t('autoPushSaved'));
+      }
+
+      function commitList(field, key) {
+        var lines = String(values[field] || '').split('\n').map(function (line) { return line.trim(); }).filter(function (line) { return line !== ''; });
+        var patch = {};
+        patch[key] = lines;
+        save(patch, t('autoPushSaved'));
+      }
+
+      var children = [
+        h('div', { className: 'rw-group-head' },
+          h('span', { className: 'rw-group-title' }, t('autoPushTitle'))),
+        h('div', { className: 'rw-setting-row' },
+          h(Switch, {
+            checked: values.autoPushEnabled,
+            onChange: toggle,
+            label: t('autoPushLabel'),
+            text: t('autoPushLabel'),
+          }),
+          local.saving ? Spinner(12) : null),
+      ];
+
+      if (local.asking && !values.autoPushEnabled) {
+        children.push(h('div', { className: 'rw-group-hint', style: { marginTop: 8, color: 'rgb(210,153,34)' } }, t('autoPushWarn')));
+        children.push(h('div', { className: 'rw-dialog-actions', style: { marginTop: 10 } },
+          h('button', {
+            type: 'button',
+            className: 'rw-btn rw-btn-sm',
+            onClick: function () { setLocal(function (previous) { return Object.assign({}, previous, { asking: false }); }); },
+          }, t('autoPushCancel')),
+          h('button', {
+            type: 'button',
+            className: 'rw-btn rw-btn-sm rw-btn-primary',
+            onClick: function () { save({ autoPushEnabled: true }, t('autoPushSaved')); },
+          }, t('autoPushConfirm'))));
+      }
+
+      if (values.autoPushEnabled) {
+        children.push(h('div', { className: 'rw-group-hint', style: { marginTop: 8 } }, t('autoPushWarn')));
+        children.push(h('div', { className: 'rw-group-head', style: { marginTop: 12 } },
+          h('span', { className: 'rw-group-title' }, t('autoPushIncludeLabel'))));
+        children.push(h('textarea', {
+          className: 'rw-input rw-input-mono rw-autopush-list',
+          rows: 3,
+          value: values.autoPushInclude,
+          placeholder: 'src/**\ndocs/*.md',
+          onChange: function (event) {
+            var value = event.currentTarget.value;
+            setValues(function (previous) { return Object.assign({}, previous, { autoPushInclude: value }); });
+          },
+          onBlur: function () { commitList('autoPushInclude', 'autoPushInclude'); },
+        }));
+        children.push(h('div', { className: 'rw-group-head', style: { marginTop: 12 } },
+          h('span', { className: 'rw-group-title' }, t('autoPushExcludeLabel'))));
+        children.push(h('textarea', {
+          className: 'rw-input rw-input-mono rw-autopush-list',
+          rows: 3,
+          value: values.autoPushExclude,
+          placeholder: '*.log\n.remote/**',
+          onChange: function (event) {
+            var value = event.currentTarget.value;
+            setValues(function (previous) { return Object.assign({}, previous, { autoPushExclude: value }); });
+          },
+          onBlur: function () { commitList('autoPushExclude', 'autoPushExclude'); },
+        }));
+        children.push(h('div', { className: 'rw-inline', style: { marginTop: 12, flexWrap: 'wrap', gap: 12 } },
+          h('span', { className: 'rw-setting-label' }, t('autoPushDebounceLabel')),
+          h('input', {
+            className: 'rw-input rw-input-num',
+            type: 'number',
+            min: 300,
+            max: 60000,
+            step: 100,
+            value: values.autoPushDebounceMs,
+            onChange: function (event) {
+              var value = event.currentTarget.value;
+              setValues(function (previous) { return Object.assign({}, previous, { autoPushDebounceMs: value }); });
+            },
+            onBlur: function () {
+              var ms = Math.round(Number(values.autoPushDebounceMs) || 1500);
+              save({ autoPushDebounceMs: ms }, t('autoPushSaved'));
+            },
+          })));
+      }
+
+      if (local.message) {
+        children.push(h(Banner, {
+          kind: local.message.kind === 'success' ? 'success' : 'error',
+          onClose: function () {
+            setLocal(function (previous) { return Object.assign({}, previous, { message: null }); });
+          },
+        }, local.message.text));
+      }
+
+      return h('div', { className: 'rw-group' }, children);
+    }
+
     function ConnectionsPage(props) {
       var ctx = props.ctx;
       var locale = useLocale(ctx);
@@ -8927,6 +9249,7 @@ function rememberShowHidden(value) {
           hosts: remote.data.hosts || [],
           workspaces: links.concat(remotes),
         }),
+        h(AutoPushSettingsGroup, { t: t, locale: locale }),
         adding === 'linked'
           ? h(AddWorkspaceFlow, {
             ctx: ctx, t: t, locale: locale,

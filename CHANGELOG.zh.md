@@ -4,6 +4,15 @@
 
 按时间倒序排列。版本号遵循语义化版本：纯修复递增 patch，包含新功能递增 minor。
 
+## 0.19.0 — 2026-11-19
+
+- **把本地改动推回远端。** `linked.plan` 按「文件与上次推送时记下的哈希」逐文件比较本地与远端，分成新增 / 修改 / 冲突 / 远端已删四类；目录栏新增同步按钮与差异预览，行菜单新增「把这个推送到远端」。
+- `linked.push` 逐文件「临时文件 + rename」写回，支持 `dryRun` 与 `conflict: 'skip' | 'overwrite' | 'newer'`；两边都改过的文件默认不动，只有明确要求时才覆盖。`linked.pushCancel { jobId }` 会在当前文件写完后停下。
+- **可选自动推送**：`autoPushEnabled`（默认关闭，首次开启会在原地二次确认）、`autoPushDebounceMs`（默认 1500，范围 300–60000）、`autoPushInclude`/`autoPushExclude` 通配。它始终以 `conflict: 'skip'` 推送，所以这边的格式化工具不会覆盖远端的修改。
+- `fs.transfer` 支持 `paths: string[]`，多选一次请求，不再逐个发。
+- `transfer.history` 返回最近 50 条传输与推送记录（`transfer-history.json`）。
+- `apiRevision` 4 → 5。
+
 ## 0.18.0 — 2026-11-19
 
 - 新增 `fs.references` + `linked_workspace` 的 `references` 动作：按路径名做大小写不敏感的补全，**最佳匹配排在最前**（完全同名 → 前缀 → 包含），目录带 `dir` 标记；走 20000 条目 / 3 秒上限并回传 `truncated`。模型因此能把你口头提到的远端文件解析成真实路径。

@@ -148,6 +148,12 @@ Every attempt — including refused ones — appends a line to `$DSH_HOME/linked
   .remote/           # optional: mirrored remote files (written on read/save, full sync on demand)
 ```
 
+### Push local edits back (0.19.0)
+
+The sync button in the tree toolbar compares the local directory with the remote one and lists what is added, changed, in conflict, or gone upstream. "Push (skip conflicts)" writes back only the files you changed locally while the remote side left them alone; a file that moved on both sides stays under conflict until you explicitly choose "Push and overwrite conflicts".
+
+To let it happen on its own, enable Settings → "Linked workspaces" → "Push back automatically": the switch asks for confirmation first, and once on, saving locally writes back after about 1.5 s while always skipping conflicts.
+
 ## Screenshots
 
 Settings → “Linked workspaces”: the upper half lists **linked workspaces** (local folder ⇄ remote folder), the lower half lists **remote workspaces** (the session runs inside the remote folder). Each card shows the connection state; linked workspaces also have the mirror switch and the sync button. The host name and the local placeholder path are blurred in this shot.

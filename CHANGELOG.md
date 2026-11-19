@@ -2,6 +2,15 @@
 
 English · [简体中文](CHANGELOG.zh.md)
 
+## 0.19.0 — 2026-11-19
+
+- **Push local edits back.** `linked.plan` compares the local directory with the remote one file by file against the hash remembered from the last push, and classifies each file as added / changed / conflict / gone-upstream; the tree toolbar gained a sync button with a diff preview, and the row menu gained "push this to the remote side".
+- `linked.push` writes the planned files back with a temporary file + rename per file, a `dryRun` switch, and `conflict: 'skip' | 'overwrite' | 'newer'`; a file that moved on both sides is never clobbered unless you ask for it. `linked.pushCancel { jobId }` stops a running push after the current file.
+- **Opt-in autoPush**: `autoPushEnabled` (off by default, first enable asks for confirmation in place), `autoPushDebounceMs` (default 1500, 300–60000), plus `autoPushInclude`/`autoPushExclude` globs. It always pushes with `conflict: 'skip'`, so a formatter on this side never overwrites a remote edit.
+- `fs.transfer` accepts `paths: string[]`, so a multi-selection becomes one request instead of N.
+- `transfer.history` returns the last 50 transfers and pushes (`transfer-history.json`).
+- `apiRevision` 4 → 5.
+
 ## 0.18.0 — 2026-11-19
 
 - New `fs.references` and a `references` action on `linked_workspace`: case-insensitive path completion with the **best match first** (exact name → prefix → substring) and directories flagged `dir`; it stops after 20000 entries or 3 s and reports `truncated`. The model can now resolve a remote path you mention by name.

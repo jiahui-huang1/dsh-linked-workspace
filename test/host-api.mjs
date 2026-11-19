@@ -610,8 +610,71 @@ async function main() {
     await ok('fs.delete', { linkedId: link.id, path: `${REMOTE_LINK_DIR}/from-picker` })
     step('hosts.mkdir', started)
 
-    // 13a5. Free space on the remote volume (shown in the tree header)
+    // 13a4b. Push plan + push (0.19.0): classify, dry-run, then write back
     started = Date.now()
+    // These files live only in the push test: `a.txt`/`b.txt` stay untouched
+    // because later steps read and rewrite them.
+    writeFileSync(join(localRoot, 'pnew.txt'), 'brand new' + String.fromCharCode(10))
+    writeFileSync(join(localRoot, 'pchanged.txt'), 'local edit one' + String.fromCharCode(10))
+    await ok('fs.write', { remoteId, path: `${REMOTE_LINK_DIR}/pchanged.txt`, content: 'remote original' + String.fromCharCode(10) })
+    await ok('fs.write', { remoteId, path: `${REMOTE_LINK_DIR}/psame.txt`, content: 'same' + String.fromCharCode(10) })
+    writeFileSync(join(localRoot, 'psame.txt'), 'same' + String.fromCharCode(10))
+    const plan = await ok('linked.plan', { id: link.id })
+    const planAdded = plan.added.map((item) => item.relative)
+    const planChanged = plan.changed.map((item) => item.relative)
+    assert.ok(planAdded.indexOf('pnew.txt') >= 0, 'a local-only file shows up as added')
+    assert.ok(planChanged.indexOf('pchanged.txt') >= 0, 'a file edited locally shows up as changed')
+    assert.ok(planAdded.indexOf('psame.txt') < 0 && planChanged.indexOf('psame.txt') < 0, 'an identical file stays out of the plan')
+
+    const dry = await ok('linked.push', { id: link.id, dryRun: true })
+    assert.equal(dry.dryRun, true)
+    assert.ok(dry.pushed >= 2, 'the dry run counts what it would push')
+    await fail('fs.read', { remoteId, path: `${REMOTE_LINK_DIR}/pnew.txt` }, 404)
+
+    const pushed = await ok('linked.push', { id: link.id, conflict: 'skip' })
+    assert.ok(pushed.pushed >= 2, 'the real push writes the planned files')
+    const afterPush = await ok('fs.read', { remoteId, path: `${REMOTE_LINK_DIR}/pnew.txt` })
+    assert.match(afterPush.content, /brand new/, 'the new file landed on the remote side')
+    const changedThere = await ok('fs.read', { remoteId, path: `${REMOTE_LINK_DIR}/pchanged.txt` })
+    assert.match(changedThere.content, /local edit one/, 'the changed file landed on the remote side')
+
+    // Now the remote side moves too: the same file becomes a conflict and is
+    // left alone unless the caller asks for an overwrite.
+    await ok('fs.write', { remoteId, path: `${REMOTE_LINK_DIR}/pchanged.txt`, content: 'remote edit' + String.fromCharCode(10), force: true })
+    writeFileSync(join(localRoot, 'pchanged.txt'), 'local edit two' + String.fromCharCode(10))
+    const plan2 = await ok('linked.plan', { id: link.id })
+    assert.ok(plan2.conflict.map((item) => item.relative).indexOf('pchanged.txt') >= 0, 'a file that moved on both sides is a conflict')
+    const skipConflict = await ok('linked.push', { id: link.id, conflict: 'skip' })
+    assert.ok(skipConflict.conflictsLeft >= 1, 'skip leaves the conflict untouched')
+    const stillRemote = await ok('fs.read', { remoteId, path: `${REMOTE_LINK_DIR}/pchanged.txt` })
+    assert.match(stillRemote.content, /remote edit/, 'the remote version survived a skipping push')
+    const overwriteConflict = await ok('linked.push', { id: link.id, conflict: 'overwrite' })
+    assert.ok(overwriteConflict.pushed >= 1, 'overwrite takes the local side')
+    const overwritten = await ok('fs.read', { remoteId, path: `${REMOTE_LINK_DIR}/pchanged.txt` })
+    assert.match(overwritten.content, /local edit two/, 'the local version replaced the remote one')
+    step('linked.plan / linked.push (dry run, skip, overwrite)', started)
+
+    // 13a4c. Batch transfer + the history file (0.19.0)
+    started = Date.now()
+    writeFileSync(join(localRoot, 'batch-1.txt'), 'one' + String.fromCharCode(10))
+    writeFileSync(join(localRoot, 'batch-2.txt'), 'two' + String.fromCharCode(10))
+    const batchJobId = `batch-${SUFFIX}`
+    const batch = await ok('fs.transfer', {
+      linkedId: link.id,
+      side: 'local',
+      paths: [join(localRoot, 'batch-1.txt'), join(localRoot, 'batch-2.txt')],
+      jobId: batchJobId,
+    })
+    assert.equal(batch.files, 2, 'one request carries both files')
+    const bothThere = await ok('fs.list', { remoteId, path: REMOTE_LINK_DIR })
+    const remoteNames = bothThere.entries.map((entry) => entry.name)
+    assert.ok(remoteNames.indexOf('batch-1.txt') >= 0 && remoteNames.indexOf('batch-2.txt') >= 0, 'both files landed')
+    const history = await ok('transfer.history', {})
+    assert.ok(history.entries.length >= 1, 'the history records the batch')
+    assert.ok(history.entries.some((entry) => entry.kind === 'push'), 'pushes are recorded too')
+    step('fs.transfer batch + transfer.history', started, `${history.entries.length} history entries`)
+
+    // 13a5. Free space on the remote volume (shown in the tree header)    started = Date.now()
     const diskInfo = await ok('hosts.df', { hostId: host.id, path: REMOTE_LINK_DIR })
     assert.ok(diskInfo.disk, 'df reports the volume behind the path')
     assert.ok(diskInfo.disk.size > 0, 'the volume has a size')
