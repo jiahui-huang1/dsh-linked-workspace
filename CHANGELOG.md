@@ -2,6 +2,10 @@
 
 English · [简体中文](CHANGELOG.zh.md)
 
+## 0.20.2 — 2026-11-19
+
+- **The sheet stays readable under a translucent theme.** Some themes (a mica / frosted preset, for example) make the panel background semi-transparent, and since the overlay moved into the top layer the host's own blur no longer applies to it — the page behind showed through as mirrored text. The sheet now blurs whatever sits behind it, and the top-layer backdrop paints its own dim layer instead of relying on a theme scrim.
+
 ## 0.20.1 — 2026-11-19
 
 - **Overlays now live in the browser top layer.** The add-workspace dialog, every confirm/prompt dialog and the welcome card render into a `<dialog>` element with `showModal()`, so no neighbouring column (the right pane or the chat composer) can cover them. The old `z-index` values only worked inside one stacking context, which is why the same dialog was sometimes clipped.
