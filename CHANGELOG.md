@@ -2,7 +2,7 @@
 
 English · [简体中文](CHANGELOG.zh.md)
 
-## Unreleased
+## 0.16.1 — 2026-11-19
 
 - The hover card's connection state now follows reality in both directions: the
   page polls the new `hosts.status` (memory only, no dialling) every 6 seconds
