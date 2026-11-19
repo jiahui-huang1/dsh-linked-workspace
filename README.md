@@ -111,10 +111,21 @@
 
 | 工具 | 用途 |
 | --- | --- |
-| `linked_workspace` | `list`、`info`、`list_dir`、`read`、`write`、`replace`、`stat`、`mkdir`、`rename`、`delete`、`sync`；路径相对远端根目录，写入原子化，`if_modified_since` 做乐观并发控制。联动工作区与远程工作区都适用（远程工作区没有本地副本，`sync` 只用于开启镜像的联动工作区） |
+| `linked_workspace` | `list`、`info`、`list_dir`、`read`、`write`、`replace`、`stat`、`mkdir`、`rename`、`delete`、`sync`、`exec`；路径相对远端根目录，写入原子化，`if_modified_since` 做乐观并发控制。联动工作区与远程工作区都适用（远程工作区没有本地副本，`sync` 只用于开启镜像的联动工作区） |
 | `linked_skills` | `list`、`read` 本地技能（`~/.dsh/skills`、`~/.agents/skills`、`<local>/.dsh/skills`、`<local>/.agents/skills`） |
 
 会话工作目录落在某个联动工作区或远程工作区的占位目录时会自动解析；跨工作区可用 `workspace` 参数指定（支持 id、本地/占位路径或名称）。远端服务器只需要 SSH，不需要安装插件或 Python。
+
+### 远端命令执行（0.17.0，默认关闭）
+
+`exec` 让模型在远端跑**一条非交互命令**（编译、跑测试、看日志），不用再自己拼 `ssh`。它默认是关的，要同时满足三件事才会执行：
+
+1. 设置 → 联动工作区 → 「远端命令执行」里的总开关 `execEnabled`；
+2. 该主机在**主机白名单** `execHostIds` 里；
+3. 若填了**工作区白名单** `execWorkspaceIds`，当前工作区必须在其中（留空表示不限制）。
+
+每次尝试——包括被拒绝的——都会写一行到 `$DSH_HOME/linked-workspace/exec-audit.jsonl`（含命令、退出码、耗时、输出的前 4 KB、拒绝原因），超过 5 MB 自动轮转为 `.1`；设置页有「打开审计日志」按钮。输出按 `execMaxOutputChars`（默认 200000 字符/流）截断，超时由 `execTimeoutMs`（默认 60 秒，单次最多 600 秒）控制，`cwd` 不能跑出工作区根目录。
+
 
 ### 运行中图标 / 本地技能
 
@@ -190,6 +201,7 @@ npm 包名为 `dsh-linked-workspace`，也可以从 npm 安装已发布版本（
 - 单文件保存上限 8 MB；镜像同步在后台执行，默认最多 500 文件 / 50 MB（跳过超大文件），默认排除 `.git`/`node_modules`/各类缓存目录，单文件读取 30 s 超时，不再阻塞 HTTP 请求。右键「传输」与「下载到默认文件夹」单次最多 150 文件 / 15 MB（超限会提示未全部传输）。
 - 页面 HTTP API 只接受本机回环同源请求（远程部署时回落到 DSH `connection` 服务的 Host/Origin 鉴权）。
 - HTML 预览跑在 `sandbox="allow-scripts"` 的 iframe 里：脚本能执行（plotly 这类图表才有内容），但处于独立的不透明源，访问不到 DSH 界面、宿主存储与标签页；Markdown/文档预览仍会移除脚本、内联样式、事件属性与 `javascript:`/`vbscript:` 等危险链接，只保留安全链接与图片 `data:` URL。
+- 远端命令执行默认关闭，开启后仍受主机白名单（以及可选的工作区白名单）限制；每次执行（含被拒绝的尝试）都写审计日志，输出有长度上限、命令有超时，`cwd` 不能跑出工作区根目录。
 
 ## 常见问题
 

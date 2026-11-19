@@ -2,6 +2,14 @@
 
 English · [简体中文](CHANGELOG.zh.md)
 
+## 0.17.0 — 2026-11-19
+
+- New `hosts.exec`: let the model run **one** non-interactive command on the remote host (builds, tests, logs) instead of composing `ssh`. Off by default and gated three ways: the `execEnabled` switch, the host allow-list `execHostIds`, and the optional workspace allow-list `execWorkspaceIds` (empty means no restriction). Refusals are audited too.
+- Every attempt is written to `$DSH_HOME/linked-workspace/exec-audit.jsonl`: command, `cwd`, exit code, duration, the first 4 KB of output and any refusal reason; rotated to `.1` past 5 MB. `meta.info` returns that path and the settings block can open it.
+- Output and time are bounded: each stream is clipped to `execMaxOutputChars` (200000 by default, head+tail, flagged `truncated`), timeouts follow `execTimeoutMs` (60 s by default, 600 s per call at most) and surface as `EXEC_TIMEOUT`; `cwd` may not escape the workspace root.
+- `linked_workspace` gained an `exec` action (`command` up to 8000 characters, optional `cwd` and `timeout_ms`) and its prompt now prefers it over hand-written `ssh`. The settings page has a “Remote command execution” block (switch, both allow-lists, timeout/output caps, open audit log).
+- Host API revision is now `apiRevision: 3`: a Host still running older code shows the “restart DSH” banner above the tree.
+
 ## 0.16.1 — 2026-11-19
 
 - The hover card's connection state now follows reality in both directions: the

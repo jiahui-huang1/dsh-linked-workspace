@@ -57,6 +57,7 @@ scope root, or absolute inside it.
 | `hosts.df` | `{ hostId, path? }` | `{ disk: { path, size, used, avail, percent } \| null }` (free space of the volume holding `path`; defaults to the login home) |
 | `hosts.status` | `{ hostIds? }` | `{ statuses: { [hostId]: { state, reason?, message?, latencyMs?, checkedAt? } } }` (in-memory snapshot of the pool, never dials; an `error` older than 60 s is reported as `idle`; defaults to every known host of the host list plus every workspace's host id) |
 | `hosts.mkdir` | `{ hostId, path?, name }` | `{ path }` (creates `name` inside `path`; defaults to the login home; `409`/`FS_EXISTS` when it already exists) |
+| `hosts.exec` | `{ hostId?/linkedId?/remoteId?, command, cwd?, timeoutMs? }` | `{ hostId, hostName, workspaceId, kind, command, cwd, exitCode, stdout, stderr, stdoutBytes, stderrBytes, truncated, durationMs, startedAt, auditId }` — runs **one** non-interactive command on the remote host. Three gates: `settings.execEnabled` must be `true`, the host must be in `settings.execHostIds`, and — when `settings.execWorkspaceIds` is non-empty — the workspace must be in it. Refusals are audited too and answer `403` (`EXEC_DISABLED` / `EXEC_HOST_NOT_ALLOWED` / `EXEC_WORKSPACE_NOT_ALLOWED`); a timeout answers `504` `EXEC_TIMEOUT`, other failures `502` `EXEC_FAILED`. Output is clipped to `settings.execMaxOutputChars` per stream (default 200000, head+tail). `cwd` is resolved inside the workspace root and may not escape it. |
 | `remote_workspaces.list` | `{}` | `{ workspaces: RemoteWorkspaceInfo[] }` |
 | `remote_workspaces.create` | `{ hostId, remotePath, name? }` | `{ workspace }` |
 | `remote_workspaces.get` | `{ id }` | `{ workspace }` |
@@ -130,7 +131,17 @@ Under `$DSH_HOME/linked-workspace/`:
 
 - `linked.json` — linked workspaces (no credentials).
 - `remote-workspaces.json` — remote workspaces (no credentials).
-- `settings.json` — `{ editorTheme, editorThemeFamily, editorThemeMode, fileOpenMode, autoSave }`.
+- `settings.json` — `{ editorTheme, editorThemeFamily, editorThemeMode, fileOpenMode, autoSave, execEnabled, execHostIds, execWorkspaceIds, execTimeoutMs, execMaxOutputChars, execShell }`.
+  The exec keys are off unless you turn them on: `execEnabled` defaults to
+  `false`, `execHostIds` (host allow-list) starts empty, and
+  `execWorkspaceIds` is an optional second layer where an empty list means
+  "every workspace on an allowed host".
+- `exec-audit.jsonl` — one JSON line per `hosts.exec` attempt (accepted or
+  refused): `{ ts, auditId, hostId, hostName, workspaceId, kind, command, cwd?,
+  exitCode?, durationMs?, stdoutBytes?, stderrBytes?, truncated?, stdoutHead?,
+  stderrHead?, refusal?, message? }`. Rotated to `exec-audit.jsonl.1` past 5 MB.
+  `meta.info` returns its absolute path as `execAuditFile` so the settings page
+  can open it.
 - `known_hosts.json` — trust-on-first-use host key fingerprints.
 - `ssh-credentials.json` — `{ version, byHostId: { <hostId>: { password?, privateKey?, passphrase? } } }`,
   written by `hosts.credentials` with mode `0600`. Hosts listed in `~/.ssh/config`
@@ -144,13 +155,15 @@ Under `$DSH_HOME/linked-workspace/`:
 
 `linked_workspace` (Host tool, JSON-Schema parameters) actions: `list`, `info`,
 `list_dir`, `read`, `write`, `replace`, `stat`, `mkdir`, `rename`, `delete`,
-`sync`. It resolves the workspace from the session working directory (a linked
+`sync`, `exec`. It resolves the workspace from the session working directory (a linked
 local directory or a remote workspace placeholder) or from an explicit
 `workspace` reference (id, local/placeholder path, or name), confines paths to
 the remote root, and mirrors reads/writes into `.remote/` when a linked
 workspace mirrors. `list` shows both kinds, labelled `(linked)` and `(remote)`;
 `info` returns `kind: "linked" | "remote"` and `sync` is rejected for remote
-workspaces.
+workspaces. `exec` takes `command` (≤ 8000 characters), an optional `cwd`
+(inside the workspace root) and `timeout_ms`, and refuses unless the switches
+described under `hosts.exec` are on.
 
 `linked_skills` (Host tool) actions: `list`, `read` — local skills
 (`~/.dsh/skills`, `~/.agents/skills`, `<local>/.dsh/skills`,

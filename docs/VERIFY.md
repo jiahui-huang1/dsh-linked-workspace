@@ -2,6 +2,19 @@
 
 Host code (lib/) reloads live with `plugin_manager set_plugin include:linked-workspace-ui`; client changes load with **应用 → 重新加载界面** (a full restart is only needed after re-installing the package). Then verify:
 
+## 远端命令执行（0.17.0）
+
+> 注意：本机这套 DSH **Web** 构建里没有可见的设置入口（账号菜单只有「意见反馈 / 退出登录」，`Ctrl+K` 是会话搜索，插件详情页只有「卸载」），所以设置区块的渲染要在**桌面端**确认；Host 侧行为可以直接用下面的 API 命令验证。
+
+1. 设置 → 联动工作区 → 「远端命令执行」：默认总开关关闭、两个白名单为空、超时 60 秒、输出上限 200000；打开开关后才出现黄色警告行与两个白名单列表。
+2. 开关关闭时执行：`hosts.exec { linkedId, command: 'echo x' }` → `403 EXEC_DISABLED`，提示里指向设置页路径。
+3. 开关打开但主机白名单为空 → `403 EXEC_HOST_NOT_ALLOWED`；把该主机加进白名单 → `echo hi; pwd` 返回 `exitCode: 0`、`stdout` 含 `hi`、`cwd` 等于工作区远端根。
+4. 工作区白名单填一个不相干的值 → `403 EXEC_WORKSPACE_NOT_ALLOWED`；留空表示不限制。
+5. `command: ''` → `400 BAD_REQUEST`；`cwd: '../..'` → `400 BAD_REQUEST`；`timeoutMs: 1000` 配 `sleep 5` → `504 EXEC_TIMEOUT`。
+6. 审计：每次尝试（含被拒绝）都往 `$DSH_HOME/linked-workspace/exec-audit.jsonl` 追加一行 JSON，含 `auditId`、`hostId`、`command`、成功时的 `exitCode`/`durationMs`/`stdoutHead`、失败时的 `refusal`/`message`；文件超过 5 MB 时轮转为 `exec-audit.jsonl.1`；设置页「打开审计日志」用系统默认应用打开它。
+7. 模型侧：在联动/远程工作区的会话里让它「用 linked_workspace 的 exec 动作跑 uname -a」→ 工具卡片返回退出码与输出；开关关闭时模型会收到 `EXEC_DISABLED` 与开启指引。
+8. 旧 Host：`meta.info` 的 `apiRevision` < 3 时目录树顶部出现「DSH 的插件进程仍在运行旧版代码」横幅。
+
 ## 设置 → 联动工作区
 
 1. 左下角「账号菜单」→ 设置 →「联动工作区」。

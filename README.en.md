@@ -112,10 +112,20 @@ Appears automatically for sessions that belong to a remote workspace (and can be
 
 | Tool | Purpose |
 | --- | --- |
-| `linked_workspace` | `list`, `info`, `list_dir`, `read`, `write`, `replace`, `stat`, `mkdir`, `rename`, `delete`, `sync`; paths are relative to the remote root, writes are atomic, `if_modified_since` provides optimistic concurrency. Works for both linked and remote workspaces (`sync` only applies to a linked workspace with the mirror on) |
+| `linked_workspace` | `list`, `info`, `list_dir`, `read`, `write`, `replace`, `stat`, `mkdir`, `rename`, `delete`, `sync`, `exec`; paths are relative to the remote root, writes are atomic, `if_modified_since` provides optimistic concurrency. Works for both linked and remote workspaces (`sync` only applies to a linked workspace with the mirror on) |
 | `linked_skills` | `list` / `read` local skills (`~/.dsh/skills`, `~/.agents/skills`, `<local>/.dsh/skills`, `<local>/.agents/skills`) |
 
 The workspace resolves automatically when the session cwd falls inside a linked workspace or a remote workspace placeholder; use the `workspace` argument (id, local/placeholder path or name) across workspaces. The remote server only needs SSH — no plugin or Python installation.
+
+### Remote command execution (0.17.0, off by default)
+
+`exec` lets the model run **one non-interactive command** on the remote host (builds, tests, logs) instead of composing `ssh` itself. It is off unless three things line up:
+
+1. the `execEnabled` switch under Settings → Linked workspaces → “Remote command execution”;
+2. the host is in the **host allow-list** `execHostIds`;
+3. if the optional **workspace allow-list** `execWorkspaceIds` is filled in, the current workspace must be listed (an empty list means “no restriction”).
+
+Every attempt — including refused ones — appends a line to `$DSH_HOME/linked-workspace/exec-audit.jsonl` (command, exit code, duration, first 4 KB of output, refusal reason), rotated to `.1` past 5 MB; the settings block has an “Open audit log” button. Output is clipped per stream to `execMaxOutputChars` (200000 by default), timeouts come from `execTimeoutMs` (60 s by default, 600 s per call at most), and `cwd` may not escape the workspace root.
 
 ### Running icon / local skills
 
@@ -191,6 +201,7 @@ The npm package is `dsh-linked-workspace`; released versions can also be install
 - Single-file saves are capped at 8 MB; mirror sync runs in the background (500 files / 50 MB by default, skipping oversized files), excludes `.git`/`node_modules`/caches, uses a 30 s per-file timeout and never blocks an HTTP request. “Transfer” and “Download to default folder” handle at most 150 files / 15 MB per run and report partial transfers.
 - The page HTTP API accepts loopback same-origin requests only (remote deployments fall back to the DSH `connection` service's Host/Origin authentication).
 - HTML previews run inside a `sandbox="allow-scripts"` iframe: the page's own scripts execute (so plotly-style charts actually draw) but in a separate opaque origin that cannot reach the DSH UI, host storage or tabs. Markdown/document previews still strip scripts, inline styles, event attributes and `javascript:`/`vbscript:` links, keeping safe links and image `data:` URLs.
+- Remote command execution is off by default and, once enabled, still limited by the host allow-list (plus the optional workspace allow-list). Every attempt is audited, output is length-capped, commands have a timeout, and `cwd` cannot escape the workspace root.
 
 ## FAQ
 
