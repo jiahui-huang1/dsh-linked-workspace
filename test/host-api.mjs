@@ -554,6 +554,39 @@ async function main() {
     assert.ok(grepScoped.entries.every((entry) => entry.relative.startsWith('.') === false), 'scoped search stays inside the folder')
     step('fs.grep content options', started, `${grepPlain.entries.length} matches`)
 
+    // 13a2b. Content search: counters, files-only mode, cancellation jobs
+    started = Date.now()
+    assert.ok(typeof grepPlain.scannedFiles === 'number' && grepPlain.scannedFiles >= 1, 'content search reports how many files it scanned')
+    assert.ok(typeof grepPlain.scannedBytes === 'number', 'content search reports the bytes it read')
+    assert.equal(typeof grepPlain.skippedFiles, 'number', 'content search reports skipped files')
+    const grepFilesOnly = await ok('fs.grep', { linkedId: link.id, side: 'remote', query: 'alpha', resultMode: 'files' })
+    assert.ok(grepFilesOnly.entries.length >= 1, 'files-only mode still returns hits')
+    assert.ok(grepFilesOnly.entries.every((entry) => entry.line === 0 && entry.preview === ''), 'files-only entries carry no line or preview')
+    const grepIgnored = await ok('fs.grep', { linkedId: link.id, side: 'remote', query: 'alpha', includeIgnored: true })
+    assert.ok(grepIgnored.scannedFiles >= grepPlain.scannedFiles, 'searching ignored folders never scans fewer files')
+    const grepJob = await ok('fs.grep', { linkedId: link.id, side: 'remote', query: 'alpha', jobId: 'grep-smoke-1', timeoutMs: 9000 })
+    assert.ok(Array.isArray(grepJob.entries), 'a job-scoped search still answers')
+    const grepCancel = await ok('fs.grepCancel', { jobId: 'grep-smoke-1' })
+    assert.equal(grepCancel.cancelled, true, 'a finished job is still marked cancelled for the caller')
+    step('fs.grep counters, files-only and cancel', started, `${grepPlain.scannedFiles} files scanned`)
+
+    // 13a2c. Reference candidates for @ mentions
+    started = Date.now()
+    const references = await ok('fs.references', { linkedId: link.id, query: 'a.txt' })
+    assert.ok(references.candidates.length >= 1, 'references find a path by name')
+    assert.ok(references.candidates.every((entry) => entry.kind === 'file' || entry.kind === 'directory'), 'candidates carry a kind')
+    assert.ok(references.candidates[0].relative.indexOf('a.txt') !== -1, 'the best candidate matches the query')
+    assert.ok(typeof references.scannedEntries === 'number' && references.scannedEntries >= 1, 'references report how many entries they walked')
+    const referencesDir = await ok('fs.references', { linkedId: link.id, query: '新建文件夹' })
+    assert.ok(referencesDir.candidates.some((entry) => entry.kind === 'directory'), 'directories are offered as candidates')
+    const referencesLocal = await ok('fs.references', { linkedId: link.id, side: 'local', query: '新建' })
+    assert.ok(referencesLocal.candidates.length >= 1, 'the local tree can be searched for references too')
+    const referencesLimited = await ok('fs.references', { linkedId: link.id, query: 'e', limit: 3 })
+    assert.ok(referencesLimited.candidates.length <= 3, 'limit caps the candidate list')
+    const referencesEmpty = await ok('fs.references', { linkedId: link.id, query: '' })
+    assert.equal(referencesEmpty.candidates.length, 0, 'an empty query yields no candidates')
+    step('fs.references candidates', started, `${references.candidates.length} candidates`)
+
     // 13a3. Transfers expose progress and can be cancelled
     started = Date.now()
     const transferJobId = 'job-smoke-1'

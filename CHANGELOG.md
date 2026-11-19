@@ -2,6 +2,15 @@
 
 English · [简体中文](CHANGELOG.zh.md)
 
+## 0.18.0 — 2026-11-19
+
+- New `fs.references` and a `references` action on `linked_workspace`: case-insensitive path completion with the **best match first** (exact name → prefix → substring) and directories flagged `dir`; it stops after 20000 entries or 3 s and reports `truncated`. The model can now resolve a remote path you mention by name.
+- The sidebar context menu gained “Copy as @ reference”, which puts `@relative/path` (for example `@src/app.py`) on the clipboard, ready to paste into the chat.
+- Content search options: a “search usually ignored folders” switch (`includeIgnored` — `node_modules`/`.venv`/`dist` … are searched too while `.git`/`.hg`/`.svn` stay out), a files-only mode (`resultMode: 'files'`), and adjustable `maxFiles`/`maxFileBytes`/`timeoutMs` (5 s by default, 10 s at most). The search bar has two more chips for these.
+- Content search now reports what it walked (`scannedFiles`/`scannedBytes`/`skippedFiles`) and shows “Scanned N files · X” above the results, and it can be **stopped midway**: new `fs.grepCancel { jobId }` backs a “Stop” button in the search bar, and a cancelled sweep reports `truncatedReason: 'cancelled'`.
+- Known limitation (0.18.0): DSH's `@` completion popup cannot be extended by a plugin — the Host `fileReferences` service only exposes `list(agent, query, signal)` with no provider registration — so remote paths do not appear in that popup; use the `references` action or “Copy as @ reference”.
+- Host API revision is now `apiRevision: 4`.
+
 ## 0.17.0 — 2026-11-19
 
 - New `hosts.exec`: let the model run **one** non-interactive command on the remote host (builds, tests, logs) instead of composing `ssh`. Off by default and gated three ways: the `execEnabled` switch, the host allow-list `execHostIds`, and the optional workspace allow-list `execWorkspaceIds` (empty means no restriction). Refusals are audited too.

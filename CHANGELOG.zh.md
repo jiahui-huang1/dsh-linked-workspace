@@ -4,6 +4,15 @@
 
 按时间倒序排列。版本号遵循语义化版本：纯修复递增 patch，包含新功能递增 minor。
 
+## 0.18.0 — 2026-11-19
+
+- 新增 `fs.references` + `linked_workspace` 的 `references` 动作：按路径名做大小写不敏感的补全，**最佳匹配排在最前**（完全同名 → 前缀 → 包含），目录带 `dir` 标记；走 20000 条目 / 3 秒上限并回传 `truncated`。模型因此能把你口头提到的远端文件解析成真实路径。
+- 右侧栏右键新增「复制为 @ 引用」：把工作区相对路径按 `@相对路径` 复制到剪贴板（例如 `@src/app.py`），可直接粘进对话框。
+- 内容搜索增强：新增「包含通常忽略的目录」开关（`includeIgnored`，`node_modules`/`.venv`/`dist` 等也会被搜，`.git`/`.hg`/`.svn` 始终排除）、「只列文件名」模式（`resultMode: 'files'`）、可调的 `maxFiles`/`maxFileBytes`/`timeoutMs`（默认 5 秒、最多 10 秒），搜索栏多出两枚 chip。
+- 内容搜索现在回传扫描统计（`scannedFiles`/`scannedBytes`/`skippedFiles`）并在结果上方显示「扫描 N 个文件 · X」，同时能**中途停止**：新增 `fs.grepCancel { jobId }`，客户端在搜索中显示「停止」按钮，被取消时 `truncatedReason` 为 `cancelled`。
+- 已知限制（0.18.0）：DSH 的 `@` 补全弹窗无法被插件扩展（宿主 `fileReferences` 服务只暴露 `list(agent, query, signal)`，没有 provider 注册入口），所以远端路径不进 `@` 下拉，只能用 `references` 动作或右键「复制为 @ 引用」。
+- Host 接口版本升到 `apiRevision: 4`。
+
 ## 0.17.0 — 2026-11-19
 
 - 新增远端命令执行 `hosts.exec`：让模型在远端跑一条非交互命令（编译、跑测试、看日志），不用再自己拼 `ssh`。默认关闭，需同时满足总开关 `execEnabled`、主机白名单 `execHostIds`、可选的工作区白名单 `execWorkspaceIds`（留空=不限制）；被拒绝的尝试也走审计。

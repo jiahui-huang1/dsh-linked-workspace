@@ -2,6 +2,17 @@
 
 Host code (lib/) reloads live with `plugin_manager set_plugin include:linked-workspace-ui`; client changes load with **应用 → 重新加载界面** (a full restart is only needed after re-installing the package). Then verify:
 
+## @ 引用与搜索增强（0.18.0）
+
+1. 内容搜索栏在「内容」模式下有五枚 chip（`Aa`、`.*`、目录范围、`.*/`、文件图标）与一个「停止」按钮（仅在搜索中、且有 jobId 时出现）。
+2. 打开「只列文件名」→ 结果行不再显示命中行与行号，只列文件；打开「包含通常忽略的目录」→ 原本被跳过的 `node_modules`/`.venv`/`dist` 中的文件也会出现（`.git` 始终不出现）。
+3. 搜索一段较大的目录时点「停止」→ 请求 `fs.grepCancel { jobId }`，结果提前结束并在 `truncatedReason` 里给出 `cancelled`。
+4. 结果上方显示「扫描 N 个文件 · X（跳过 M 个）」，数字来自 `scannedFiles`/`scannedBytes`/`skippedFiles`。
+5. 右键任一文件或目录 → 「复制为 @ 引用」→ 剪贴板得到 `@相对路径`（如 `@src/app.py`），提示「已复制 @src/app.py」。
+6. `fs.references { linkedId, query: 'a.txt' }` → `{ candidates: [{ relative, name, kind }], scannedEntries }`，完全同名的排最前；`limit` 生效；空 query 返回空候选而不是报错。
+7. 模型侧：让它「用 linked_workspace 的 references 动作找一下 xxx 文件」→ 工具卡片按「dir/file + 相对路径」列出候选。
+8. 已知限制（需人工确认未变化）：`@` 补全弹窗里不会出现远端路径 —— 宿主 `fileReferences` 服务只有 `list(agent, query, signal)`，没有 provider 注册入口。
+
 ## 远端命令执行（0.17.0）
 
 > 注意：本机这套 DSH **Web** 构建里没有可见的设置入口（账号菜单只有「意见反馈 / 退出登录」，`Ctrl+K` 是会话搜索，插件详情页只有「卸载」），所以设置区块的渲染要在**桌面端**确认；Host 侧行为可以直接用下面的 API 命令验证。

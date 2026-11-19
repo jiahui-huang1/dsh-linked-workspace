@@ -96,7 +96,9 @@ scope root, or absolute inside it.
 | `skills.read` | `{ linkedId, name }` | `{ name, description, content, path }` |
 | `git.status` | `{ linkedId?/remoteId?, side: 'remote'|'local' }` | `{ ok, repo, root, branch, changes, error? }` (remote workspaces only support `side: 'remote'`) |
 | `fs.search` | `{ linkedId?/remoteId?, side, query, maxResults? }` | `{ ok, query, entries, truncated }` (matches **file names**, not contents; use `fs.grep` for contents) |
-| `fs.grep` | `{ linkedId?/remoteId?, side, query, maxResults?, path?, ignoreCase?, regex? }` | `{ ok, query, entries: [{ path, relative, size, line, preview }], truncated, truncatedReason }` (searches file **contents**; `path` narrows the scan to a sub-folder; `ignoreCase` defaults to `true`; `regex` treats `query` as a regular expression; limits are 1 MB per file, 2000 files, 8 MB and 5 s for both sides, and `truncatedReason` is one of `files`, `bytes`, `deadline`, `results`; max 1000 rows) |
+| `fs.grep` | `{ linkedId?/remoteId?, side, query, maxResults?, path?, ignoreCase?, regex?, includeIgnored?, resultMode?, maxFiles?, maxFileBytes?, timeoutMs?, jobId? }` | `{ ok, query, entries: [{ path, relative, size, line, preview, matches }], truncated, truncatedReason, scannedFiles, scannedBytes, skippedFiles }` (searches file **contents**; `path` narrows the scan to a sub-folder; `ignoreCase` defaults to `true`; `regex` treats `query` as a regular expression; `includeIgnored: true` also walks usually ignored folders such as `node_modules`/`.venv`/`dist` (`.git`/`.hg`/`.svn` always stay out); `resultMode: 'files'` lists file names only (`line: 0`, empty `preview`, `matches` = hit count); `maxFiles` (default 2000), `maxFileBytes` (default 1 MB) and `timeoutMs` (default 5 s, max 10 s) raise or lower the sweep; limits are 1 MB per file, 2000 files, 8 MB and 5 s for both sides, and `truncatedReason` is one of `files`, `bytes`, `deadline`, `results`, `cancelled`; max 1000 rows) |
+| `fs.grepCancel` | `{ jobId }` | `{ cancelled }` (marks the job started by `fs.grep`'s `jobId`; the Host checks it between files and answers `truncatedReason: 'cancelled'`) |
+| `fs.references` | `{ linkedId?/remoteId?, query, limit?, includeIgnored?, side? }` | `{ ok, query, candidates: [{ path, relative, name, kind }], total, truncated, scannedEntries }` (path completion for `@`-style references: matches the **path**, case-insensitive, best match first — exact name, then prefix, then substring; `limit` defaults to 50 and caps at 200; walking stops after 20000 entries or 3 s; `side: 'local'` searches the local tree of a linked workspace) |
 | `fs.compare` | `{ linkedId?, path? }` | `{ path, relative, localPath, localMissing, counts: { onlyLocal, onlyRemote, changed, same }, onlyLocal, onlyRemote, changed, truncated, remoteTruncated, localTruncated, skippedLinks }` (linked workspaces only; excludes `.git`, `node_modules`, `.local`, `.remote`; 4000 files and depth 12 **per side**, 200 rows per group; `skippedLinks` counts symlinks and non-regular files) |
 | `fs.pullToLocal` | `{ linkedId?, path, targetDir?, conflict? }` | `{ path, relative, size, mtime }` (linked workspaces only; single file, ≤64 MB; `targetDir` must stay inside the local root; `conflict` is `error` (default), `overwrite` or `unique`) |
 | `fs.upload` | `{ linkedId?/remoteId?, path, paths, conflict? }` | `{ side: 'remote', target, files, bytes, skipped }` (≤50 local files, 64 MB each; `conflict` is `error` (default), `overwrite` or `unique`; a missing target directory is created) |
@@ -155,7 +157,7 @@ Under `$DSH_HOME/linked-workspace/`:
 
 `linked_workspace` (Host tool, JSON-Schema parameters) actions: `list`, `info`,
 `list_dir`, `read`, `write`, `replace`, `stat`, `mkdir`, `rename`, `delete`,
-`sync`, `exec`. It resolves the workspace from the session working directory (a linked
+`sync`, `exec`, `references`. It resolves the workspace from the session working directory (a linked
 local directory or a remote workspace placeholder) or from an explicit
 `workspace` reference (id, local/placeholder path, or name), confines paths to
 the remote root, and mirrors reads/writes into `.remote/` when a linked
@@ -163,7 +165,13 @@ workspace mirrors. `list` shows both kinds, labelled `(linked)` and `(remote)`;
 `info` returns `kind: "linked" | "remote"` and `sync` is rejected for remote
 workspaces. `exec` takes `command` (≤ 8000 characters), an optional `cwd`
 (inside the workspace root) and `timeout_ms`, and refuses unless the switches
-described under `hosts.exec` are on.
+described under `hosts.exec` are on. `references` takes `query` (≤ 200
+characters) and an optional `limit`, and lists matching paths best-match first
+(directories marked `dir`) — that is how the model resolves a remote path a user
+mentioned by name. The `@` completion popup itself is **not** extensible: the
+Host `fileReferences` service only exposes `list(agent, query, signal)` and has
+no provider registration, so remote candidates cannot be injected into it; use
+the action or the sidebar's “Copy as @ reference”.
 
 `linked_skills` (Host tool) actions: `list`, `read` — local skills
 (`~/.dsh/skills`, `~/.agents/skills`, `<local>/.dsh/skills`,

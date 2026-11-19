@@ -127,6 +127,13 @@ The workspace resolves automatically when the session cwd falls inside a linked 
 
 Every attempt — including refused ones — appends a line to `$DSH_HOME/linked-workspace/exec-audit.jsonl` (command, exit code, duration, first 4 KB of output, refusal reason), rotated to `.1` past 5 MB; the settings block has an “Open audit log” button. Output is clipped per stream to `execMaxOutputChars` (200000 by default), timeouts come from `execTimeoutMs` (60 s by default, 600 s per call at most), and `cwd` may not escape the workspace root.
 
+### @ references and finer search (0.18.0)
+
+- The `references` action (backed by `fs.references`) matches **path names** case-insensitively with the best match first (exact name → prefix → substring) and directories flagged `dir`, so the model can turn a file name you mention into a real remote path.
+- Right-click a file or folder → “Copy as @ reference” to put `@relative/path` (e.g. `@src/app.py`) on the clipboard.
+- Content search gained two switches — “search usually ignored folders” (`node_modules`/`.venv`/`dist` included, `.git` always out) and “file names only” — plus a “Stop” button that cancels a running sweep; the scan stats (“Scanned N files · X”) appear above the results.
+- Known limitation: DSH's `@` completion popup is not extensible by plugins (the Host `fileReferences` service only offers `list()`, with no registration hook), so remote paths do not show up in that dropdown — use the `references` action or copy-as-reference instead.
+
 ### Running icon / local skills
 
 - While a linked workspace has a running session, its link icon turns **blue** (refreshed about every 5 seconds).
