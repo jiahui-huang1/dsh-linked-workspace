@@ -51,6 +51,11 @@ window.__ModuleLoader__.load({
     // inlined script), so they ask the Host for the 8 MB read cap instead of
     // the editor's 2 MB one.
     var PREVIEW_MAX_BYTES = 8 * 1024 * 1024;
+    // Connection state is a live fact, not a property of the workspace: the
+    // sidebar rows and the hover card poll the Host so a dropped socket turns
+    // red within a few seconds and a recovered one turns back. The call reads
+    // memory only (it never dials), so a short interval is cheap.
+    var STATUS_POLL_MS = 6000;
     var linkedLocalKeys = new Set();
     var linkedWorkspaceKeys = new Set();
     // Remote workspaces run inside a placeholder directory, so they are matched
@@ -2078,17 +2083,37 @@ window.__ModuleLoader__.load({
       }
     }
 
+    /** Repaint the "host · state" line of an already decorated card. */
+    function refreshHoverStatus(card, scopeKey) {
+      var line = card.querySelector('.rw-hover-host');
+      if (!line) return;
+      var record = workspaceHoverRecords[scopeKey];
+      if (!record || !record.remotePath) return;
+      var nextText = record.host ? record.host + ' · ' + record.status : record.status;
+      var nextClass = 'rw-hover-host' + (record.disconnected ? ' is-off' : record.connected ? ' is-on' : '');
+      if (line.textContent === nextText && line.className === nextClass) return;
+      line.textContent = nextText;
+      line.className = nextClass;
+    }
+
     function decorateHoverCard(card) {
       if (!card || !hoverCardState || !card.querySelector) return;
       var pathEl = card.querySelector('[class*="hoverPath"]');
       if (!pathEl) return;
       var known = hoverCardState.get(card);
       var current = (pathEl.textContent || '').trim();
-      // Already decorated for this very content: nothing to do.
-      if (known && known.rendered === current) return;
+      // Already decorated for this very content: the paths stay, but the status
+      // may have moved on (the connection drops or comes back while the card is
+      // open), so refresh that one line instead of giving up. The key has to be
+      // remembered, because the path text has been rewritten by now.
+      if (known && known.rendered === current) {
+        refreshHoverStatus(card, known.key || linkedScopeKey(current));
+        return;
+      }
       // The host re-rendered the card for another workspace: drop our lines.
       if (known) clearHoverLines(card);
-      var record = workspaceHoverRecords[linkedScopeKey(current)];
+      var key = linkedScopeKey(current);
+      var record = workspaceHoverRecords[key];
       if (!record || !record.remotePath) return;
       var t = makeT(readLocale());
       var remote = record.remotePath;
@@ -2123,7 +2148,7 @@ window.__ModuleLoader__.load({
         host.setAttribute('aria-label', label.split(current).join(remote));
       }
 
-      hoverCardState.set(card, { rendered: (pathEl.textContent || '').trim() });
+      hoverCardState.set(card, { rendered: (pathEl.textContent || '').trim(), key: key });
     }
 
     function applyHoverCards() {
@@ -2479,6 +2504,46 @@ window.__ModuleLoader__.load({
           unsubscribe();
         };
       }, [load]);
+
+      // Keep the connection state in step with reality. Only the status field is
+      // patched, and only when it actually changed, so polling never re-renders
+      // the whole page or re-fetches the trees.
+      var dataRef = useRef(data);
+      dataRef.current = data;
+      useEffect(function () {
+        var stopped = false;
+        var tick = function () {
+          apiCall('hosts.status', {}).then(function (result) {
+            if (stopped) return;
+            var statuses = (result && result.statuses) || {};
+            var previous = dataRef.current;
+            var changed = false;
+            var apply = function (list) {
+              return (list || []).map(function (item) {
+                var status = item && item.hostId ? statuses[item.hostId] : null;
+                if (!status) return item;
+                if (JSON.stringify(item.status || null) === JSON.stringify(status)) return item;
+                changed = true;
+                return Object.assign({}, item, { status: status });
+              });
+            };
+            var links = apply(previous.links);
+            var remotes = apply(previous.remotes);
+            if (!changed) return;
+            setData(function (current) {
+              return Object.assign({}, current, { links: links, remotes: remotes });
+            });
+            publishWorkspaceIcons(links, remotes);
+          }).catch(function () {});
+        };
+        var timer = setInterval(tick, STATUS_POLL_MS);
+        if (timer && typeof timer.unref === 'function') timer.unref();
+        tick();
+        return function () {
+          stopped = true;
+          clearInterval(timer);
+        };
+      }, []);
 
       return { data: data, reload: load };
     }

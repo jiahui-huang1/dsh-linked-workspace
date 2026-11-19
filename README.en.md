@@ -57,6 +57,8 @@ The plugin takes over the DSH sidebar/hero directory-selection hole; the dialog 
 3. **Remote workspace**: SSH host + remote directory + workspace name; the placeholder directory becomes a DSH workspace and sessions run on the server.
 
 > Linked workspace rows no longer carry a `⇄` title prefix: a scoped stylesheet keyed on `data-row-key` swaps the host folder glyph for the workspace's own icon — two interlocking links for a linked workspace, a display with an outbound arrow for a remote workspace (normal local workspaces are untouched). When the SSH connection drops the row icon turns red, and the host's hover card gains one line under the name combining the SSH host with its live state (`RTX-PRO-6000-1 · Connected`, turning red with “Connection lost” once the link drops); a remote workspace shows the remote directory, a linked one shows both the remote and local directories. This is the only DOM-level adaptation of the host row; if DSH changes the row structure the selector stops matching and the original folder icon returns, with no other breakage.
+>
+> That state follows the real connection in both directions: the page asks the host for every host's state once every 6 seconds (memory only, it never dials), and only repaints that one line when the value actually changed — so a host that drops shows “Connection lost” within seconds while the card stays open, and one that recovers goes back to “Connected” without a reload. A single failure only describes that moment: an error nobody has re-checked decays to “Not connected” after 60 seconds, and “Test connection” finding a missing remote directory is no longer treated as a dead link, so it cannot paint the other workspaces on the same host red.
 
 ### Sidebar: “Linked Workspace Directory”
 

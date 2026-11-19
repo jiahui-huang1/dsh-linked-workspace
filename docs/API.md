@@ -55,13 +55,14 @@ scope root, or absolute inside it.
 | `hosts.credentials` | `{ hostId, password?, passphrase?, privateKey?, clear? }` | `{ hostId, authType, hasCredential, hasStoredPassword }` (stores the secret in the plugin's own `ssh-credentials.json`; `clear: true` deletes it) |
 | `hosts.browse` | `{ hostId, path? }` | `{ path, parent, home, entries }` (dirs + files) |
 | `hosts.df` | `{ hostId, path? }` | `{ disk: { path, size, used, avail, percent } \| null }` (free space of the volume holding `path`; defaults to the login home) |
+| `hosts.status` | `{ hostIds? }` | `{ statuses: { [hostId]: { state, reason?, message?, latencyMs?, checkedAt? } } }` (in-memory snapshot of the pool, never dials; an `error` older than 60 s is reported as `idle`; defaults to every known host of the host list plus every workspace's host id) |
 | `hosts.mkdir` | `{ hostId, path?, name }` | `{ path }` (creates `name` inside `path`; defaults to the login home; `409`/`FS_EXISTS` when it already exists) |
 | `remote_workspaces.list` | `{}` | `{ workspaces: RemoteWorkspaceInfo[] }` |
 | `remote_workspaces.create` | `{ hostId, remotePath, name? }` | `{ workspace }` |
 | `remote_workspaces.get` | `{ id }` | `{ workspace }` |
 | `remote_workspaces.update` | `{ id, name? }` | `{ workspace }` |
 | `remote_workspaces.remove` | `{ id }` | `{ removedWorkspace, removedPlaceholder }` |
-| `remote_workspaces.test` | `{ id }` | `{ ok, latencyMs?, exists?, type?, error? }` |
+| `remote_workspaces.test` | `{ id }` | `{ ok, latencyMs?, exists?, type?, error? }` (a missing directory comes back as `exists: false` and leaves the host's connection state untouched) |
 | `fs.list` | `{ linkedId?/remoteId?, path, limit?, offset? }` | `{ path, entries: RemoteEntry[], total, offset, limit, hasMore }` (default 500, max 5000). Listings are cached for 5 s for `offset > 0`; writes, mkdir, rename, move, delete, copy and transfers invalidate the cache. |
 | `fs.read` | `{ linkedId?/remoteId?, path, maxBytes? }` | `FileRead` |
 | `media.read` | `{ linkedId?/remoteId?, path }` | `{ path, size, mtime, mime, base64 }` (PNG/JPG/GIF/WebP/BMP/ICO/AVIF/SVG, max 24 MB) |

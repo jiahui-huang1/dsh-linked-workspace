@@ -4,6 +4,18 @@ English · [简体中文](CHANGELOG.zh.md)
 
 ## Unreleased
 
+- The hover card's connection state now follows reality in both directions: the
+  page polls the new `hosts.status` (memory only, no dialling) every 6 seconds
+  and repaints just that one line, even while the card is open, so a host that
+  drops shows "connection lost" within seconds and one that recovers goes back
+  to "connected" without a reload.
+- A missing remote folder is no longer reported as a dead connection: `remote_workspaces.test`
+  returns `exists: false` and leaves the host alone, so checking a workspace
+  whose directory was renamed elsewhere no longer turns every other workspace on
+  that host red.
+- A recorded failure decays after 60 seconds (`STATUS_TTL_MS`) instead of
+  sticking forever: an error nobody has re-checked reads as "not connected",
+  and the next successful call sets the state again.
 - HTML preview is no longer blocked by the editor's 2 MB ceiling: it reads with `preview`, which raises the cap to the 8 MB read cap, so a 7 MB plotly page opens; only files above 8 MB show "download it to the default folder and open it in a browser", and the doubled "无法预览网页：无法预览网页" wording is gone.
 - HTML preview now uses `sandbox="allow-scripts"`: the page's own scripts run in a separate opaque origin (charts are no longer blank) and still cannot reach the DSH UI, host storage or tabs; the status chip reads "Sandboxed preview (scripts run, no access to the DSH UI)".
 
