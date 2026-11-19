@@ -55,9 +55,11 @@ scope root, or absolute inside it.
 | `hosts.credentials` | `{ hostId, password?, passphrase?, privateKey?, clear? }` | `{ hostId, authType, hasCredential, hasStoredPassword }` (stores the secret in the plugin's own `ssh-credentials.json`; `clear: true` deletes it) |
 | `hosts.browse` | `{ hostId, path? }` | `{ path, parent, home, entries }` (dirs + files) |
 | `hosts.df` | `{ hostId, path? }` | `{ disk: { path, size, used, avail, percent } \| null }` (free space of the volume holding `path`; defaults to the login home) |
+| `hosts.hostKeys` | `{}` | `{ entries: [{ authority, fingerprint, firstSeen, hostId?, hostName? }] }` — the keys remembered in `known_hosts.json`; `hostId` is filled in when the authority still matches a configured host |
+| `hosts.forgetHostKey` | `{ hostId?/authority? }` | `{ authority, removed }` — drops the stored key (and the live connection) so the next connect trusts the host again; `settings.hostKeyPolicy` decides whether an unknown key is accepted (`tofu`, default) or refused (`strict`) |
 | `hosts.status` | `{ hostIds? }` | `{ statuses: { [hostId]: { state, reason?, message?, latencyMs?, checkedAt? } } }` (in-memory snapshot of the pool, never dials; an `error` older than 60 s is reported as `idle`; defaults to every known host of the host list plus every workspace's host id) |
 | `hosts.mkdir` | `{ hostId, path?, name }` | `{ path }` (creates `name` inside `path`; defaults to the login home; `409`/`FS_EXISTS` when it already exists) |
-| `hosts.exec` | `{ hostId?/linkedId?/remoteId?, command, cwd?, timeoutMs? }` | `{ hostId, hostName, workspaceId, kind, command, cwd, exitCode, stdout, stderr, stdoutBytes, stderrBytes, truncated, durationMs, startedAt, auditId }` — runs **one** non-interactive command on the remote host. Three gates: `settings.execEnabled` must be `true`, the host must be in `settings.execHostIds`, and — when `settings.execWorkspaceIds` is non-empty — the workspace must be in it. Refusals are audited too and answer `403` (`EXEC_DISABLED` / `EXEC_HOST_NOT_ALLOWED` / `EXEC_WORKSPACE_NOT_ALLOWED`); a timeout answers `504` `EXEC_TIMEOUT`, other failures `502` `EXEC_FAILED`. Output is clipped to `settings.execMaxOutputChars` per stream (default 200000, head+tail). `cwd` is resolved inside the workspace root and may not escape it. |
+| `hosts.exec` | `{ hostId?/linkedId?/remoteId?, command, cwd?, timeoutMs? }` | `{ hostId, hostName, workspaceId, kind, command, cwd, exitCode, stdout, stderr, stdoutBytes, stderrBytes, truncated, durationMs, startedAt, auditId }` — runs **one** non-interactive command on the remote host. Three gates: `settings.execEnabled` must be `true`, the host must be in `settings.execHostIds`, and — when `settings.execWorkspaceIds` is non-empty — the workspace must be in it. Refusals are audited too and answer `403` (`EXEC_DISABLED` / `EXEC_HOST_NOT_ALLOWED` / `EXEC_WORKSPACE_NOT_ALLOWED`); a timeout answers `504` `EXEC_TIMEOUT`, other failures `502` `EXEC_FAILED`. Output is clipped to `settings.execMaxOutputChars` per stream (default 200000, head+tail). `cwd` is resolved inside the workspace root and may not escape it. Output is decoded with `settings.outputEncoding` (`utf8` by default, `gbk` for Chinese Windows remotes). |
 | `remote_workspaces.list` | `{}` | `{ workspaces: RemoteWorkspaceInfo[] }` |
 | `remote_workspaces.create` | `{ hostId, remotePath, name? }` | `{ workspace }` |
 | `remote_workspaces.get` | `{ id }` | `{ workspace }` |
@@ -137,18 +139,20 @@ Under `$DSH_HOME/linked-workspace/`:
 
 - `linked.json` — linked workspaces (no credentials).
 - `remote-workspaces.json` — remote workspaces (no credentials).
-- `settings.json` — `{ editorTheme, editorThemeFamily, editorThemeMode, fileOpenMode, autoSave, execEnabled, execHostIds, execWorkspaceIds, execTimeoutMs, execMaxOutputChars, execShell }`.
+- `settings.json` — `{ editorTheme, editorThemeFamily, editorThemeMode, fileOpenMode, autoSave, execEnabled, execHostIds, execWorkspaceIds, execTimeoutMs, execMaxOutputChars, execShell, autoPushEnabled, autoPushDebounceMs, autoPushInclude, autoPushExclude, hostKeyPolicy, outputEncoding }`.
   The exec keys are off unless you turn them on: `execEnabled` defaults to
   `false`, `execHostIds` (host allow-list) starts empty, and
   `execWorkspaceIds` is an optional second layer where an empty list means
   "every workspace on an allowed host".
-- `exec-audit.jsonl` — one JSON line per `hosts.exec` attempt (accepted or
-  refused): `{ ts, auditId, hostId, hostName, workspaceId, kind, command, cwd?,
+- `exec-audit.jsonl` — one JSON line per `hosts.exec` attempt (accepted or  refused): `{ ts, auditId, hostId, hostName, workspaceId, kind, command, cwd?,
   exitCode?, durationMs?, stdoutBytes?, stderrBytes?, truncated?, stdoutHead?,
   stderrHead?, refusal?, message? }`. Rotated to `exec-audit.jsonl.1` past 5 MB.
   `meta.info` returns its absolute path as `execAuditFile` so the settings page
   can open it.
-- `known_hosts.json` — trust-on-first-use host key fingerprints.
+- `known_hosts.json` — trust-on-first-use host key fingerprints, readable through
+  `hosts.hostKeys` and prunable one authority at a time with `hosts.forgetHostKey`.
+  With `settings.hostKeyPolicy: "strict"` an unknown key is refused instead of
+  trusted (`409` `HOST_KEY_UNKNOWN`) — see the SSH trust section in the settings page.
 - `ssh-credentials.json` — `{ version, byHostId: { <hostId>: { password?, privateKey?, passphrase? } } }`,
   written by `hosts.credentials` with mode `0600`. Hosts listed in `~/.ssh/config`
   without an `IdentityFile` can be paired with a password here, so the plugin does

@@ -674,7 +674,8 @@ async function main() {
     assert.ok(history.entries.some((entry) => entry.kind === 'push'), 'pushes are recorded too')
     step('fs.transfer batch + transfer.history', started, `${history.entries.length} history entries`)
 
-    // 13a5. Free space on the remote volume (shown in the tree header)    started = Date.now()
+    // 13a5. Free space on the remote volume (shown in the tree header)
+    started = Date.now()
     const diskInfo = await ok('hosts.df', { hostId: host.id, path: REMOTE_LINK_DIR })
     assert.ok(diskInfo.disk, 'df reports the volume behind the path')
     assert.ok(diskInfo.disk.size > 0, 'the volume has a size')
@@ -715,6 +716,42 @@ async function main() {
     assert.ok(auditLines.every((entry) => typeof entry.auditId === 'string' && entry.auditId !== ''), 'every row has an id')
     await ok('settings.update', { execEnabled: false, execHostIds: [], execWorkspaceIds: [] })
     step('hosts.exec', started, `${auditLines.length} audited attempts`)
+
+    // 13a7. Host key trust and output encoding (0.20.0)
+    started = Date.now()
+    const knownKeys = await ok('hosts.hostKeys', {})
+    assert.ok(Array.isArray(knownKeys.entries), 'host keys come back as a list')
+    const ourKey = knownKeys.entries.find((entry) => entry.hostId === host.id)
+      || knownKeys.entries.find((entry) => entry.authority.endsWith(`:${host.port}`))
+    assert.ok(ourKey, 'the host we just connected to has a fingerprint on disk')
+    assert.match(ourKey.fingerprint, /^SHA256:/, 'the fingerprint keeps its prefix')
+
+    // GBK output: printf emits the two bytes for 中文 in GBK, not UTF-8.
+    await ok('settings.update', { execEnabled: true, execHostIds: [host.id], outputEncoding: 'gbk' })
+    const gbk = await ok('hosts.exec', { linkedId: link.id, command: "printf '\\326\\320\\316\\304'" })
+    assert.equal(gbk.stdout.trim(), '中文', 'gbk bytes decode to the same two characters')
+    await ok('settings.update', { outputEncoding: 'utf8' })
+    const utf8 = await ok('hosts.exec', { linkedId: link.id, command: "printf '\\326\\320\\316\\304'" })
+    assert.notEqual(utf8.stdout.trim(), '中文', 'utf8 decoding of the same bytes differs')
+
+    // Forget the key, then prove strict refuses the unknown host and tofu re-trusts it.
+    const forgotten = await ok('hosts.forgetHostKey', { hostId: host.id })
+    assert.equal(forgotten.removed, true, 'the stored key is removed')
+    assert.equal((await ok('hosts.hostKeys', {})).entries.some((entry) => entry.authority === forgotten.authority), false, 'the list no longer has it')
+    await ok('settings.update', { hostKeyPolicy: 'strict' })
+    const strictRefusal = await call('fs.list', { remoteId, path: REMOTE_LINK_DIR })
+    assert.equal(strictRefusal.payload.ok, false, 'strict refuses the unknown host')
+    assert.equal(
+      strictRefusal.status,
+      409,
+      `strict refusal should be 409: ${strictRefusal.status} ${JSON.stringify(strictRefusal.payload)}`,
+    )
+    await ok('settings.update', { hostKeyPolicy: 'tofu' })
+    const retrusted = await ok('fs.list', { remoteId, path: REMOTE_LINK_DIR })
+    assert.ok(Array.isArray(retrusted.entries), 'tofu trusts the host again')
+    assert.equal((await ok('hosts.hostKeys', {})).entries.some((entry) => entry.authority === forgotten.authority), true, 'the key is remembered again')
+    await ok('settings.update', { execEnabled: false, execHostIds: [] })
+    step('hosts.hostKeys / forgetHostKey / outputEncoding', started, 'strict refused, tofu re-trusted')
 
     // 13b2. Local read/write (the workbench content pane edits local files too)
     started = Date.now()

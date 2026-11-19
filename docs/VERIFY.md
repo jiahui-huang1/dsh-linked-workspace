@@ -2,6 +2,13 @@
 
 Host code (lib/) reloads live with `plugin_manager set_plugin include:linked-workspace-ui`; client changes load with **应用 → 重新加载界面** (a full restart is only needed after re-installing the package). Then verify:
 
+## 主机密钥与输出编码（0.20.0）
+
+1. 设置 → 联动工作区 → 「SSH 主机密钥与输出编码」应能看到「主机密钥策略」（tofu / strict）、「远端命令输出编码」（utf8 / gbk），以及已记住的主机列表（每行显示 `host:port` 与 `SHA256:…` 指纹）。
+2. 把策略切到 strict，在「忘记」某个主机的密钥后再点该主机的工作区：目录树应报「Host key … is not known yet」，HTTP 409，且不会悄悄重新记住。
+3. 切回 tofu 再刷新：连接恢复，密钥重新出现在列表里。
+4. 把输出编码切到 gbk，用 `hosts.exec` 让中文 Windows 远端输出中文，应正常显示；切回 utf8 应变成乱码（说明不是被强行转码）。
+
 ## 本地改动推回远端（0.19.0）
 
 1. 在联动工作区的**本地**目录里改一个文件、新建一个文件，然后点目录栏的同步按钮：差异预览里能看到「新增 1 · 修改 1」，并列出这两个文件。

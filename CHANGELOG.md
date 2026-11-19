@@ -2,6 +2,13 @@
 
 English · [简体中文](CHANGELOG.zh.md)
 
+## 0.20.0 — 2026-11-19
+
+- **Host key policy**: new `hostKeyPolicy` setting — `tofu` (default: trust and remember the first key) or `strict` (refuse any key we have never seen, which also covers a man-in-the-middle on the very first connection).
+- **Forget a host key**: `hosts.hostKeys` and `hosts.forgetHostKey` list the remembered authorities with their fingerprints and let you forget one so it is trusted again on the next connect.
+- **Command output encoding**: new `outputEncoding` setting — `utf8` (default) or `gbk`, so `hosts.exec` on a Chinese Windows remote no longer returns mojibake (`TextDecoder`, no new dependency).
+- `HOST_KEY_UNKNOWN` (409): a strict refusal now has its own error code and message instead of a generic `INTERNAL`.
+- `apiRevision` 5 → 6.
 ## 0.19.0 — 2026-11-19
 
 - **Push local edits back.** `linked.plan` compares the local directory with the remote one file by file against the hash remembered from the last push, and classifies each file as added / changed / conflict / gone-upstream; the tree toolbar gained a sync button with a diff preview, and the row menu gained "push this to the remote side".

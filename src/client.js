@@ -616,6 +616,19 @@ window.__ModuleLoader__.load({
       autoPushExcludeLabel: '不要推送这些路径（每行一个，支持 *）',
       autoPushDebounceLabel: '停止编辑后等待（毫秒）',
       autoPushSaved: '自动推送设置已保存',
+      sshTrustTitle: 'SSH 信任与编码',
+      sshTrustHint: '默认信任第一次连接看到的主机密钥（TOFU）；选「严格」后，没见过的主机一律拒绝。远端命令输出按下面的编码解码，中文 Windows 服务器常需要 GBK。',
+      hostKeyPolicyLabel: '主机密钥策略',
+      hostKeyPolicyTofu: '信任首次连接（TOFU）',
+      hostKeyPolicyStrict: '只连接见过的主机（严格）',
+      outputEncodingLabel: '远端命令输出编码',
+      outputEncodingUtf8: 'UTF-8（大多数 Linux）',
+      outputEncodingGbk: 'GBK（中文 Windows）',
+      knownKeysTitle: '已知主机密钥',
+      knownKeysEmpty: '还没有记录任何主机密钥。',
+      forgetHostKey: '忘记',
+      forgotHostKey: '已忘记 {{authority}} 的主机密钥',
+      sshTrustSaved: 'SSH 设置已保存',
       execTitle: '远端命令执行',
       execHint: '默认关闭。开启后，会话里的模型可以通过 linked_workspace 的 exec 动作在远端跑命令；只对下面勾选的主机/工作区生效，每次尝试（含被拒）都记进审计日志。',
       execEnabledLabel: '允许在远端执行命令',
@@ -1140,6 +1153,19 @@ window.__ModuleLoader__.load({
       autoPushExcludeLabel: 'Never push these paths (one per line, * allowed)',
       autoPushDebounceLabel: 'Wait after editing stops (ms)',
       autoPushSaved: 'Automatic push settings saved',
+      sshTrustTitle: 'SSH trust and encodings',
+      sshTrustHint: 'The first host key seen is trusted by default (TOFU); "strict" refuses a host we have never seen. Command output is decoded with the encoding below — Chinese Windows servers usually need GBK.',
+      hostKeyPolicyLabel: 'Host key policy',
+      hostKeyPolicyTofu: 'Trust the first key (TOFU)',
+      hostKeyPolicyStrict: 'Only connect to known hosts (strict)',
+      outputEncodingLabel: 'Remote command output encoding',
+      outputEncodingUtf8: 'UTF-8 (most Linux hosts)',
+      outputEncodingGbk: 'GBK (Chinese Windows)',
+      knownKeysTitle: 'Known host keys',
+      knownKeysEmpty: 'No host key recorded yet.',
+      forgetHostKey: 'Forget',
+      forgotHostKey: 'Forgot the host key for {{authority}}',
+      sshTrustSaved: 'SSH settings saved',
       execTitle: 'Remote command execution',
       execHint: 'Off by default. When on, the model can run commands on the remote host through the linked_workspace "exec" action — only for the hosts and workspaces ticked below, and every attempt (refusals included) is audited.',
       execEnabledLabel: 'Allow running commands remotely',
@@ -1344,7 +1370,7 @@ window.__ModuleLoader__.load({
      * Host methods the running DSH process does not have yet, the directory
      * pane says so instead of surfacing an unrelated error.
      */
-    var HOST_API_REVISION = 5;
+    var HOST_API_REVISION = 6;
     var hostInfoProbe = null;
 
     function probeHostInfo() {
@@ -1828,6 +1854,11 @@ window.__ModuleLoader__.load({
     '.rw-sync-tag{flex:none;min-width:52px;color:rgb(150,150,152)}',
     '.rw-sync-path{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--dsw-font-mono,monospace)}',
     '.rw-autopush-list{width:100%;resize:vertical;font-family:var(--dsw-font-mono,monospace);font-size:12px}',
+    '.rw-known-keys{display:flex;flex-direction:column;gap:6px;margin-top:8px}',
+    '.rw-known-key{display:flex;align-items:center;gap:10px}',
+    '.rw-known-key-main{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:2px}',
+    '.rw-known-key-host{font-size:12px;color:var(--dsw-alias-text-2)}',
+    '.rw-known-key-fp{font-size:11px;font-family:var(--dsw-font-mono,monospace);color:var(--dsw-alias-text-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
       '.rw-exec-item{display:flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid var(--dsw-alias-border-l1);border-radius:8px;background:var(--dsw-alias-bg-layer-1);cursor:pointer;font-size:13px}',
       '.rw-exec-item input[type=checkbox]{margin:0;flex:none}',
       '.rw-exec-name{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
@@ -9183,6 +9214,140 @@ function rememberShowHidden(value) {
       return h('div', { className: 'rw-group' }, children);
     }
 
+    /**
+     * Host key trust and command-output encoding (0.20.0).
+     *
+     * Before this, a changed host key could only be cleared by hand-editing
+     * `known_hosts.json`, and a Windows shell's GBK output arrived as mojibake.
+     */
+    function SshTrustSettingsGroup(props) {
+      var t = props.t;
+      var locale = props.locale;
+      var localState = useState({ loading: true, saving: false, message: null });
+      var local = localState[0];
+      var setLocal = localState[1];
+      var valuesState = useState({ hostKeyPolicy: 'tofu', outputEncoding: 'utf8' });
+      var values = valuesState[0];
+      var setValues = valuesState[1];
+      var keysState = useState([]);
+      var keys = keysState[0];
+      var setKeys = keysState[1];
+
+      function refreshKeys() {
+        apiCall('hosts.hostKeys', {}).then(function (result) {
+          setKeys(Array.isArray(result.entries) ? result.entries : []);
+        }).catch(function () {
+          setKeys([]);
+        });
+      }
+
+      useEffect(function () {
+        var alive = true;
+        apiCall('settings.get', {}).then(function (settings) {
+          if (!alive) return;
+          setValues({
+            hostKeyPolicy: settings.hostKeyPolicy === 'strict' ? 'strict' : 'tofu',
+            outputEncoding: settings.outputEncoding === 'gbk' ? 'gbk' : 'utf8',
+          });
+          setLocal(function (previous) { return Object.assign({}, previous, { loading: false }); });
+        }).catch(function () {
+          if (alive) setLocal(function (previous) { return Object.assign({}, previous, { loading: false }); });
+        });
+        refreshKeys();
+        return function () { alive = false; };
+      }, []);
+
+      function save(patch, okText) {
+        setLocal(function (previous) { return Object.assign({}, previous, { saving: true, message: null }); });
+        apiCall('settings.update', patch).then(function (settings) {
+          setValues({
+            hostKeyPolicy: settings.hostKeyPolicy === 'strict' ? 'strict' : 'tofu',
+            outputEncoding: settings.outputEncoding === 'gbk' ? 'gbk' : 'utf8',
+          });
+          setLocal({ loading: false, saving: false, message: { kind: 'success', text: okText } });
+        }).catch(function (error) {
+          setLocal({ loading: false, saving: false, message: { kind: 'error', text: messageOf(error, t, locale) } });
+        });
+      }
+
+      function forget(entry) {
+        var params = entry.hostId ? { hostId: entry.hostId } : { authority: entry.authority };
+        setLocal(function (previous) { return Object.assign({}, previous, { saving: true, message: null }); });
+        apiCall('hosts.forgetHostKey', params).then(function () {
+          setLocal({
+            loading: false,
+            saving: false,
+            message: { kind: 'success', text: t('forgotHostKey', { authority: entry.authority }) },
+          });
+          refreshKeys();
+        }).catch(function (error) {
+          setLocal({ loading: false, saving: false, message: { kind: 'error', text: messageOf(error, t, locale) } });
+        });
+      }
+
+      var children = [
+        h('div', { className: 'rw-group-head' },
+          h('span', { className: 'rw-group-title' }, t('sshTrustTitle')),
+          local.saving ? Spinner(12) : null),
+        h('div', { className: 'rw-group-hint' }, t('sshTrustHint')),
+        h('div', { className: 'rw-inline', style: { marginTop: 10, flexWrap: 'wrap', gap: 12 } },
+          h('span', { className: 'rw-setting-label' }, t('hostKeyPolicyLabel')),
+          h('select', {
+            className: 'rw-input',
+            value: values.hostKeyPolicy,
+            onChange: function (event) {
+              var next = event.currentTarget.value;
+              setValues(function (previous) { return Object.assign({}, previous, { hostKeyPolicy: next }); });
+              save({ hostKeyPolicy: next }, t('sshTrustSaved'));
+            },
+          },
+            h('option', { value: 'tofu' }, t('hostKeyPolicyTofu')),
+            h('option', { value: 'strict' }, t('hostKeyPolicyStrict')))),
+        h('div', { className: 'rw-inline', style: { marginTop: 10, flexWrap: 'wrap', gap: 12 } },
+          h('span', { className: 'rw-setting-label' }, t('outputEncodingLabel')),
+          h('select', {
+            className: 'rw-input',
+            value: values.outputEncoding,
+            onChange: function (event) {
+              var next = event.currentTarget.value;
+              setValues(function (previous) { return Object.assign({}, previous, { outputEncoding: next }); });
+              save({ outputEncoding: next }, t('sshTrustSaved'));
+            },
+          },
+            h('option', { value: 'utf8' }, t('outputEncodingUtf8')),
+            h('option', { value: 'gbk' }, t('outputEncodingGbk')))),
+        h('div', { className: 'rw-group-head', style: { marginTop: 14 } },
+          h('span', { className: 'rw-group-title' }, t('knownKeysTitle'))),
+      ];
+
+      if (keys.length === 0) {
+        children.push(h('div', { className: 'rw-group-hint' }, t('knownKeysEmpty')));
+      } else {
+        children.push(h('div', { className: 'rw-known-keys' }, keys.map(function (entry) {
+          return h('div', { className: 'rw-known-key', key: entry.authority },
+            h('div', { className: 'rw-known-key-main' },
+              h('span', { className: 'rw-known-key-host' }, entry.hostName ? entry.hostName + ' · ' + entry.authority : entry.authority),
+              h('span', { className: 'rw-known-key-fp', title: entry.fingerprint }, entry.fingerprint)),
+            h('button', {
+              type: 'button',
+              className: 'rw-btn rw-btn-sm',
+              onClick: function () { forget(entry); },
+            }, t('forgetHostKey')));
+        })));
+      }
+
+      if (local.message) {
+        children.push(h(Banner, {
+          kind: local.message.kind === 'success' ? 'success' : 'error',
+          onClose: function () {
+            setLocal(function (previous) { return Object.assign({}, previous, { message: null }); });
+          },
+        }, local.message.text));
+      }
+
+      return h('div', { className: 'rw-group' }, children);
+    }
+
     function ConnectionsPage(props) {
       var ctx = props.ctx;
       var locale = useLocale(ctx);
@@ -9250,6 +9415,7 @@ function rememberShowHidden(value) {
           workspaces: links.concat(remotes),
         }),
         h(AutoPushSettingsGroup, { t: t, locale: locale }),
+        h(SshTrustSettingsGroup, { t: t, locale: locale }),
         adding === 'linked'
           ? h(AddWorkspaceFlow, {
             ctx: ctx, t: t, locale: locale,
