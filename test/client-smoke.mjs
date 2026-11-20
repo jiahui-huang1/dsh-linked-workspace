@@ -94,6 +94,7 @@ assert.match(bundleSource, /newEntryMenuItems/, 'direct new-entry menu actions a
 assert.match(bundleSource, /createOnly: true/, 'remote new files are created without overwriting existing targets')
 assert.doesNotMatch(bundleSource, /readOnly:\s*remoteOnly/, 'the editor is never gated by the remote-only tree')
 assert.match(bundleSource, /transferNeedsLinked/, 'the disabled transfer button explains the linked-workspace requirement')
+assert.match(bundleSource, /hosts\.reconnect/, 'the workspace cards can force a fresh connection')
 assert.match(bundleSource, /ExecSettingsGroup/, 'remote command execution has its own settings block')
 assert.match(bundleSource, /execHostsTitle/, 'the exec block lists the host allow-list')
 assert.match(bundleSource, /execWorkspacesTitle/, 'the exec block lists the workspace allow-list')

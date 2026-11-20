@@ -2,6 +2,12 @@
 
 English · [简体中文](CHANGELOG.zh.md)
 
+## 0.22.0 — 2026-11-20
+
+- Workspace cards gained a **Reconnect** button: it drops the pooled socket, dials once and reports either “Reconnected” with the round-trip time or the host's own error message. New host method `hosts.reconnect` — the read-only `hosts.status` snapshot never dials, so a stale “Not connected” chip previously had no way to refresh itself.
+- “Not connected” now has a documented meaning: the process has not dialled that host yet (or the last failure is older than 60 s), which is normal right after DSH starts. The README explains it and points at the new button.
+- Fixed a mirror regression: turning the mirror off and on again handed the **cancelling** sync job back to the next `linked.sync`, which then finished as “cancelled” without pulling anything. A job that is already winding down is no longer reused.
+
 ## 0.21.0 — 2026-11-20
 
 - The diff preview is scoped: right-click a folder → “Push this to the remote”, or select files and choose “Push the N selected items to the remote”, and the rows you see are exactly the rows that get pushed (the host matches a folder as a prefix, so the old “shows 5, pushes 0” mismatch is gone).

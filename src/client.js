@@ -629,6 +629,10 @@ window.__ModuleLoader__.load({
       autoPushChip: '自动推送',
       autoPushChipTitle: '已开启：本地静止 {{debounce}} ms 后推送',
       autoPushChipLast: '最近一次 {{when}}',
+      reconnect: '重新连接',
+      reconnecting: '正在连接…',
+      reconnectOk: '已重新连接',
+      reconnectFail: '连接失败：{{reason}}',
       autoPushTitle: '自动推回远端',
       autoPushLabel: '开启自动推送',
       autoPushWarn: '开启后，本地目录里保存的文件会在停止编辑约 1.5 秒后自动写回远端；如果同一文件在远端也被改过，会保留远端版本（不覆盖）。',
@@ -1184,6 +1188,10 @@ window.__ModuleLoader__.load({
       autoPushChip: 'auto push',
       autoPushChipTitle: 'on · pushes after {{debounce}} ms of local quiet',
       autoPushChipLast: 'last {{when}}',
+      reconnect: 'Reconnect',
+      reconnecting: 'Connecting…',
+      reconnectOk: 'Reconnected',
+      reconnectFail: 'Could not connect: {{reason}}',
       autoPushTitle: 'Push back automatically',
       autoPushLabel: 'Enable automatic push',
       autoPushWarn: 'Once enabled, files saved locally are written back about 1.5 s after you stop editing. If the same file also changed on the remote side, the remote version is kept (never overwritten).',
@@ -1410,7 +1418,7 @@ window.__ModuleLoader__.load({
      * Host methods the running DSH process does not have yet, the directory
      * pane says so instead of surfacing an unrelated error.
      */
-    var HOST_API_REVISION = 6;
+    var HOST_API_REVISION = 7;
     var hostInfoProbe = null;
 
     function probeHostInfo() {
@@ -8882,6 +8890,29 @@ function rememberShowHidden(value) {
         });
       }
 
+      /**
+       * Drop this host's socket and dial again. A stale “not connected” chip is
+       * the usual reason to press it: nothing else asks the host for a file, so
+       * the status would otherwise stay idle until some other action dials.
+       */
+      function reconnect() {
+        setLocal(function (previous) { return Object.assign({}, previous, { busy: 'reconnect', message: null }); });
+        apiCall('hosts.reconnect', { hostId: link.hostId }).then(function (status) {
+          var ok = Boolean(status && status.state === 'connected');
+          setLocal(function (previous) {
+            return Object.assign({}, previous, {
+              busy: '',
+              message: ok
+                ? { kind: 'success', text: t('reconnectOk') }
+                : { kind: 'error', text: t('reconnectFail', { reason: (status && status.message) || t('errorState') }) },
+            });
+          });
+          refresh();
+        }).catch(function (error) {
+          setLocal(function (previous) { return Object.assign({}, previous, { busy: '', message: { kind: 'error', text: messageOf(error, t, locale) } }); });
+        });
+      }
+
       function remove() {
         if (!local.removing) {
           setLocal(function (previous) { return Object.assign({}, previous, { removing: true, message: null }); });
@@ -8931,6 +8962,10 @@ function rememberShowHidden(value) {
             local.busy === 'sync'
               ? h('button', { type: 'button', className: 'rw-btn rw-btn-sm rw-btn-ghost', onClick: cancelSync }, t('syncCancel'))
               : null,
+            h('button', {
+              type: 'button', className: 'rw-btn rw-btn-sm rw-btn-ghost', onClick: reconnect,
+              disabled: local.busy !== '', title: t('reconnect'),
+            }, local.busy === 'reconnect' ? Spinner(12) : IconRefresh(12), local.busy === 'reconnect' ? t('reconnecting') : t('reconnect')),
             h('button', { type: 'button', className: 'rw-btn rw-btn-sm rw-btn-ghost', onClick: remove }, IconTrash(12), t('removeLinked')))),
         h('div', { className: 'rw-meta' },
           h('span', { className: 'rw-chip' }, link.mirror ? t('mirrorOn') : t('mirrorOff')),
@@ -9027,6 +9062,29 @@ function rememberShowHidden(value) {
         });
       }
 
+      /**
+       * Drop this host's socket and dial again. A stale “not connected” chip is
+       * the usual reason to press it: nothing else asks the host for a file, so
+       * the status would otherwise stay idle until some other action dials.
+       */
+      function reconnect() {
+        setLocal(function (previous) { return Object.assign({}, previous, { busy: 'reconnect', message: null }); });
+        apiCall('hosts.reconnect', { hostId: workspace.hostId }).then(function (status) {
+          var ok = Boolean(status && status.state === 'connected');
+          setLocal(function (previous) {
+            return Object.assign({}, previous, {
+              busy: '',
+              message: ok
+                ? { kind: 'success', text: t('reconnectOk') }
+                : { kind: 'error', text: t('reconnectFail', { reason: (status && status.message) || t('errorState') }) },
+            });
+          });
+          refresh();
+        }).catch(function (error) {
+          setLocal(function (previous) { return Object.assign({}, previous, { busy: '', message: { kind: 'error', text: messageOf(error, t, locale) } }); });
+        });
+      }
+
       function testConnection() {
         setLocal(function (previous) { return Object.assign({}, previous, { busy: 'test', message: null }); });
         apiCall('remote_workspaces.test', { id: workspace.id }).then(function (result) {
@@ -9100,6 +9158,10 @@ function rememberShowHidden(value) {
                   : null,
                 h('button', { type: 'button', className: 'rw-btn rw-btn-sm', onClick: openTree }, IconFolderTree(12), t('openTree')),
                 h('button', { type: 'button', className: 'rw-btn rw-btn-sm rw-btn-ghost', onClick: testConnection, disabled: local.busy !== '' }, local.busy === 'test' ? Spinner(12) : IconRefresh(12), t('testConnection')),
+                h('button', {
+                  type: 'button', className: 'rw-btn rw-btn-sm rw-btn-ghost', onClick: reconnect,
+                  disabled: local.busy !== '', title: t('reconnect'),
+                }, local.busy === 'reconnect' ? Spinner(12) : IconSync(12), local.busy === 'reconnect' ? t('reconnecting') : t('reconnect')),
                 h('button', { type: 'button', className: 'rw-btn rw-btn-sm rw-btn-ghost', onClick: startRename, disabled: local.busy !== '' }, t('rename')),
                 h('button', { type: 'button', className: 'rw-btn rw-btn-sm rw-btn-ghost', onClick: remove, disabled: local.busy === 'remove' }, IconTrash(12), t('removeRemote'))))),
         h('div', { className: 'rw-hint' }, t('remoteSessionHint')),

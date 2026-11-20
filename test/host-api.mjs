@@ -696,6 +696,15 @@ async function main() {
     assert.ok(diskInfo.disk.percent >= 0 && diskInfo.disk.percent <= 100, 'usage percentage is sane')
     step('hosts.df', started, `${Math.round(diskInfo.disk.avail / 1048576)} MB free, ${diskInfo.disk.percent}% used`)
 
+    // 13a5b. Explicit reconnect (0.22.0): dials instead of reading the cached state
+    started = Date.now()
+    const reconnected = await ok('hosts.reconnect', { hostId: host.id })
+    assert.equal(reconnected.hostId, host.id, 'the answer names the host it dialled')
+    assert.equal(reconnected.state, 'connected', 'a reachable host comes back connected')
+    assert.ok(typeof reconnected.checkedAt === 'number', 'the status carries a timestamp')
+    await fail('hosts.reconnect', { hostId: 'sshconfig:no-such-host' }, 404)
+    step('hosts.reconnect', started, `${reconnected.state} in ${reconnected.latencyMs} ms`)
+
     // 13a6. Remote command execution (0.17.0): three gates and an audit trail
     started = Date.now()
     await ok('settings.update', { execEnabled: false, execHostIds: [], execWorkspaceIds: [] })

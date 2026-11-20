@@ -327,6 +327,8 @@ Host code (lib/) reloads live with `plugin_manager set_plugin include:linked-wor
 18. 右键工作区根节点：菜单里**没有**「更改权限」（也没有「重命名」「删除」「移动到…」）。绕过界面直接请求 `fs.chmod` 并把 `path` 指向工作区远端根：返回 400「不能修改工作区根目录的权限」，随后 `fs.stat` 的权限保持不变。
 19. **覆盖层置顶（0.20.1）**：打开「添加工作区」弹窗时，右侧目录树与对话输入框都应变暗且完全在弹窗之下（在输入框位置 `document.elementFromPoint` 应命中遮罩）；弹窗宿主是 `document.body` 下 `showModal()` 打开的 `<dialog class="rw-top-layer">`。按 Esc：弹窗消失且 `.rw-top-layer` 数量归 0（不能留下已关闭的 dialog），随后再点「添加工作区」仍能重新打开。
 20. **其它覆盖层（0.20.1）**：右键「移动到…」等确认对话框与首次运行欢迎卡片同样走 `.rw-top-layer`；Esc、点遮罩、点关闭按钮三种方式都能把宿主一起移除。
+21. **重新连接（0.22.0）**：刚重启 DSH 后打开设置 →「联动工作区」，卡片状态为「未连接」（这是「本进程还没连过」，不是故障）。点卡片上的**重新连接**：成功时出现绿色「已重新连接」且状态变「已连接」；把某个主机的端口临时改成不可达再点，则应出现红色「连接失败：…」并带上主机的原话（例如 `ECONNREFUSED`）。绕过界面调用 `hosts.reconnect { hostId: '不存在的 id' }` 返回 404。
+22. **镜像开关不再卡住同步（0.22.0）**：对开启镜像的联动工作区连续执行 `linked.update { mirror: false }` → `linked.update { mirror: true }` → `linked.sync`，轮询 `linked.syncStatus` 应最终为 `done`（不是 `cancelled`）且 `files >= 1`。
 ## 旧 Host 自检（0.15.0）
 
 1. **正常时不打扰**：插件已重启过后打开任意目录树，顶部**不应**出现任何黄色提示条。
