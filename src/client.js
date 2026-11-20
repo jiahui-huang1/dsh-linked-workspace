@@ -611,6 +611,24 @@ window.__ModuleLoader__.load({
       syncPushed: '已推送 {{pushed}} 个文件',
       syncConflictLeft: '{{count}} 个冲突未处理',
       ctxPushThis: '把这个推送到远端',
+      ctxPushSelected: '推送所选的 {{count}} 项到远端',
+      syncOnlyConflict: '只看冲突',
+      syncLocalTime: '本地 {{when}}',
+      syncRemoteTime: '远端 {{when}}',
+      syncMaxFiles: '最多比较',
+      syncTruncatedHint: '可提高上限或缩小范围。',
+      syncDeleteRemote: '删除远端文件',
+      syncDeleteRemoteDone: '已在远端删除 {{count}} 个文件',
+      syncDeleteRemoteFailed: '{{count}} 个删除失败',
+      historyTitle: '传输与推送历史',
+      historyEmpty: '还没有记录。',
+      historyPush: '推送',
+      historyToRemote: '本地 → 远端',
+      historyToMirror: '远端 → 镜像',
+      historyDetail: '{{files}} 个文件 · {{size}}',
+      autoPushChip: '自动推送',
+      autoPushChipTitle: '已开启：本地静止 {{debounce}} ms 后推送',
+      autoPushChipLast: '最近一次 {{when}}',
       autoPushTitle: '自动推回远端',
       autoPushLabel: '开启自动推送',
       autoPushWarn: '开启后，本地目录里保存的文件会在停止编辑约 1.5 秒后自动写回远端；如果同一文件在远端也被改过，会保留远端版本（不覆盖）。',
@@ -1148,6 +1166,24 @@ window.__ModuleLoader__.load({
       syncPushed: 'Pushed {{pushed}} file(s)',
       syncConflictLeft: '{{count}} conflict(s) left',
       ctxPushThis: 'Push this to the remote side',
+      ctxPushSelected: 'Push the {{count}} selected to the remote',
+      syncOnlyConflict: 'Conflicts only',
+      syncLocalTime: 'local {{when}}',
+      syncRemoteTime: 'remote {{when}}',
+      syncMaxFiles: 'Compare up to',
+      syncTruncatedHint: 'Raise the limit or narrow the range.',
+      syncDeleteRemote: 'Delete on remote',
+      syncDeleteRemoteDone: 'Deleted {{count}} file(s) on the remote',
+      syncDeleteRemoteFailed: '{{count}} delete(s) failed',
+      historyTitle: 'Transfer and push history',
+      historyEmpty: 'Nothing recorded yet.',
+      historyPush: 'push',
+      historyToRemote: 'local → remote',
+      historyToMirror: 'remote → mirror',
+      historyDetail: '{{files}} files · {{size}}',
+      autoPushChip: 'auto push',
+      autoPushChipTitle: 'on · pushes after {{debounce}} ms of local quiet',
+      autoPushChipLast: 'last {{when}}',
       autoPushTitle: 'Push back automatically',
       autoPushLabel: 'Enable automatic push',
       autoPushWarn: 'Once enabled, files saved locally are written back about 1.5 s after you stop editing. If the same file also changed on the remote side, the remote version is kept (never overwritten).',
@@ -1918,6 +1954,13 @@ window.__ModuleLoader__.load({
       '.rw-hint-row{padding:9px 6px;font-size:11.5px;line-height:17px;color:var(--dsw-alias-label-tertiary)}',
       '.rw-linked-notice{margin:6px 8px 0}',
       '.rw-disk{flex:none;font-size:11px;color:var(--dsw-alias-label-secondary,#8b949e);font-variant-numeric:tabular-nums}',
+      '.rw-autopush-chip{display:inline-flex;align-items:center;gap:4px;flex:none;padding:0 5px;border-radius:999px;background:var(--dsw-alias-bg-layer-2,rgba(127,127,127,.16));color:var(--dsw-alias-label-secondary,#8b949e);font-size:10px;letter-spacing:0;text-transform:none}',
+      '.rw-autopush-when{font-variant-numeric:tabular-nums;opacity:.8}',
+      '.rw-sync-toolbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:2px 0 6px}',
+      '.rw-sync-toggle{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:var(--dsw-alias-label-secondary,#8b949e)}',
+      '.rw-sync-max{padding:1px 4px;font-size:11.5px;border-radius:6px}',
+      '.rw-sync-detail{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10.5px;color:var(--dsw-alias-label-tertiary,#8b949e);font-variant-numeric:tabular-nums}',
+      '.rw-sync-delete{flex:none}',
       '.rw-search-history{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:4px 8px 6px}',
       '.rw-search-history-label{font-size:11px;color:var(--dsw-alias-label-secondary,#8b949e);flex:none}',
       '.rw-search-stats{padding:2px 8px 4px;font-size:11px;color:var(--dsw-alias-label-secondary,#8b949e);font-variant-numeric:tabular-nums}',
@@ -2567,6 +2610,12 @@ window.__ModuleLoader__.load({
       return svg(size || 14, [
         h('path', { key: 'a', d: 'M2.4 6.2A5.8 5.8 0 0 1 13 4.4M13.6 9.8A5.8 5.8 0 0 1 3 11.6', stroke: 'currentColor', strokeWidth: 1.3, strokeLinecap: 'round' }),
         h('path', { key: 'b', d: 'M11.2 2.2v3h-3M4.8 13.8v-3h3', stroke: 'currentColor', strokeWidth: 1.3, strokeLinecap: 'round', strokeLinejoin: 'round' }),
+      ]);
+    }
+    function IconClock(size) {
+      return svg(size || 14, [
+        h('circle', { key: 'a', cx: 8, cy: 8, r: 5.8, stroke: 'currentColor', strokeWidth: 1.3 }),
+        h('path', { key: 'b', d: 'M8 4.6V8l2.4 1.6', stroke: 'currentColor', strokeWidth: 1.3, strokeLinecap: 'round', strokeLinejoin: 'round' }),
       ]);
     }
     function Spinner(size) {
@@ -4279,6 +4328,12 @@ window.__ModuleLoader__.load({
           h('button', {
             type: 'button',
             className: 'rw-icon-btn',
+            title: props.historyTitle || t('historyTitle'),
+            onClick: props.onHistory,
+          }, IconClock(14)),
+          h('button', {
+            type: 'button',
+            className: 'rw-icon-btn',
             title: t('refreshTree'),
             onClick: props.onRefresh,
           }, IconRefresh(13))));
@@ -5036,11 +5091,29 @@ function rememberShowHidden(value) {
     function SyncPlanDialog(props) {
       var t = props.t;
       var plan = props.plan;
+      var conflictOnlyState = useState(false);
+      var conflictOnly = conflictOnlyState[0];
+      var setConflictOnly = conflictOnlyState[1];
+      var when = function (value) {
+        if (!value) return '';
+        var date = new Date(value);
+        return Number.isNaN(date.getTime()) ? '' : date.toLocaleString();
+      };
+      var detailOf = function (item) {
+        var parts = [];
+        if (typeof item.size === 'number') parts.push(formatBytes(item.size));
+        if (item.localHash) parts.push('L ' + String(item.localHash).slice(0, 8));
+        if (item.remoteHash) parts.push('R ' + String(item.remoteHash).slice(0, 8));
+        if (item.localMtime) parts.push(t('syncLocalTime', { when: when(item.localMtime) }));
+        if (item.remoteMtime) parts.push(t('syncRemoteTime', { when: when(item.remoteMtime) }));
+        return parts.join(' · ');
+      };
       var rows = []
-        .concat((plan.added || []).map(function (item) { return { tag: t('syncAdded'), item: item }; }))
-        .concat((plan.changed || []).map(function (item) { return { tag: t('syncChanged'), item: item }; }))
-        .concat((plan.conflict || []).map(function (item) { return { tag: t('syncConflict'), item: item }; }))
-        .concat((plan.removed || []).map(function (item) { return { tag: t('syncRemoved'), item: item }; }));
+        .concat((plan.added || []).map(function (item) { return { tag: t('syncAdded'), item: item, kind: 'added' }; }))
+        .concat((plan.changed || []).map(function (item) { return { tag: t('syncChanged'), item: item, kind: 'changed' }; }))
+        .concat((plan.conflict || []).map(function (item) { return { tag: t('syncConflict'), item: item, kind: 'conflict' }; }))
+        .concat((plan.removed || []).map(function (item) { return { tag: t('syncRemoved'), item: item, kind: 'removed' }; }));
+      if (conflictOnly) rows = rows.filter(function (row) { return row.kind === 'conflict'; });
       var busy = Boolean(props.busy);
       return h(DialogShell, { title: t('syncTitle'), onClose: busy ? function () {} : props.onClose },
         h('div', { className: 'rw-dialog-message' },
@@ -5050,14 +5123,43 @@ function rememberShowHidden(value) {
             conflict: (plan.conflict || []).length,
             removed: (plan.removed || []).length,
           })),
-        plan.truncated ? h('div', { className: 'rw-dialog-message rw-warn-text' }, t('syncTruncated', { max: plan.maxFiles })) : null,
+        h('div', { className: 'rw-sync-toolbar' },
+          h('label', { className: 'rw-sync-toggle' },
+            h('input', {
+              type: 'checkbox',
+              checked: conflictOnly,
+              onChange: function (event) { setConflictOnly(event.currentTarget.checked); },
+            }),
+            h('span', null, t('syncOnlyConflict'))),
+          h('label', { className: 'rw-sync-toggle' },
+            h('span', null, t('syncMaxFiles')),
+            h('select', {
+              className: 'rw-input rw-sync-max',
+              value: String(props.maxFiles || 2000),
+              disabled: busy,
+              onChange: function (event) { props.onReload(Number(event.currentTarget.value)); },
+            }, [500, 2000, 5000].map(function (value) {
+              return h('option', { key: value, value: String(value) }, String(value));
+            })))),
+        plan.truncated
+          ? h('div', { className: 'rw-dialog-message rw-warn-text' }, t('syncTruncated', { max: plan.maxFiles }) + ' ' + t('syncTruncatedHint'))
+          : null,
         plan.skipped ? h('div', { className: 'rw-dialog-message' }, t('syncSkipped', { count: plan.skipped })) : null,
         rows.length === 0
           ? h('div', { className: 'rw-dialog-message' }, t('syncNothing'))
           : h('div', { className: 'rw-sync-list' }, rows.slice(0, 40).map(function (row) {
             return h('div', { key: row.tag + row.item.relative, className: 'rw-sync-row' },
               h('span', { className: 'rw-sync-tag' }, row.tag),
-              h('span', { className: 'rw-sync-path', title: row.item.relative }, row.item.relative));
+              h('span', { className: 'rw-sync-path', title: row.item.relative }, row.item.relative),
+              row.kind === 'removed'
+                ? h('button', {
+                  type: 'button',
+                  className: 'rw-btn rw-btn-sm rw-sync-delete',
+                  disabled: busy,
+                  title: t('syncDeleteRemote'),
+                  onClick: function () { props.onDeleteRemote(row.item.relative); },
+                }, t('syncDeleteRemote'))
+                : h('span', { className: 'rw-sync-detail', title: detailOf(row.item) }, detailOf(row.item)));
           })),
         rows.length > 40 ? h('div', { className: 'rw-dialog-message' }, t('syncMore', { count: rows.length - 40 })) : null,
         props.message ? h('div', { className: 'rw-dialog-message' }, props.message) : null,
@@ -5075,6 +5177,30 @@ function rememberShowHidden(value) {
             disabled: busy,
             onClick: function () { props.onPush('overwrite'); },
           }, t('syncPushOverwrite'))));
+    }
+
+    function TransferHistoryDialog(props) {
+      var t = props.t;
+      var entries = props.entries || [];
+      var when = function (value) {
+        var date = new Date(value || 0);
+        return Number.isNaN(date.getTime()) ? '' : date.toLocaleString();
+      };
+      return h(DialogShell, { title: t('historyTitle'), onClose: props.onClose },
+        entries.length === 0
+          ? h('div', { className: 'rw-dialog-message' }, t('historyEmpty'))
+          : h('div', { className: 'rw-sync-list' }, entries.slice(0, 50).map(function (entry, index) {
+            var direction = entry.kind === 'push'
+              ? t('historyPush')
+              : entry.direction === 'remote-to-mirror' ? t('historyToMirror') : t('historyToRemote');
+            return h('div', { key: String(entry.at || '') + index, className: 'rw-sync-row' },
+              h('span', { className: 'rw-sync-tag' }, direction),
+              h('span', { className: 'rw-sync-path', title: entry.remotePath || '' }, when(entry.at)),
+              h('span', { className: 'rw-sync-detail' },
+                t('historyDetail', { files: entry.files || 0, size: formatBytes(entry.bytes || 0) })));
+          })),
+        h('div', { className: 'rw-dialog-actions' },
+          h('button', { type: 'button', className: 'rw-btn rw-btn-sm', onClick: props.onClose }, t('close'))));
     }
 
     function QueueDialog(props) {
@@ -5539,6 +5665,9 @@ function rememberShowHidden(value) {
       var searchStats = searchStatsState[0];
       var setSearchStats = searchStatsState[1];
       var searchJobRef = useRef('');
+      // Relatives the user deleted from the remote side: the push baseline
+      // still remembers them, so the plan would keep offering them.
+      var removedRemotely = useRef(new Set());
       var searchState = useState({ loading: false, remote: [], local: [], truncated: false, truncatedReason: '', error: null });
       var search = searchState[0];
       var setSearch = searchState[1];
@@ -5707,6 +5836,38 @@ function rememberShowHidden(value) {
         }).catch(function () { if (alive) setDisk(null); });
         return function () { alive = false; };
       }, [diskHostId, diskPath]);
+
+      // autoPush is host-side and silent, so surface it here: the switch state
+      // plus the newest push from the transfer history.
+      var autoPushState = useState(null);
+      var autoPush = autoPushState[0];
+      var setAutoPush = autoPushState[1];
+      useEffect(function () {
+        var alive = true;
+        function load() {
+          Promise.all([
+            apiCall('settings.get', {}),
+            apiCall('transfer.history', {}).catch(function () { return { entries: [] }; }),
+          ]).then(function (results) {
+            if (!alive) return;
+            var settings = results[0] || {};
+            var entries = (results[1] && results[1].entries) || [];
+            var lastPush = null;
+            for (var index = 0; index < entries.length; index += 1) {
+              if (entries[index] && entries[index].kind === 'push') { lastPush = entries[index]; break; }
+            }
+            setAutoPush({
+              enabled: settings.autoPushEnabled === true,
+              debounceMs: settings.autoPushDebounceMs || 1500,
+              lastPushAt: lastPush ? lastPush.at : null,
+            });
+          }).catch(function () { if (alive) setAutoPush(null); });
+        }
+        load();
+        var timer = setInterval(load, 15000);
+        if (timer && typeof timer.unref === 'function') timer.unref();
+        return function () { alive = false; clearInterval(timer); };
+      }, [selected && selected.key]);
 
       var openFilesState = useState([]);
       var openFiles = openFilesState[0];
@@ -6091,6 +6252,14 @@ function rememberShowHidden(value) {
       }
 
       /** Copy the `@relative/path` form the model understands for a workspace path. */
+      /** Turn an absolute remote path into a workspace-relative one (for linked.plan). */
+      function relativeToRemote(filePath) {
+        var root = (selected && selected.remotePath) || '';
+        var relative = String(filePath || '');
+        if (root && relative.indexOf(root) === 0) relative = relative.slice(root.length);
+        return relative.replace(/^\/+/, '');
+      }
+
       function copyReference(filePath) {
         var scope = sourceScopeOf(selected);
         var root = selected && selected.kind === 'remote' ? selected.remotePath : (selected && selected.remotePath) || '';
@@ -6245,26 +6414,101 @@ function rememberShowHidden(value) {
         });
       }
 
-      /** Open the diff preview for the whole workspace (or the given paths). */
-      function openSyncPlan(paths) {
+      /**
+       * Open the diff preview. `paths` narrows both the preview and the push to
+       * a file or a folder (the server matches a folder as a prefix, so what the
+       * dialog shows is exactly what gets pushed).
+       */
+      function openSyncPlan(paths, maxFiles) {
         var scope = sourceScopeOf(selected);
         if (!scope || scope.kind !== 'linked') return;
-        apiCall('linked.plan', { id: scope.id, maxFiles: 2000 }).then(function (plan) {
+        var limit = maxFiles || 2000;
+        apiCall('linked.plan', { id: scope.id, maxFiles: limit }).then(function (plan) {
+          var narrowed = restrictPlan(plan, paths, removedRemotely.current);
           setDialog({
             kind: 'syncPlan',
-            plan: plan,
+            plan: narrowed,
             paths: Array.isArray(paths) && paths.length > 0 ? paths : null,
+            maxFiles: limit,
             busy: false,
             message: '',
           });
         }).catch(noticeError);
       }
 
+      /**
+       * Keep only the plan rows that live inside `paths` (files or folders).
+       * Rows the user deleted from the remote side are dropped too: the push
+       * baseline still lists them, so re-planning would show them again.
+       */
+      function restrictPlan(plan, paths, deleted) {
+        var prefixes = Array.isArray(paths) && paths.length > 0
+          ? paths.map(function (item) { return String(item).replace(/^\/+/, '').replace(/\/+$/, ''); })
+          : null;
+        var gone = new Set(Array.isArray(deleted) ? deleted : []);
+        var keep = function (item) {
+          if (gone.has(item.relative)) return false;
+          if (!prefixes) return true;
+          return prefixes.some(function (prefix) {
+            return item.relative === prefix || item.relative.indexOf(prefix + '/') === 0;
+          });
+        };
+        var added = (plan.added || []).filter(keep);
+        var changed = (plan.changed || []).filter(keep);
+        return Object.assign({}, plan, {
+          added: added,
+          changed: changed,
+          conflict: (plan.conflict || []).filter(keep),
+          removed: (plan.removed || []).filter(keep),
+          pending: added.length + changed.length,
+        });
+      }
+
+      /** Delete the local-only leftovers from the remote side (the `removed` rows). */
+      function deleteRemoteEntries(dialog, relatives) {
+        var scope = sourceScopeOf(selected);
+        var root = String((selected && selected.remotePath) || '').replace(/\/+$/, '');
+        if (!scope || scope.kind !== 'linked' || root === '') return;
+        var target = relatives.map(function (relative) {
+          return root + '/' + String(relative).replace(/^\/+/, '');
+        });
+        Promise.all(target.map(function (filePath) {
+          return apiCall('fs.delete', Object.assign({ path: filePath }, scopeParams(scope))).catch(function (error) {
+            // Already gone on the remote side counts as done: the baseline can
+            // list files that were removed outside the plugin.
+            if (error && (error.code === 'FS_NOT_FOUND' || /ENOENT|No such file/i.test(String(error.message || '')))) {
+              return { missing: true };
+            }
+            return { error: error };
+          });
+        })).then(function (results) {
+          var failed = results.filter(function (item) { return item && item.error; }).length;
+          var done = target.length - failed;
+          if (failed === 0) {
+            relatives.forEach(function (relative) { removedRemotely.current.add(relative); });
+          }
+          showNotice(failed === 0 ? 'success' : 'warn',
+            failed === 0 ? t('syncDeleteRemoteDone', { count: done }) : t('syncDeleteRemoteFailed', { count: failed }));
+          refreshTree();
+          openSyncPlan(dialog.paths, dialog.maxFiles);
+        });
+      }
+
+      /** Show the recent transfer / push history the host keeps on disk. */
+      function openHistory() {
+        apiCall('transfer.history', {}).then(function (result) {
+          setDialog({ kind: 'history', entries: (result && result.entries) || [] });
+        }).catch(noticeError);
+      }
+
       /** Push the planned files back to the remote directory. */
-      function pushPlan(plan, conflict, paths) {
+      function pushPlan(plan, conflict, paths, maxFiles) {
         var scope = sourceScopeOf(selected);
         if (!scope || scope.kind !== 'linked') return;
-        setDialog({ kind: 'syncPlan', plan: plan, paths: paths || null, busy: true, message: t('syncPushing') });
+        setDialog({
+          kind: 'syncPlan', plan: plan, paths: paths || null, maxFiles: maxFiles || 2000,
+          busy: true, message: t('syncPushing'),
+        });
         var jobId = 'push-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
         var params = { id: scope.id, conflict: conflict, jobId: jobId };
         if (Array.isArray(paths) && paths.length > 0) params.paths = paths;
@@ -6275,7 +6519,10 @@ function rememberShowHidden(value) {
           showNotice(result.pushed > 0 ? 'success' : 'warn', text);
           refreshTree();
         }).catch(function (error) {
-          setDialog({ kind: 'syncPlan', plan: plan, paths: paths || null, busy: false, message: messageOf(error, t, locale) });
+          setDialog({
+            kind: 'syncPlan', plan: plan, paths: paths || null, maxFiles: maxFiles || 2000,
+            busy: false, message: messageOf(error, t, locale),
+          });
         });
       }
 
@@ -6681,6 +6928,12 @@ function rememberShowHidden(value) {
             items.push({ label: t('ctxRenameSelected', { count: batch.length }), onSelect: function () {
               setDialog({ kind: 'renameMany', side: menu.side, entries: batch });
             } });
+            if (hasLocal && isRemote) {
+              // Push several entries at once; folders are matched as prefixes.
+              items.push({ label: t('ctxPushSelected', { count: batch.length }), onSelect: function () {
+                openSyncPlan(batch.map(function (item) { return relativeToRemote(item.path); }));
+              } });
+            }
           }
           items.push({ separator: true });
         }
@@ -6872,10 +7125,20 @@ function rememberShowHidden(value) {
           return h(SyncPlanDialog, {
             t: t,
             plan: dialog.plan,
+            maxFiles: dialog.maxFiles || 2000,
             busy: Boolean(dialog.busy),
             message: dialog.message,
             onClose: function () { if (!dialog.busy) setDialog(null); },
             onPush: function (conflict) { return pushPlan(dialog.plan, conflict, dialog.paths); },
+            onReload: function (nextMax) { openSyncPlan(dialog.paths, nextMax); },
+            onDeleteRemote: function (relative) { deleteRemoteEntries(dialog, [relative]); },
+          });
+        }
+        if (dialog.kind === 'history') {
+          return h(TransferHistoryDialog, {
+            t: t,
+            entries: dialog.entries,
+            onClose: function () { setDialog(null); },
           });
         }
         if (dialog.kind === 'renameMany') {
@@ -7210,6 +7473,8 @@ function rememberShowHidden(value) {
           syncEnabled: selected.kind === 'linked',
           syncTitle: selected.kind === 'linked' ? t('syncTitle') : t('syncNeedsLinked'),
           onSync: function () { openSyncPlan(null); },
+          historyTitle: t('historyTitle'),
+          onHistory: openHistory,
         }),
         searchOpen
           ? h('div', { className: 'rw-searchbar' },
@@ -7376,6 +7641,15 @@ function rememberShowHidden(value) {
                     className: 'rw-disk',
                     title: (disk.path ? disk.path + ' · ' : '') + t('diskFree', { free: formatBytes(disk.avail), percent: disk.percent }) + (disk.used ? ' · ' + formatBytes(disk.used) + ' / ' + formatBytes(disk.size) : ''),
                   }, formatBytes(disk.avail))
+                  : null,
+                autoPush && autoPush.enabled
+                  ? h('span', {
+                    className: 'rw-autopush-chip',
+                    title: t('autoPushChipTitle', { debounce: autoPush.debounceMs }) +
+                      (autoPush.lastPushAt ? ' · ' + t('autoPushChipLast', { when: new Date(autoPush.lastPushAt).toLocaleString() }) : ''),
+                  }, t('autoPushChip'), autoPush.lastPushAt
+                    ? h('span', { className: 'rw-autopush-when' }, new Date(autoPush.lastPushAt).toLocaleTimeString())
+                    : null)
                   : null,
                 h('button', { type: 'button', className: 'rw-icon-btn', title: t('toggleDirectory'), onClick: function () { setDirectoryOpen(false); } }, IconClose(11))),
               h('div', { className: 'rw-directory-body' }, body))
@@ -8299,6 +8573,16 @@ function rememberShowHidden(value) {
       }
 
       var modalRef = useRef(null);
+      // The overlay lives in a portal (`PortalBackdrop`), so the modal element
+      // only exists one commit after `open` flips. Keep it in state: the focus
+      // and wheel effects below must run again once it is really mounted.
+      var modalNodeState = useState(null);
+      var modalNode = modalNodeState[0];
+      var setModalNode = modalNodeState[1];
+      var attachModal = function (node) {
+        modalRef.current = node;
+        if (node !== modalNode) setModalNode(node);
+      };
       var focusablesOf = function () {
         var node = modalRef.current;
         if (!node) return [];
@@ -8314,7 +8598,7 @@ function rememberShowHidden(value) {
         // Focus the first real field, not the tab strip, so typing works at once.
         var target = node.querySelector('.rw-modal-body input, .rw-modal-body textarea') || focusablesOf()[0];
         if (target && typeof target.focus === 'function') target.focus();
-      }, [props.open, flow]);
+      }, [props.open, flow, modalNode]);
 
       // The app shell listens for wheel gestures on the document root and moves
       // the conversation behind the dialog, so a wheel over the host list (or
@@ -8358,7 +8642,7 @@ function rememberShowHidden(value) {
 
         window.addEventListener('wheel', onWheel, { passive: false, capture: true });
         return function () { window.removeEventListener('wheel', onWheel, { capture: true }); };
-      }, [props.open]);
+      }, [props.open, modalNode]);
 
       // Esc has to be caught on the window: the overlay now lives in a top-layer
       // <dialog>, so key events start at that element and never reach the modal
@@ -8406,7 +8690,7 @@ function rememberShowHidden(value) {
         onEscape: function () { if (props.onCancel) props.onCancel(); },
       },
         h('div', {
-          ref: modalRef,
+          ref: attachModal,
           className: 'rw-modal',
           role: 'dialog',
           'aria-modal': 'true',

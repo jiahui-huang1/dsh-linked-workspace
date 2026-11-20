@@ -2,6 +2,16 @@
 
 English · [简体中文](CHANGELOG.zh.md)
 
+## 0.21.0 — 2026-11-20
+
+- The diff preview is scoped: right-click a folder → “Push this to the remote”, or select files and choose “Push the N selected items to the remote”, and the rows you see are exactly the rows that get pushed (the host matches a folder as a prefix, so the old “shows 5, pushes 0” mismatch is gone).
+- Each preview row now carries its size, both mtimes and the first eight characters of both hashes; the dialog also gained a “conflicts only” filter and a 500 / 2000 / 5000 plan limit.
+- “Removed remotely” rows gained a “Delete remote file” action, and a file that is already gone counts as handled.
+- New “Transfer and push history” dialog showing the last 50 transfer/push entries the host keeps on disk.
+- The directory header shows an “auto push” chip with the time of the last push (hover for the debounce interval).
+- Auto push follows the workspace lifecycle: a new workspace starts watching immediately and a removed one stops at once; failures now back off (2 s doubling, capped at 60 s, five attempts) instead of logging a failure every two seconds.
+- Fixed an overlay regression introduced in 0.20.1: wheel scrolling inside dialogs works again (the inner list chains to the outer one at its edge) and focus lands on the first input when a dialog opens.
+
 ## 0.20.2 — 2026-11-19
 
 - **The sheet stays readable under a translucent theme.** Some themes (a mica / frosted preset, for example) make the panel background semi-transparent, and since the overlay moved into the top layer the host's own blur no longer applies to it — the page behind showed through as mirrored text. The sheet now blurs whatever sits behind it, and the top-layer backdrop paints its own dim layer instead of relying on a theme scrim.

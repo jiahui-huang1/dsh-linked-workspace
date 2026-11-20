@@ -277,3 +277,5 @@ On Windows, run `test/host-api.mjs` with DSH's bundled Electron Node (system Nod
 ## License
 
 MIT © 2026 Huangjh
+
+Since 0.21.0 the diff preview follows your entry point: right-click a folder or select several items and only those rows appear, each with its size, both mtimes and the first eight hash characters, plus a “conflicts only” filter; “removed remotely” rows can delete the leftover file. The clock button in the toolbar opens the transfer and push history, and the “auto push” chip in the directory header shows when it last pushed — auto push now follows workspace creation and removal and backs off after five failed attempts.

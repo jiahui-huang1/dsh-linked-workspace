@@ -652,6 +652,19 @@ async function main() {
     assert.ok(overwriteConflict.pushed >= 1, 'overwrite takes the local side')
     const overwritten = await ok('fs.read', { remoteId, path: `${REMOTE_LINK_DIR}/pchanged.txt` })
     assert.match(overwritten.content, /local edit two/, 'the local version replaced the remote one')
+
+    // 13a4b. A folder in `paths` matches everything below it (0.21.0).
+    mkdirSync(join(localRoot, 'pushdir'), { recursive: true })
+    writeFileSync(join(localRoot, 'pushdir', 'inside.txt'), 'nested' + String.fromCharCode(10))
+    const dirPlan = await ok('linked.plan', { id: link.id, maxFiles: 500 })
+    assert.ok(dirPlan.added.map((item) => item.relative).indexOf('pushdir/inside.txt') >= 0,
+      'a nested file shows up in the plan')
+    assert.ok(typeof dirPlan.added.find((item) => item.relative === 'pushdir/inside.txt').localMtime === 'number',
+      'the plan carries the local mtime for the dialog')
+    const dirPush = await ok('linked.push', { id: link.id, conflict: 'skip', paths: ['pushdir'] })
+    assert.strictEqual(dirPush.pushed, 1, 'a folder path pushes the files under it')
+    const nestedThere = await ok('fs.read', { remoteId, path: `${REMOTE_LINK_DIR}/pushdir/inside.txt` })
+    assert.match(nestedThere.content, /nested/, 'the nested file landed on the remote')
     step('linked.plan / linked.push (dry run, skip, overwrite)', started)
 
     // 13a4c. Batch transfer + the history file (0.19.0)
