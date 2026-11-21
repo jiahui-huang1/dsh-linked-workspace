@@ -2,6 +2,14 @@
 
 English · [简体中文](CHANGELOG.zh.md)
 
+## 0.24.0 — 2026-11-22
+
+- Auto push moved from one global switch to **each linked workspace card**: every workspace has its own on/off switch, its own debounce (300–60000 ms) and its own include/exclude globs, so "watch this repo" no longer means "watch all of them".
+- The Host keeps one `fs.watch` per enabled workspace (`linked.json` → `autoPush`), re-reads the record before every push and stops the watcher the moment the switch goes off or the workspace is removed.
+- `linked.list` now reports each record's `autoPush`, and `linked.update { id, autoPush }` writes it (the debounce is clamped, globs are trimmed, de-duplicated and capped at 100). The four old global `autoPush*` settings are still accepted so an existing `settings.json` loads unchanged, but they no longer drive anything.
+- The first time you turn it on for a workspace, an inline confirmation still explains that files will be written behind your back; cancelling leaves the switch off.
+- The "allowed workspaces (second layer)" list in the remote-exec settings now starts **collapsed**, with a button that shows how many are ticked and expands the list only when you ask for it.
+
 ## 0.23.0 — 2026-11-21
 
 - Models can read the **text of PDF / Word / Excel / PowerPoint** files: new `read_doc` action and `docs.text` method (PDF page by page, Word paragraphs and tables, one block per Excel sheet, PPT slides plus notes, 40k characters by default). No more installing PyPDF2 to read one paper.

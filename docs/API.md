@@ -147,7 +147,8 @@ Under `$DSH_HOME/linked-workspace/`:
 
 - `linked.json` — linked workspaces (no credentials).
 - `remote-workspaces.json` — remote workspaces (no credentials).
-- `settings.json` — `{ editorTheme, editorThemeFamily, editorThemeMode, fileOpenMode, autoSave, execEnabled, execHostIds, execWorkspaceIds, execTimeoutMs, execMaxOutputChars, execShell, autoPushEnabled, autoPushDebounceMs, autoPushInclude, autoPushExclude, hostKeyPolicy, outputEncoding }`.
+- `settings.json` — `{ editorTheme, editorThemeFamily, editorThemeMode, fileOpenMode, autoSave, execEnabled, execHostIds, execWorkspaceIds, execTimeoutMs, execMaxOutputChars, execShell, hostKeyPolicy, outputEncoding, extraRoots }`. The four `autoPush*` keys are still accepted so an old file loads unchanged, but since 0.24.0 auto push is configured per workspace (`linked.json` → each record's `autoPush`), and those keys no longer drive any watcher.
+- `linked.json` — every record carries `autoPush: { enabled, debounceMs, include[], exclude[] }` (`debounceMs` clamped to 300–60000, default 1500). `linked.list` returns it, `linked.update { id, autoPush }` writes it, and the Host starts/stops one `fs.watch` per enabled workspace.
   The exec keys are off unless you turn them on: `execEnabled` defaults to
   `false`, `execHostIds` (host allow-list) starts empty, and
   `execWorkspaceIds` is an optional second layer where an empty list means

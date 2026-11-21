@@ -1006,6 +1006,23 @@ async function main() {
     assert.equal(syncOff.code, 'BAD_REQUEST')
     step('linked.update mirror off', started)
     await ok('linked.update', { id: link.id, mirror: true })
+    // Auto push is per workspace since 0.24.0: the record carries its own
+    // switch, debounce and globs, and linked.list reports them back.
+    started = Date.now()
+    const autoPushLink = await ok('linked.update', {
+      id: link.id,
+      autoPush: { enabled: false, debounceMs: 10, include: ['docs/**'], exclude: ['*.log'] },
+    })
+    assert.equal(autoPushLink.link.autoPush.enabled, false)
+    assert.equal(autoPushLink.link.autoPush.debounceMs, 300, 'the debounce is clamped to the minimum')
+    assert.deepEqual(autoPushLink.link.autoPush.include, ['docs/**'])
+    assert.deepEqual(autoPushLink.link.autoPush.exclude, ['*.log'])
+    const listed = await ok('linked.list', {})
+    const sameLink = listed.links.filter((item) => item.id === link.id)[0]
+    assert.deepEqual(sameLink.autoPush, autoPushLink.link.autoPush, 'linked.list reports the per-workspace autoPush')
+    const badAutoPush = await fail('linked.update', { id: link.id, autoPush: 'yes' }, 400)
+    assert.equal(badAutoPush.code, 'BAD_REQUEST')
+    step('linked.update autoPush (per workspace)', started)
     started = Date.now()
     const startedSync = await ok('linked.sync', { id: link.id, maxFiles: 10, maxBytes: 2 * 1024 * 1024 })
     assert.ok(startedSync.job && ['running', 'done'].includes(startedSync.job.state), 'linked.sync starts a background job')
