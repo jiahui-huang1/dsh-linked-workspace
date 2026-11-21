@@ -329,6 +329,15 @@ Host code (lib/) reloads live with `plugin_manager set_plugin include:linked-wor
 20. **其它覆盖层（0.20.1）**：右键「移动到…」等确认对话框与首次运行欢迎卡片同样走 `.rw-top-layer`；Esc、点遮罩、点关闭按钮三种方式都能把宿主一起移除。
 21. **重新连接（0.22.0）**：刚重启 DSH 后打开设置 →「联动工作区」，卡片状态为「未连接」（这是「本进程还没连过」，不是故障）。点卡片上的**重新连接**：成功时出现绿色「已重新连接」且状态变「已连接」；把某个主机的端口临时改成不可达再点，则应出现红色「连接失败：…」并带上主机的原话（例如 `ECONNREFUSED`）。绕过界面调用 `hosts.reconnect { hostId: '不存在的 id' }` 返回 404。
 22. **镜像开关不再卡住同步（0.22.0）**：对开启镜像的联动工作区连续执行 `linked.update { mirror: false }` → `linked.update { mirror: true }` → `linked.sync`，轮询 `linked.syncStatus` 应最终为 `done`（不是 `cancelled`）且 `files >= 1`。
+## 文档文本、端口转发与额外根目录（0.23.0）
+
+1. 让模型读一篇 PDF：`read_doc` 返回按页拼接的文字（含 `pageCount`），不再提示「二进制文件请下载」。
+2. 读一个 Word / Excel / PowerPoint：分别返回段落与表格、每个工作表的行、每页文字与备注；超出 40000 字符时末尾标 `(truncated)`。
+3. 触发一次镜像同步后调用 `sync_status`：能看到 `state` 与计数（以前只有提示词提到过这个名字）。
+4. 设置 → 联动工作区 → 端口转发：填 `127.0.0.1:6006` 开一条隧道，点「打开」能在浏览器看到远端页面；「停止」后隧道从列表消失，端口不可再连。
+5. 设置 → 联动工作区 → 额外根目录：填入 `/tmp` 后，`write_outside` / `read_outside` / `list_outside` 可以访问 `/tmp` 下的文件，且 `<DSH_HOME>/linked-workspace/outside-audit.jsonl` 每次都有记录；清空前缀后同样的调用返回 400 并提示去哪儿添加。
+6. 工作区内部的路径用 `*_outside` 访问会被拒绝（400），避免把「额外根目录」当成万能后门。
+
 ## 旧 Host 自检（0.15.0）
 
 1. **正常时不打扰**：插件已重启过后打开任意目录树，顶部**不应**出现任何黄色提示条。

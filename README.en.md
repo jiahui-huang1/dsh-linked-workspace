@@ -119,6 +119,13 @@ Appears automatically for sessions that belong to a remote workspace (and can be
 
 The workspace resolves automatically when the session cwd falls inside a linked workspace or a remote workspace placeholder; use the `workspace` argument (id, local/placeholder path or name) across workspaces. The remote server only needs SSH — no plugin or Python installation.
 
+### Documents, tunnels and paths outside the workspace (0.23.0)
+
+- Models can read the **text of PDF / Word / Excel / PowerPoint** files directly (`read_doc`) instead of installing a parser.
+- When TensorBoard or Jupyter runs remotely, map it onto a local `127.0.0.1` port under Settings → Linked workspaces → **Port forwards** and open the URL in a browser; tunnels close with the plugin.
+- To touch a shared drive outside the workspace, add the prefix under Settings → Linked workspaces → **Extra roots** first; only then can the model use `read_outside` / `write_outside` / `list_outside`, and every access lands in `outside-audit.jsonl`.
+- `sync_status` reports progress and counters while a mirror sync runs.
+
 ### Remote command execution (0.17.0, off by default)
 
 `exec` lets the model run **one non-interactive command** on the remote host (builds, tests, logs) instead of composing `ssh` itself. It is off unless three things line up:

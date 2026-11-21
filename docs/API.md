@@ -21,6 +21,7 @@ Codes: `BAD_REQUEST`, `NOT_FOUND`, `SSH_CONNECT`, `AUTH_FAILED`,
 | Method | Params | Result |
 | --- | --- | --- |
 | `docs.read` | `{ path, linkedId?, remoteId? }` | kind-specific document model |
+| `docs.text` | `{ path, linkedId?, remoteId?, maxChars? }` | `{ kind, path, size, mtime, pageCount?, text, truncated }` (plain text out of PDF / Word / Excel / PowerPoint; `maxChars` is clamped to 1000–200000, default 40000) |
 | `docs.write` | `{ path, data, expectedMtime?, linkedId?, remoteId? }` | `{ kind, path, size, mtime }` |
 | `docs.create` | `{ path, kind?, linkedId?, remoteId? }` | `{ kind, path, size, mtime }` |
 | `docs.mdPreview` | `{ path, text?, linkedId?, remoteId? }` | `{ kind, html }` |
@@ -58,6 +59,12 @@ scope root, or absolute inside it.
 | `hosts.hostKeys` | `{}` | `{ entries: [{ authority, fingerprint, firstSeen, hostId?, hostName? }] }` — the keys remembered in `known_hosts.json`; `hostId` is filled in when the authority still matches a configured host |
 | `hosts.forgetHostKey` | `{ hostId?/authority? }` | `{ authority, removed }` — drops the stored key (and the live connection) so the next connect trusts the host again; `settings.hostKeyPolicy` decides whether an unknown key is accepted (`tofu`, default) or refused (`strict`) |
 | `hosts.status` | `{ hostIds? }` | `{ statuses: { [hostId]: { state, reason?, message?, latencyMs?, checkedAt? } } }` (in-memory snapshot of the pool, never dials; an `error` older than 60 s is reported as `idle`; defaults to every known host of the host list plus every workspace's host id) |
+| `fs.readOutside` | `{ linkedId?, remoteId?, path, maxBytes? }` | `{ path, size, mtime, binary, truncated, content }` (only under an `extraRoots` prefix; audited) |
+| `fs.writeOutside` | `{ linkedId?, remoteId?, path, content, ifModifiedSince? }` | `{ path, size, mtime, created }` (8 MB limit; only under an `extraRoots` prefix; audited) |
+| `fs.listOutside` | `{ linkedId?, remoteId?, path }` | `{ path, entries }` (only under an `extraRoots` prefix; audited) |
+| `hosts.forward` | `{ hostId, remotePort, remoteHost?, localPort? }` | `{ forward: { id, hostId, hostName, remoteHost, remotePort, localPort, startedAt, url } }` (localhost TCP tunnel; reuses an identical one) |
+| `hosts.forwards` | `{}` | `{ forwards: [...] }` |
+| `hosts.unforward` | `{ id }` | `{ removed }` |
 | `hosts.reconnect` | `{ hostId }` | `{ hostId, state, reason?, message?, latencyMs?, checkedAt? }` (drops the pooled socket and dials again; returns the resulting status instead of throwing, so the UI can show the reason) |
 | `hosts.mkdir` | `{ hostId, path?, name }` | `{ path }` (creates `name` inside `path`; defaults to the login home; `409`/`FS_EXISTS` when it already exists) |
 | `hosts.exec` | `{ hostId?/linkedId?/remoteId?, command, cwd?, timeoutMs? }` | `{ hostId, hostName, workspaceId, kind, command, cwd, exitCode, stdout, stderr, stdoutBytes, stderrBytes, truncated, durationMs, startedAt, auditId }` — runs **one** non-interactive command on the remote host. Three gates: `settings.execEnabled` must be `true`, the host must be in `settings.execHostIds`, and — when `settings.execWorkspaceIds` is non-empty — the workspace must be in it. Refusals are audited too and answer `403` (`EXEC_DISABLED` / `EXEC_HOST_NOT_ALLOWED` / `EXEC_WORKSPACE_NOT_ALLOWED`); a timeout answers `504` `EXEC_TIMEOUT`, other failures `502` `EXEC_FAILED`. Output is clipped to `settings.execMaxOutputChars` per stream (default 200000, head+tail). `cwd` is resolved inside the workspace root and may not escape it. Output is decoded with `settings.outputEncoding` (`utf8` by default, `gbk` for Chinese Windows remotes). |

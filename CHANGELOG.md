@@ -2,6 +2,15 @@
 
 English · [简体中文](CHANGELOG.zh.md)
 
+## 0.23.0 — 2026-11-21
+
+- Models can read the **text of PDF / Word / Excel / PowerPoint** files: new `read_doc` action and `docs.text` method (PDF page by page, Word paragraphs and tables, one block per Excel sheet, PPT slides plus notes, 40k characters by default). No more installing PyPDF2 to read one paper.
+- `sync` is now observable: new `sync_status` action. The prompt used to tell models to poll `linked.syncStatus` while the action list never had it.
+- Port forwards: `forward` / `forwards` / `unforward` actions plus a "Port forwards" settings block that maps a remote TensorBoard or Jupyter onto a local `127.0.0.1` port; tunnels are closed when the plugin unloads.
+- Paths outside the workspace have a supported route: the "Extra roots" setting plus `read_outside` / `write_outside` / `list_outside`. Every access is appended to `outside-audit.jsonl`, and paths that match no prefix still fail hard with a hint pointing at the setting.
+- `info` now spells out the two easiest things to misread: in a linked workspace `.remote/` is that workspace's own mirror (not another workspace's placeholder), and inside a remote workspace's placeholder the host tools (read/grep/glob) see no remote files at all.
+- The binary-file hint points at `read_doc` instead of telling models to download the file locally.
+
 ## 0.22.0 — 2026-11-20
 
 - Workspace cards gained a **Reconnect** button: it drops the pooled socket, dials once and reports either “Reconnected” with the round-trip time or the host's own error message. New host method `hosts.reconnect` — the read-only `hosts.status` snapshot never dials, so a stale “Not connected” chip previously had no way to refresh itself.

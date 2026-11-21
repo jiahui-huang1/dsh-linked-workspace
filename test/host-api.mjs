@@ -775,6 +775,94 @@ async function main() {
     await ok('settings.update', { execEnabled: false, execHostIds: [] })
     step('hosts.hostKeys / forgetHostKey / outputEncoding', started, 'strict refused, tofu re-trusted')
 
+    // 13a8. Document text, sync status, extra roots and port forwards (0.23.0)
+    started = Date.now()
+    const remoteDocsDir = `${REMOTE_LINK_DIR}/docs`
+    await ok('fs.mkdir', { linkedId: link.id, path: remoteDocsDir })
+    const remoteMdPath = `${remoteDocsDir}/note.md`
+    const noteText = `标题${String.fromCharCode(10)}${String.fromCharCode(10)}正文内容 ${SUFFIX}`
+    await ok('docs.create', { linkedId: link.id, path: remoteMdPath, kind: 'markdown' })
+    await ok('docs.write', { linkedId: link.id, path: remoteMdPath, data: { text: noteText } })
+    const mdExtract = await ok('docs.text', { linkedId: link.id, path: remoteMdPath })
+    assert.equal(mdExtract.kind, 'markdown', 'markdown comes back as text')
+    assert.match(mdExtract.text, /正文内容/, 'the markdown body survives extraction')
+
+    const remoteDocxPath = `${remoteDocsDir}/note.docx`
+    await ok('docs.create', { linkedId: link.id, path: remoteDocxPath, kind: 'docx' })
+    const remoteDocxExtract = await ok('docs.text', { linkedId: link.id, path: remoteDocxPath })
+    assert.equal(remoteDocxExtract.kind, 'docx', 'docx extraction reports its kind')
+    assert.equal(typeof remoteDocxExtract.text, 'string', 'docx extraction always returns text')
+
+    // xlsx: create a sheet-free workbook, then confirm the bridge still answers.
+    const remoteXlsxPath = `${remoteDocsDir}/note.xlsx`
+    await ok('docs.create', { linkedId: link.id, path: remoteXlsxPath, kind: 'xlsx' })
+    const remoteXlsxExtract = await ok('docs.text', { linkedId: link.id, path: remoteXlsxPath })
+    assert.equal(remoteXlsxExtract.kind, 'xlsx', 'xlsx extraction reports its kind')
+    assert.equal(typeof remoteXlsxExtract.text, 'string', 'xlsx extraction always returns text')
+
+    // The agent-facing route: the linked_workspace tool returns the same text.
+    const linkedToolForDocs = tools.find((tool) => tool.name === 'linked_workspace')
+    const readDocTool = await linkedToolForDocs.execute(
+      { action: 'read_doc', workspace: link.localPath, path: `${REMOTE_LINK_DIR}/docs/note.md` },
+      { agent: {}, signal: undefined },
+    )
+    assert.equal(readDocTool.isError, false, `read_doc tool failed: ${readDocTool.text}`)
+    assert.match(readDocTool.text, /正文内容/, 'read_doc returns the extracted body')
+
+    // Extra roots: outside the workspace root, but inside an allow-listed prefix.
+    const outsideRoot = '/tmp'
+    const outsidePath = `${outsideRoot}/dshrw-outside-${SUFFIX}.txt`
+    await ok('settings.update', { extraRoots: [outsideRoot] })
+    await fail('fs.readOutside', { linkedId: link.id, path: `${REMOTE_LINK_DIR}/a.txt` }, 400)
+    const wroteOutside = await ok('fs.writeOutside', { linkedId: link.id, path: outsidePath, content: 'outside ' + SUFFIX })
+    assert.equal(wroteOutside.created, true, 'writing a new outside file reports created')
+    const readOutside = await ok('fs.readOutside', { linkedId: link.id, path: outsidePath })
+    assert.match(readOutside.content, /outside/, 'the outside file reads back')
+    const listedOutside = await ok('fs.listOutside', { linkedId: link.id, path: outsideRoot })
+    assert.ok(
+      listedOutside.entries.some((entry) => entry.name === `dshrw-outside-${SUFFIX}.txt`),
+      'listOutside sees the file we just wrote',
+    )
+    const outsideAudit = readFileSync(join(isolatedHome, 'outside-audit.jsonl'), 'utf8').trim().split('\n')
+    assert.ok(
+      outsideAudit.some((line) => line.includes(outsidePath)),
+      'every outside access lands in outside-audit.jsonl',
+    )
+    await ok('settings.update', { extraRoots: [] })
+    await fail('fs.writeOutside', { linkedId: link.id, path: outsidePath, content: 'nope' }, 400)
+
+    // Sync status is readable even when no job is running.
+    const idleSync = await ok('linked.syncStatus', { id: link.id })
+    assert.ok('job' in idleSync, 'syncStatus always answers with a job field')
+
+    // Port forwards: serve something on the remote host, then reach it through a tunnel.
+    const servePort = 18100 + (process.pid % 500)
+    await ok('settings.update', { execEnabled: true, execHostIds: [host.id] })
+    await ok('hosts.exec', {
+      linkedId: link.id,
+      command: `(nohup python3 -m http.server ${servePort} --bind 127.0.0.1 >/dev/null 2>&1 &) ; sleep 1; echo started`,
+      timeoutMs: 20000,
+    })
+    let forward
+    try {
+      const opened = await ok('hosts.forward', { hostId: host.id, remotePort: servePort })
+      forward = opened.forward
+      assert.ok(forward.localPort > 0, 'the tunnel got a local port')
+      assert.match(forward.url, /^http:\/\/127\.0\.0\.1:\d+\/$/)
+      const listed = await ok('hosts.forwards', {})
+      assert.ok(listed.forwards.some((entry) => entry.id === forward.id), 'the tunnel is listed')
+      const through = await fetch(forward.url, { signal: AbortSignal.timeout(15000) })
+      assert.equal(through.status, 200, 'the tunnel serves the remote page')
+      const body = await through.text()
+      assert.match(body, /Directory listing/, 'the remote directory listing comes back')
+    } finally {
+      if (forward) await ok('hosts.unforward', { id: forward.id })
+      await ok('hosts.exec', { linkedId: link.id, command: `pkill -f "http.server ${servePort}" || true` }).catch(() => null)
+      await ok('settings.update', { execEnabled: false, execHostIds: [] })
+    }
+    assert.equal((await ok('hosts.forwards', {})).forwards.length, 0, 'no tunnels are left behind')
+    step('docs.text / syncStatus / extraRoots / hosts.forward', started, `tunnel on :${servePort}`)
+
     // 13b2. Local read/write (the workbench content pane edits local files too)
     started = Date.now()
     const localEditPath = join(localRoot, 'local-edit.txt')

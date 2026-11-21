@@ -24,6 +24,9 @@ MAX_PDF_WIDTH = 1100
 MAX_SHEET_ROWS = 200
 MAX_SHEET_COLS = 40
 MAX_PPTX_SLIDES = 80
+# Text extraction for the model keeps every page/sheet but stops collecting
+# cells once a sheet gets unreasonably long; the host truncates the final text.
+MAX_XLSX_ROWS = 2000
 
 
 def fail(message):
@@ -183,6 +186,29 @@ def read_pptx(path):
     emit({"kind": "pptx", "slides": slides, "slideCount": len(presentation.slides)})
 
 
+def read_text_pptx(path):
+    from pptx import Presentation
+
+    presentation = Presentation(path)
+    slides = []
+    for slide_index, slide in enumerate(presentation.slides):
+        if slide_index >= MAX_PPTX_SLIDES:
+            break
+        texts = []
+        for shape in slide.shapes:
+            if not getattr(shape, "has_text_frame", False):
+                continue
+            text = shape.text_frame.text
+            if text.strip() == "":
+                continue
+            texts.append(text)
+        notes = ""
+        if getattr(slide, "has_notes_slide", False):
+            notes = slide.notes_slide.notes_text_frame.text or ""
+        slides.append({"index": slide_index, "texts": texts, "notes": notes})
+    emit({"kind": "pptx", "slides": slides, "slideCount": len(presentation.slides)})
+
+
 def write_pptx(source, data, out):
     from pptx import Presentation
 
@@ -243,6 +269,54 @@ def read_pdf(path, page_index=None):
         "pages": pages,
         "truncated": doc.page_count > 1,
     })
+
+
+def read_text_pdf(path):
+    import fitz
+
+    doc = fitz.open(path)
+    pages = []
+    for index in range(doc.page_count):
+        pages.append({"index": index, "text": doc[index].get_text("text")})
+    metadata = doc.metadata or {}
+    emit({
+        "kind": "pdf",
+        "pageCount": doc.page_count,
+        "title": metadata.get("title", ""),
+        "author": metadata.get("author", ""),
+        "pages": pages,
+    })
+
+
+def read_text_docx(path):
+    from docx import Document
+
+    document = Document(path)
+    paragraphs = [paragraph.text for paragraph in document.paragraphs]
+    tables = []
+    for table in document.tables:
+        rows = []
+        for row in table.rows:
+            rows.append([cell.text for cell in row.cells])
+        tables.append(rows)
+    emit({"kind": "docx", "paragraphs": paragraphs, "tables": tables})
+
+
+def read_text_xlsx(path):
+    from openpyxl import load_workbook
+
+    workbook = load_workbook(path, data_only=True, read_only=True)
+    sheets = []
+    for sheet in workbook.worksheets:
+        rows = []
+        for row in sheet.iter_rows(values_only=True):
+            cells = ["" if value is None else str(value) for value in row]
+            if any(cell.strip() != "" for cell in cells):
+                rows.append(cells)
+            if len(rows) >= MAX_XLSX_ROWS:
+                break
+        sheets.append({"name": sheet.title, "rows": rows})
+    emit({"kind": "xlsx", "sheets": sheets})
 
 
 def write_pdf(source, data, out):
@@ -381,6 +455,10 @@ def main():
     pdf.add_argument("--file", required=True)
     pdf.add_argument("--out", required=True)
 
+    text = sub.add_parser("read-text")
+    text.add_argument("--kind", required=True)
+    text.add_argument("--file", required=True)
+
     args = parser.parse_args()
     try:
         if args.command == "read":
@@ -413,6 +491,17 @@ def main():
             markdown_preview(args.file)
         elif args.command == "md-pdf":
             markdown_pdf(args.file, args.out)
+        elif args.command == "read-text":
+            if args.kind == "docx":
+                read_text_docx(args.file)
+            elif args.kind == "xlsx":
+                read_text_xlsx(args.file)
+            elif args.kind == "pptx":
+                read_text_pptx(args.file)
+            elif args.kind == "pdf":
+                read_text_pdf(args.file)
+            else:
+                raise ValueError(f"unsupported kind: {args.kind}")
     except Exception as error:  # pragma: no cover - CLI boundary
         fail(error)
 
