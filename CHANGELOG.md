@@ -2,6 +2,11 @@
 
 English · [简体中文](CHANGELOG.zh.md)
 
+## 0.24.1 — 2026-11-22
+
+- Fix: every directory pane showed "the plugin host is still running older code" right after a full DSH restart. 0.24.0 raised the revision the Client expects to 9 but left `API_REVISION` in the Host at 8, so the two halves disagreed on a process that was perfectly up to date.
+- `test/client-smoke.mjs` now reads both files and fails when `API_REVISION` and the Client's `HOST_API_REVISION` drift apart, which is what allowed the mismatch to ship.
+
 ## 0.24.0 — 2026-11-22
 
 - Auto push moved from one global switch to **each linked workspace card**: every workspace has its own on/off switch, its own debounce (300–60000 ms) and its own include/exclude globs, so "watch this repo" no longer means "watch all of them".

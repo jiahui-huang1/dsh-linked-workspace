@@ -99,6 +99,20 @@ assert.match(bundleSource, /ExecSettingsGroup/, 'remote command execution has it
 assert.match(bundleSource, /execHostsTitle/, 'the exec block lists the host allow-list')
 assert.match(bundleSource, /execWorkspacesTitle/, 'the exec block lists the workspace allow-list')
 
+// The two halves must agree, or a freshly restarted DSH greets the user with
+// the "the plugin host is still running older code" banner even though nothing
+// is stale. `API_REVISION` lives in lib/index.js, `HOST_API_REVISION` in the
+// client source, and the second one is baked into the bundle.
+const hostSource = await readFile(new URL('../lib/index.js', import.meta.url), 'utf8')
+const clientRevision = Number((bundleSource.match(/var HOST_API_REVISION = (\d+)/) || [])[1])
+const hostRevision = Number((hostSource.match(/const API_REVISION = (\d+)/) || [])[1])
+const sourceRevision = Number(
+  ((await readFile(new URL('../src/client.js', import.meta.url), 'utf8')).match(/var HOST_API_REVISION = (\d+)/) || [])[1],
+)
+assert.ok(Number.isInteger(clientRevision), 'the bundle declares the Host API revision it needs')
+assert.equal(clientRevision, sourceRevision, 'the built bundle matches the client source')
+assert.equal(hostRevision, clientRevision, 'API_REVISION in lib/index.js must match HOST_API_REVISION in the client')
+
 assert.ok(captured, 'the bundle registered itself with the module loader')
 assert.equal(captured.id, 'dsh-linked-workspace')
 assert.equal(typeof captured.factory, 'function')
