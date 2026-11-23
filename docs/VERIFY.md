@@ -39,7 +39,8 @@ Host code (lib/) reloads live with `plugin_manager set_plugin include:linked-wor
 3. 开关打开但主机白名单为空 → `403 EXEC_HOST_NOT_ALLOWED`；把该主机加进白名单 → `echo hi; pwd` 返回 `exitCode: 0`、`stdout` 含 `hi`、`cwd` 等于工作区远端根。
 4. 工作区白名单填一个不相干的值 → `403 EXEC_WORKSPACE_NOT_ALLOWED`；留空表示不限制。
 5. `command: ''` → `400 BAD_REQUEST`；`cwd: '../..'` → `400 BAD_REQUEST`；`timeoutMs: 1000` 配 `sleep 5` → `504 EXEC_TIMEOUT`。
-6. 审计：每次尝试（含被拒绝）都往 `$DSH_HOME/linked-workspace/exec-audit.jsonl` 追加一行 JSON，含 `auditId`、`hostId`、`command`、成功时的 `exitCode`/`durationMs`/`stdoutHead`、失败时的 `refusal`/`message`；文件超过 5 MB 时轮转为 `exec-audit.jsonl.1`；设置页「打开审计日志」用系统默认应用打开它。
+6. 审计：每次尝试（含被拒绝）都往 `
+DSH_HOME/linked-workspace/exec-audit.jsonl` 追加一行 JSON，含 `auditId`、`hostId`、`command`、成功时的 `exitCode`/`durationMs`/`stdoutHead`、失败时的 `refusal`/`message`；文件超过 5 MB 时轮转为 `exec-audit.jsonl.1`；设置页「打开审计日志」用系统默认应用打开它。
 7. 模型侧：在联动/远程工作区的会话里让它「用 linked_workspace 的 exec 动作跑 uname -a」→ 工具卡片返回退出码与输出；开关关闭时模型会收到 `EXEC_DISABLED` 与开启指引。
 8. 旧 Host：`meta.info` 的 `apiRevision` < 3 时目录树顶部出现「DSH 的插件进程仍在运行旧版代码」横幅。
 
@@ -377,3 +378,7 @@ Host code (lib/) reloads live with `plugin_manager set_plugin include:linked-wor
 11. 本地树右键一个文件或目录：有「推送到远端」；远端树右键同一项：没有这一项。
 12. 端口转发开一条隧道（例如远端 TensorBoard 的 `127.0.0.1:6006` → 本机 16006），浏览器能打开；随后**完全退出并重启 DSH**，再进设置：这条隧道仍在列表里、端口没变、点「打开」还能用（0.25.0）。
 13. 上一步之后点「停止」→ 重启 DSH，列表里不再出现该隧道（0.25.0：停止会删掉 `forwards.json` 里的记录，只有它会删）。
+
+## 右键菜单（Unreleased）
+
+1. 在高度吃紧的窗口里右键靠下的行（例如窗口 800px 高时右键第 18 行）：菜单整体上翻到光标上方、最下面的「更改权限」「属性」都点得到；若上下空间都不够，菜单自身出现滚动条而不是被窗口裁掉。
