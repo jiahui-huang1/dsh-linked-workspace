@@ -30,8 +30,10 @@ function partCode(name) {
 }
 
 const source = fs.readFileSync(join(root, 'src', 'client.js'), 'utf8')
-const marker = '    // __INLINE_PARTS__\n'
-if (!source.includes(marker)) throw new Error('src/client.js is missing the // __INLINE_PARTS__ marker')
+// A Windows checkout hands us CRLF (core.autocrlf) while the repository stores
+// LF, so match the marker with either line ending instead of failing the build.
+const marker = /^ {4}\/\/ __INLINE_PARTS__\r?\n/m
+if (!marker.test(source)) throw new Error('src/client.js is missing the // __INLINE_PARTS__ marker')
 
 const parts = PART_FILES.map(partCode).join('\n')
 const out = source.replace(marker, () => parts)
