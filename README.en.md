@@ -143,12 +143,12 @@ Every attempt — including refused ones — appends a line to `$DSH_HOME/linked
 
 - The `references` action (backed by `fs.references`) matches **path names** case-insensitively with the best match first (exact name → prefix → substring) and directories flagged `dir`, so the model can turn a file name you mention into a real remote path.
 - `@` in the composer still opens DSH's own menu (local files, folders, conversations). The plugin adds its own candidate groups to that menu:
-  - inside a linked or remote workspace a single **`@`** adds a “**Remote files**” group on top of DSH's own local suggestions — it lists the workspace's remote tree; picking one inserts a real reference chip, and the model receives that remote path;
+  - inside a linked or remote workspace a single **`@`** adds a “**Remote files & folders**” group (listed first) on top of DSH's own local suggestions — it lists the workspace's remote tree; picking one inserts a real reference chip, and the model receives that remote path;
   - Candidates are listed **one directory at a time**: `@` opens the remote root, further characters filter by name, and a trailing `/` descends into that folder (for example `@code/` lists what is inside the remote `code/`), so a huge tree never stalls the menu;
 - The context menu still copies addresses: **Copy relative address** / **Copy absolute address** give the path itself, without an `@` prefix.
 - Content search gained two switches — “search usually ignored folders” (`node_modules`/`.venv`/`dist` included, `.git` always out) and “file names only” — plus a “Stop” button that cancels a running sweep; the scan stats (“Scanned N files · X”) appear above the results.
 - At most 30 candidates per listing and hidden files are skipped; keep typing to narrow and descend, and use the sidebar tree when you want to browse.
-- Group order is up to DSH: our “Remote files” group sits after its own “Files and folders” and “Conversations”, so type one more character to collapse the list onto it.
+- Group order: the plugin registers its trigger source with `order: -1` (DSH sorts sources by `order`, its own one uses the default 0), so “Remote files & folders” always comes first, then DSH's own “Files and folders” and “Conversations”. That second label belongs to the shell's `reference` locale namespace, so the plugin cannot rename it.
 
 ### Running icon / local skills
 

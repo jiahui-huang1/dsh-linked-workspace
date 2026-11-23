@@ -11,6 +11,16 @@ English · [简体中文](CHANGELOG.zh.md)
 - Remote candidates are listed one directory at a time through `fs.list` instead of walking the
   whole tree: the `@` menu answers in a few hundred milliseconds, where `fs.references` took
   5–20 s (and returns nothing at all for an empty query).
+- The remote group now comes first and says what it is: the plugin registers its trigger source
+  with `order: -1` (DSH sorts sources by `order`, its own one uses the default 0) and the group is
+  titled **Remote files & folders**. DSH's own group keeps its label — it lives in the shell's
+  `reference` locale namespace, and registering that namespace again throws, so the plugin cannot
+  rename it.
+- The directory panel no longer gets demolished by session polling: while a session snapshot
+  briefly lacks a cwd the tab descriptors are kept instead of disposed, and a signature change
+  must stay stable for 900 ms before the tabs are re-registered, so an open file tab (and the
+  expanded folders behind it) survive idle refreshes. The per-pane memory key also ignores the
+  optional `session-` prefix.
 - One `@` now lists the remote tree: inside a linked or remote workspace the picker grows a
   **Remote files** group next to DSH's own local suggestions, so the remote tree needs a single
   keystroke instead of the old double `@`.
