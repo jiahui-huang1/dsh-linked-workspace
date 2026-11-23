@@ -1964,7 +1964,9 @@ window.__ModuleLoader__.load({
     '.rw-sync-tag{flex:none;min-width:52px;color:rgb(150,150,152)}',
     '.rw-sync-path{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--dsw-font-mono,monospace)}',
     '.rw-autopush-list{width:100%;resize:vertical;font-family:var(--dsw-font-mono,monospace);font-size:12px}',
-    '.rw-autopush-card{margin-top:8px;padding-top:8px;border-top:1px solid var(--dsw-alias-separator,rgba(127,127,127,0.18))}',
+    '.rw-setting-label{font-size:12px;line-height:18px;color:var(--dsw-alias-label-secondary,#8b949e);flex:none;white-space:nowrap}',
+      '.rw-autopush-card{margin-top:2px;padding-top:12px;border-top:1px solid var(--dsw-alias-separator,rgba(127,127,127,0.18))}',
+      '.rw-autopush-head{display:flex;align-items:center;gap:8px;min-width:0}',
     '.rw-autopush-row{display:flex;align-items:center;gap:8px;margin-top:8px}',
     '.rw-known-keys{display:flex;flex-direction:column;gap:6px;margin-top:8px}',
     '.rw-known-key{display:flex;align-items:center;gap:10px}',
@@ -9781,21 +9783,22 @@ function rememberShowHidden(value) {
       }
 
       var children = [
-        h('div', { className: 'rw-meta' },
-          h('span', { className: 'rw-chip' }, t('autoPushTitle')),
-          h('span', { className: 'rw-hint', style: { flex: '1 1 auto', margin: 0 } }, config.enabled ? t('autoPushOn') : t('autoPushOff')),
+        h('div', { className: 'rw-autopush-head' },
+          h('span', { className: 'rw-setting-label' }, t('autoPushTitle')),
           local.saving ? Spinner(12) : null,
-          h(Switch, {
-            checked: config.enabled === true,
-            onChange: toggle,
-            label: t('autoPushLabel'),
-            text: t('autoPushLabel'),
-          })),
+          h('div', { style: { marginLeft: 'auto', display: 'flex' } },
+            h(Switch, {
+              checked: config.enabled === true,
+              onChange: toggle,
+              label: t('autoPushLabel'),
+              text: t('autoPushLabel'),
+            }))),
+        h('div', { className: 'rw-hint', style: { marginTop: 4 } }, config.enabled ? t('autoPushOn') : t('autoPushOff')),
       ];
 
       if (local.asking && config.enabled !== true) {
         children.push(h('div', { className: 'rw-hint', style: { color: 'rgb(210,153,34)' } }, t('autoPushWarn')));
-        children.push(h('div', { className: 'rw-actions', style: { marginTop: 6 } },
+        children.push(h('div', { className: 'rw-actions', style: { marginTop: 6, justifyContent: 'flex-end' } },
           h('button', {
             type: 'button', className: 'rw-btn rw-btn-sm',
             onClick: function () { patchLocal({ asking: false }); },
@@ -9822,10 +9825,11 @@ function rememberShowHidden(value) {
             },
             onBlur: function () { save({ debounceMs: Math.round(Number(local.debounceMs) || 1500) }, t('autoPushSaved')); },
           })));
-        children.push(h('div', { className: 'rw-group-head', style: { marginTop: 8 } },
+        children.push(h('div', { className: 'rw-autopush-row' },
           h('span', { className: 'rw-setting-label' }, t('autoPushIncludeLabel'))));
         children.push(h('textarea', {
           className: 'rw-input rw-input-mono rw-autopush-list',
+          style: { marginTop: 6 },
           rows: 2,
           value: local.include,
           placeholder: 'src/**\ndocs/*.md',
@@ -9835,10 +9839,11 @@ function rememberShowHidden(value) {
           },
           onBlur: function () { save({ include: lines(local.include) }, t('autoPushSaved')); },
         }));
-        children.push(h('div', { className: 'rw-group-head', style: { marginTop: 8 } },
+        children.push(h('div', { className: 'rw-autopush-row' },
           h('span', { className: 'rw-setting-label' }, t('autoPushExcludeLabel'))));
         children.push(h('textarea', {
           className: 'rw-input rw-input-mono rw-autopush-list',
+          style: { marginTop: 6 },
           rows: 2,
           value: local.exclude,
           placeholder: '*.log\n.remote/**',
