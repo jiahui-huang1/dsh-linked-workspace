@@ -9,6 +9,8 @@ Host code (lib/) reloads live with `plugin_manager set_plugin include:linked-wor
 3. 切回 tofu 再刷新：连接恢复，密钥重新出现在列表里。
 4. 把输出编码切到 gbk，用 `hosts.exec` 让中文 Windows 远端输出中文，应正常显示；切回 utf8 应变成乱码（说明不是被强行转码）。
 
+5. 「已知主机密钥」默认收起、只显示条数；点「展开」列出指纹与「忘记」按钮，点「收起」回到一行。（Unreleased）
+
 ## 本地改动推回远端（0.19.0）
 
 1. 在联动工作区的**本地**目录里改一个文件、新建一个文件，然后点目录栏的同步按钮：差异预览里能看到「新增 1 · 修改 1」，并列出这两个文件。
@@ -382,3 +384,4 @@ DSH_HOME/linked-workspace/exec-audit.jsonl` 追加一行 JSON，含 `auditId`、
 ## 右键菜单（Unreleased）
 
 1. 在高度吃紧的窗口里右键靠下的行（例如窗口 800px 高时右键第 18 行）：菜单整体上翻到光标上方、最下面的「更改权限」「属性」都点得到；若上下空间都不够，菜单自身出现滚动条而不是被窗口裁掉。
+

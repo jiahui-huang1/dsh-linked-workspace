@@ -633,6 +633,9 @@ window.__ModuleLoader__.load({
       autoPushOff: '已关闭：本工作区的改动不会自动推回远端',
       execWorkspacesShow: '展开（已选 {{count}} 个）',
       execWorkspacesHide: '收起',
+      knownKeysShow: '展开（{{count}} 条）',
+      knownKeysHide: '收起',
+      knownKeysCount: '{{count}} 条已知主机密钥',
       reconnect: '重新连接',
       reconnecting: '正在连接…',
       reconnectOk: '已重新连接',
@@ -1216,6 +1219,9 @@ window.__ModuleLoader__.load({
       autoPushOff: 'off: local edits in this workspace stay local',
       execWorkspacesShow: 'Show ({{count}} ticked)',
       execWorkspacesHide: 'Hide',
+      knownKeysShow: 'Show ({{count}})',
+      knownKeysHide: 'Hide',
+      knownKeysCount: '{{count}} known host keys',
       reconnect: 'Reconnect',
       reconnecting: 'Connecting…',
       reconnectOk: 'Reconnected',
@@ -9872,6 +9878,10 @@ function rememberShowHidden(value) {
       var keysState = useState([]);
       var keys = keysState[0];
       var setKeys = keysState[1];
+      // The list is long and rarely needed: keep it folded unless asked for.
+      var keysOpenState = useState(false);
+      var keysOpen = keysOpenState[0];
+      var setKeysOpen = keysOpenState[1];
 
       function refreshKeys() {
         apiCall('hosts.hostKeys', {}).then(function (result) {
@@ -9957,10 +9967,19 @@ function rememberShowHidden(value) {
             h('option', { value: 'utf8' }, t('outputEncodingUtf8')),
             h('option', { value: 'gbk' }, t('outputEncodingGbk')))),
         h('div', { className: 'rw-group-head', style: { marginTop: 14 } },
-          h('span', { className: 'rw-group-title' }, t('knownKeysTitle'))),
+          h('span', { className: 'rw-group-title' }, t('knownKeysTitle')),
+          h('button', {
+            type: 'button',
+            className: 'rw-btn rw-btn-ghost rw-btn-sm',
+            onClick: function () { setKeysOpen(function (open) { return !open; }); },
+          }, t(keysOpen ? 'knownKeysHide' : 'knownKeysShow', { count: String(keys.length) }))),
       ];
 
-      if (keys.length === 0) {
+      if (!keysOpen) {
+        // Folded: one line that says how many are remembered.
+        children.push(h('div', { className: 'rw-group-hint' },
+          keys.length === 0 ? t('knownKeysEmpty') : t('knownKeysCount', { count: String(keys.length) })));
+      } else if (keys.length === 0) {
         children.push(h('div', { className: 'rw-group-hint' }, t('knownKeysEmpty')));
       } else {
         children.push(h('div', { className: 'rw-known-keys' }, keys.map(function (entry) {

@@ -4,6 +4,7 @@ English · [简体中文](CHANGELOG.zh.md)
 
 ## Unreleased
 
+- The known-host-keys list is folded by default, like the workspace allow-list: one line says how many keys are remembered, and the expand button reveals the fingerprints.
 - Long context menus no longer spill past the bottom of the window: the menu is measured after it renders and flips above the cursor when there is more room up there, otherwise it shrinks and scrolls inside itself. The last items ("Permissions", "Properties") used to be unreachable on a short window.
 - **Port-forward tunnels survive a restart.** The definitions live in `forwards.json`, the listener is re-bound when the Host starts (a taken port moves the tunnel instead of losing it), and only the Stop button removes an entry. A page refresh never affected them; a Host restart used to close them.
 - **Push to the remote** now lives on the local tree (the plan reads the local directory); the remote tree no longer offers it.
