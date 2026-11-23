@@ -4,6 +4,7 @@ English · [简体中文](CHANGELOG.zh.md)
 
 ## Unreleased
 
+- **Push to the remote** now lives on the local tree (the plan reads the local directory); the remote tree no longer offers it.
 - The preview pane keeps its reading position too: the scroll offset is restored
   after the rendered Markdown comes back, not only in the editing view.
 - The directory panel now survives switching sessions: the open file tabs, the

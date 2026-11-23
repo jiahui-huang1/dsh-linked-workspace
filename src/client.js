@@ -610,7 +610,7 @@ window.__ModuleLoader__.load({
       syncPushing: '正在推送…',
       syncPushed: '已推送 {{pushed}} 个文件',
       syncConflictLeft: '{{count}} 个冲突未处理',
-      ctxPushThis: '把这个推送到远端',
+      ctxPushThis: '推送到远端',
       ctxPushSelected: '推送所选的 {{count}} 项到远端',
       syncOnlyConflict: '只看冲突',
       syncLocalTime: '本地 {{when}}',
@@ -1191,7 +1191,7 @@ window.__ModuleLoader__.load({
       syncPushing: 'Pushing…',
       syncPushed: 'Pushed {{pushed}} file(s)',
       syncConflictLeft: '{{count}} conflict(s) left',
-      ctxPushThis: 'Push this to the remote side',
+      ctxPushThis: 'Push to the remote',
       ctxPushSelected: 'Push the {{count}} selected to the remote',
       syncOnlyConflict: 'Conflicts only',
       syncLocalTime: 'local {{when}}',
@@ -7130,13 +7130,13 @@ function rememberShowHidden(value) {
         if (menu.side === 'remote' && menu.isDir) {
           items.push({ label: t('ctxCopySsh'), onSelect: function () { copySshCommand(menu.path); } });
         }
-        if (selected.kind === 'linked' && menu.side === 'remote') {
-          var remoteRoot = selected.remotePath;
-          var relativePath = menu.path.indexOf(remoteRoot) === 0
-            ? menu.path.slice(remoteRoot.length).replace(/^\/+/, '')
-            : '';
-          if (relativePath !== '') {
-            items.push({ label: t('ctxPushThis'), onSelect: function () { openSyncPlan([relativePath]); } });
+        // Pushing walks the LOCAL tree (linked.plan reports paths relative to the
+        // local root), so the entry belongs on the local side: a remote row would
+        // have to strip the remote root just to rebuild the same string.
+        if (selected.kind === 'linked' && menu.side === 'local') {
+          var localRelative = relativeAddressOf('local', menu.path);
+          if (localRelative !== '') {
+            items.push({ label: t('ctxPushThis'), onSelect: function () { openSyncPlan([localRelative]); } });
           }
         }
         items.push({ separator: true });
