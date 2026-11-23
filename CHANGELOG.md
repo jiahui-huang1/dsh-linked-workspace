@@ -13,8 +13,9 @@ English · [简体中文](CHANGELOG.zh.md)
 - `@`/`@@` followed by an address (absolute, `~/…` or workspace relative) offers
   that exact path, and picking it inserts a real reference chip that the model
   receives as a path.
-- The context menu now says **Copy relative address** (was "Copy as @ reference")
-  and **Copy absolute address** (was "Copy path").
+- The context menu copies addresses: **Copy relative address** gives the path
+  relative to the workspace root (the local root in the left tree, the remote
+  root in the right one), **Copy absolute address** gives the full path.
 
 ## 0.24.1 — 2026-11-22
 

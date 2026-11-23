@@ -365,4 +365,7 @@ Host code (lib/) reloads live with `plugin_manager set_plugin include:linked-wor
 5. 在输入框里输入 `@@`：菜单出现「远程工作区」分组，列出远端文件与文件夹；选中一个后变成引用 chip。
 6. 输入 `@` 再输入 `README.md` 之类的名字：菜单仍是原有的本地文件/文件夹/对话，没有被远程条目污染。
 7. 输入 `@@/shared_data_ssd1/huangjh` 或 `@code/projects_wpf`：菜单出现「按地址链接」分组，选中该地址即插入引用。
-8. 右键任一文件：菜单项是「复制相对地址」与「复制绝对地址」，两者分别给出相对路径与绝对路径。
+8. 右键任一文件或文件夹：
+   - 「复制绝对地址」→ 得到完整路径（远端形如 `/shared_data_ssd1/huangjh/code/a.txt`，本地形如 `D:\…\a.txt`）；
+   - 「复制相对地址」→ 左树得到相对**本地根**的路径（如 `code/a.txt`），右树得到相对**远端根**的路径；
+   - 提示条会显示实际复制的内容，两者都不带 `@`。

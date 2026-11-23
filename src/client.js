@@ -712,6 +712,7 @@ window.__ModuleLoader__.load({
       localTree: '本地目录',
       openFailed: '打开失败',
       copyPathDone: '已复制路径',
+      addressCopied: '已复制：{{address}}',
       mirrorAutoHint: '开启后每 5 分钟自动检查远端与 .remote 的差异并修复。',
       ctxTransfer: '传输（下载到 .remote）',
       ctxTransferLocal: '传输（到远程目录）',
@@ -1292,6 +1293,7 @@ window.__ModuleLoader__.load({
       localTree: 'Local directory',
       openFailed: 'Could not open',
       copyPathDone: 'Path copied',
+      addressCopied: 'Copied: {{address}}',
       mirrorAutoHint: 'When enabled, differences between the remote tree and .remote are checked and repaired every 5 minutes.',
       ctxTransfer: 'Transfer (download to .remote)',
       ctxTransferLocal: 'Transfer (to remote directory)',
@@ -6350,15 +6352,17 @@ function rememberShowHidden(value) {
       }
 
       function copyPathToClipboard(text) {
+        var value = String(text == null ? '' : text);
         try {
           if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(text).then(function () { showNotice('success', t('copyPathDone')); }).catch(function () {});
+            navigator.clipboard.writeText(value).then(function () {
+              showNotice('success', t('addressCopied', { address: value }));
+            }).catch(function () {});
             return;
           }
         } catch (error) { /* clipboard unavailable */ }
       }
 
-      /** Copy the `@relative/path` form the model understands for a workspace path. */
       /** Turn an absolute remote path into a workspace-relative one (for linked.plan). */
       function relativeToRemote(filePath) {
         var root = (selected && selected.remotePath) || '';
@@ -6367,24 +6371,27 @@ function rememberShowHidden(value) {
         return relative.replace(/^\/+/, '');
       }
 
-      function copyReference(filePath) {
-        var scope = sourceScopeOf(selected);
-        var root = selected && selected.kind === 'remote' ? selected.remotePath : (selected && selected.remotePath) || '';
-        var relative = String(filePath || '');
-        if (root && relative.indexOf(root) === 0) {
-          relative = relative.slice(root.length);
-          if (relative.charAt(0) !== '/') relative = '/' + relative;
+      /**
+       * The row's address relative to the root of the tree it lives in: the local
+       * root for the left tree, the remote root for the right one.
+       */
+      function relativeAddressOf(side, filePath) {
+        var record = selected || {};
+        var root = side === 'local' ? record.localPath : record.remotePath;
+        var text = String(filePath == null ? '' : filePath).replace(/\\/g, '/');
+        var base = String(root == null ? '' : root).replace(/\\/g, '/').replace(/\/+$/, '');
+        if (base !== '' && (text === base || text.indexOf(base + '/') === 0)) {
+          return text.slice(base.length).replace(/^\/+/, '');
         }
-        var reference = '@' + relative.replace(/^\/+/, '');
-        try {
-          if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(reference).then(function () {
-              showNotice('success', t('referenceCopied', { reference: reference }));
-            }).catch(function () {});
-            return;
-          }
-        } catch (error) { /* clipboard unavailable */ }
-        void scope
+        return text.replace(/^\/+/, '');
+      }
+
+      function copyRelativeAddress(side, filePath) {
+        copyPathToClipboard(relativeAddressOf(side, filePath));
+      }
+
+      function copyAbsoluteAddress(filePath) {
+        copyPathToClipboard(String(filePath == null ? '' : filePath));
       }
 
       /** Copy a ready-made ssh command that lands in the given remote directory. */
@@ -7069,8 +7076,8 @@ function rememberShowHidden(value) {
         } });
         items.push({ label: t('ctxPaste'), disabled: !canPaste, onSelect: function () { pasteEntry(menu); } });
         items.push({ separator: true });
-        items.push({ label: t('ctxCopyPath'), onSelect: function () { copyPathToClipboard(menu.path); } });
-        items.push({ label: t('ctxCopyReference'), onSelect: function () { copyReference(menu.path); } });
+        items.push({ label: t('ctxCopyPath'), onSelect: function () { copyAbsoluteAddress(menu.path); } });
+        items.push({ label: t('ctxCopyReference'), onSelect: function () { copyRelativeAddress(menu.side, menu.path); } });
         if (menu.side === 'remote' && menu.isDir) {
           items.push({ label: t('ctxCopySsh'), onSelect: function () { copySshCommand(menu.path); } });
         }
