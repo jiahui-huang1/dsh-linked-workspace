@@ -37,6 +37,8 @@ Host code (lib/) reloads live with `plugin_manager set_plugin include:linked-wor
 10. 继续打字过滤：`@co` → 只剩匹配项（如 `.conda/`、`code/`）；写到目录名再加 `/`（如 `@code/`）→ 列出该目录里的内容（每次只列一个目录，几百毫秒返回，远端几千个文件也不卡菜单）。
 11. 选中任一远端候选 → 输入框出现真正的引用 chip（`data-composer-chip="linked-workspace"`，悬停显示相对路径），发送后模型收到该远端路径。
 12. 接口自检：`linked.sessionScope { sessionId }` → `{ scope: { linkedId | remoteId, root, cwd } }`；会话 id 带不带 `session-` 前缀都能解析；不属于任何联动/远程工作区时返回 `{ scope: null }`，此时 `@` 只剩 DSH 原生分组。
+14. 文件标签跨刷新与重启：打开「联动工作区目录」，点开两个文件（出现两个文件标签，记住当前标签）→ 刷新页面 → 两个标签与当前标签都恢复；再把 DSH（或 Web 实例的 Host 进程）整个重启，重新打开目录标签 → 标签依旧在。`localStorage` 里键为 `dsh-linked-workspace:pane-tabs`，每面板最多 24 个标签、最多记 12 个面板；关掉全部标签后该面板的记录会被删除。
+
 13. 面板不被轮询冲掉：在会话里打开右侧「联动工作区目录」，展开两层目录并点开一个文件（出现文件标签），然后闲置 50 秒以上 → 文件标签仍在、展开状态不变；期间会话快照短暂缺少 cwd 时两个目录标签也不会被注销（旧实现会 dispose 后重建，正在看的文件随之关闭）。
 
 

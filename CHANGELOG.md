@@ -16,6 +16,10 @@ English · [简体中文](CHANGELOG.zh.md)
   titled **Remote files & folders**. DSH's own group keeps its label — it lives in the shell's
   `reference` locale namespace, and registering that namespace again throws, so the plugin cannot
   rename it.
+- Open file tabs now survive a page reload and a Host restart: the tab list is mirrored into
+  `localStorage` under one key per pane (session + mode + pinned workspace), so reopening the
+  directory tab reopens the files you had open, with the same active tab. Unsaved edits and the
+  caret position are deliberately not restored — only the list.
 - The directory panel no longer gets demolished by session polling: while a session snapshot
   briefly lacks a cwd the tab descriptors are kept instead of disposed, and a signature change
   must stay stable for 900 ms before the tabs are re-registered, so an open file tab (and the
