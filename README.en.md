@@ -88,7 +88,9 @@ hover it for the total size and the used percentage.
 
 ### Context menu (file/folder/root)
 
-Transfer (download to `.remote`), download to the default folder, queue, open, edit with Notepad, copy, paste, copy path, **Move to…** (only within the same local or remote tree), rename, delete, change permissions, new (folder/file), properties. Folders also offer “Open terminal here”, and remote folders in a linked workspace offer “Compare with local…” when a local counterpart exists.
+Transfer (download to `.remote`), download to the default folder, queue, open, open a copy in Notepad (edits are not written back), copy, paste, **Copy absolute address**, **Copy relative address**, **Move to…** (only within the same local or remote tree), rename, delete, change permissions, new (folder/file), properties. Remote rows also offer “Copy ssh command”, rows of a linked workspace's local tree offer “Push to the remote”, folders offer “Open terminal here”, and remote folders in a linked workspace offer “Compare with local…” when a local counterpart exists.
+
+**Copy absolute address** gives the full path; **Copy relative address** gives it relative to the workspace root (the local root on the left tree, the remote root on the right) — both paste straight into a terminal or an editor.
 
 Selecting several rows (`Ctrl/Cmd`-click toggles, `Shift`-click selects a range) adds “Transfer selected (N)” and “Delete selected (N)” at the top of the menu; deletion asks for confirmation and aggregates per-item errors (e.g. a file deleted outside the app reports “path does not exist” while the rest are removed).
 
@@ -99,7 +101,7 @@ Appears automatically for sessions that belong to a remote workspace (and can be
 - A **single remote tree** with no local pane; it is rooted at “All files” and the header shows `user@host · Remote`.
 - Files are **editable in the built-in editor and saved straight back to the host** (Ctrl/Cmd+S, autosave, save-conflict prompt, find & replace and jump-to-match all behave like the linked workspace). Read-only protection still follows each file: binaries, files over 2 MB and truncated reads show “Read-only” and reject typing.
 - Markdown, Word, Excel, PowerPoint and PDF documents open in their own panes and save back to the host as well.
-- The context menu, search (name / content, including case, regex and “search this folder only”), hidden-file toggle and the 15-second refresh throttle match the linked workspace's remote tree: open, edit in Notepad, copy / paste, copy path, move to…, rename, delete, change permissions, open terminal here, new file / folder, properties, download, plus the batch “delete selected”, “move selected” and “rename selected”.
+- The context menu, search (name / content, including case, regex and “search this folder only”), hidden-file toggle and the 15-second refresh throttle match the linked workspace's remote tree: open, open a copy in Notepad, copy / paste, copy absolute address, copy relative address, copy ssh command, move to…, rename, delete, change permissions, open terminal here, new file / folder, properties, download, plus the batch “delete selected”, “move selected” and “rename selected”.
 - Only the four features that need a local directory stay linked-only: **transfer to the local mirror, the transfer queue, two-way comparison, and the local terminal / local pane** (in a remote workspace the transfer button is disabled and its tooltip reads “Transfer needs a linked workspace (remote → local)”).
 - Both directory tabs (linked and remote) register eagerly, so a remote tree can be opened from settings even while the current session belongs to a linked workspace.
 
@@ -123,7 +125,7 @@ The workspace resolves automatically when the session cwd falls inside a linked 
 ### Documents, tunnels and paths outside the workspace (0.23.0)
 
 - Models can read the **text of PDF / Word / Excel / PowerPoint** files directly (`read_doc`) instead of installing a parser.
-- When TensorBoard or Jupyter runs remotely, map it onto a local `127.0.0.1` port under Settings → Linked workspaces → **Port forwards** and open the URL in a browser; tunnels close with the plugin.
+- When TensorBoard or Jupyter runs remotely, map it onto a local `127.0.0.1` port under Settings → Linked workspaces → **Port forwards** and open the URL in a browser. A tunnel is a **standing arrangement**: the definition is written to `forwards.json`, so a page refresh, an app restart or a Host restart re-binds it automatically (picking and remembering a new local port if the old one is taken); only “Stop” removes it.
 - To touch a shared drive outside the workspace, add the prefix under Settings → Linked workspaces → **Extra roots** first; only then can the model use `read_outside` / `write_outside` / `list_outside`, and every access lands in `outside-audit.jsonl`.
 - `sync_status` reports progress and counters while a mirror sync runs.
 
@@ -140,9 +142,12 @@ Every attempt — including refused ones — appends a line to `$DSH_HOME/linked
 ### @ references and finer search (0.18.0)
 
 - The `references` action (backed by `fs.references`) matches **path names** case-insensitively with the best match first (exact name → prefix → substring) and directories flagged `dir`, so the model can turn a file name you mention into a real remote path.
-- Right-click a file or folder → “Copy as @ reference” to put `@relative/path` (e.g. `@src/app.py`) on the clipboard.
+- `@` in the composer still opens DSH's own menu (local files, folders, conversations). The plugin adds its own candidate groups to that menu:
+  - typing **`@@`** lists files and folders of the current workspace's **remote tree** (group “Remote references”); picking one inserts a real reference chip, and the model receives that remote path;
+  - `@` followed by an address (absolute path, `~/…`, or a workspace-relative path containing `/`) resolves that address and offers **the address itself** (group “Address link”), so picking it links the file or folder — in both linked and remote workspaces.
+- The context menu still copies addresses: **Copy relative address** / **Copy absolute address** give the path itself, without an `@` prefix.
 - Content search gained two switches — “search usually ignored folders” (`node_modules`/`.venv`/`dist` included, `.git` always out) and “file names only” — plus a “Stop” button that cancels a running sweep; the scan stats (“Scanned N files · X”) appear above the results.
-- Known limitation: DSH's `@` completion popup is not extensible by plugins (the Host `fileReferences` service only offers `list()`, with no registration hook), so remote paths do not show up in that dropdown — use the `references` action or copy-as-reference instead.
+- Known limitation: candidates come from the plugin's `fs.references` (name matching, at most 30 rows), so the menu lists “remote paths found by name” rather than the whole tree; browse and click in the sidebar tree for that.
 
 ### Running icon / local skills
 
@@ -201,7 +206,7 @@ The npm package is `dsh-linked-workspace`; released versions can also be install
 
 ## Configuration
 
-- **Settings → Linked workspaces**: editor theme and display mode, file open mode, auto save, mirror toggle, manual sync and removal options.
+- **Settings → Linked workspaces**: editor theme and display mode, file open mode, auto save, mirror toggle, manual sync and removal options; below that come remote exec (switch, host allow-list and the per-workspace second layer, folded by default), SSH trust and encoding (including the folded known-host-key list), extra roots, and port forwards. The same page opens in the browser as its own sidebar tab.
 - **Data directory**: `$DSH_HOME/linked-workspace` (remote workspace records, linked records, settings); override with `DSH_LINKED_WORKSPACE_HOME`.
 - **Python interpreter**: `DSH_OFFICE_PYTHON` for Office/PDF operations.
 - **Terminal**: `DSH_LINKED_WORKSPACE_NO_TERMINAL=1` keeps “Open terminal” from launching a real window (used in tests).
