@@ -2,7 +2,7 @@
 
 English · [简体中文](CHANGELOG.zh.md)
 
-## Unreleased
+## 0.26.0 — 2026-11-24
 
 - The `@` picker now knows which workspace a session belongs to: DSH hands the trigger
   source only a `sessionId`, so the plugin asks the new `linked.sessionScope` method, which
