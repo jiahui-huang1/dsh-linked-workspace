@@ -4,6 +4,7 @@ English · [简体中文](CHANGELOG.zh.md)
 
 ## Unreleased
 
+- **Port-forward tunnels survive a restart.** The definitions live in `forwards.json`, the listener is re-bound when the Host starts (a taken port moves the tunnel instead of losing it), and only the Stop button removes an entry. A page refresh never affected them; a Host restart used to close them.
 - **Push to the remote** now lives on the local tree (the plan reads the local directory); the remote tree no longer offers it.
 - The preview pane keeps its reading position too: the scroll offset is restored
   after the rendered Markdown comes back, not only in the editing view.

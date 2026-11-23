@@ -851,6 +851,13 @@ async function main() {
       assert.match(forward.url, /^http:\/\/127\.0\.0\.1:\d+\/$/)
       const listed = await ok('hosts.forwards', {})
       assert.ok(listed.forwards.some((entry) => entry.id === forward.id), 'the tunnel is listed')
+      // 0.25.0: the definition is written to forwards.json, which is what lets a
+      // restarted Host re-bind the same local port (a page refresh never mattered).
+      const forwardDisk = JSON.parse(readFileSync(join(process.env.DSH_LINKED_WORKSPACE_HOME, 'forwards.json'), 'utf8'))
+      assert.ok(
+        forwardDisk.forwards.some((entry) => entry.id === forward.id && entry.localPort === forward.localPort),
+        'the tunnel definition is persisted'
+      )
       const through = await fetch(forward.url, { signal: AbortSignal.timeout(15000) })
       assert.equal(through.status, 200, 'the tunnel serves the remote page')
       const body = await through.text()

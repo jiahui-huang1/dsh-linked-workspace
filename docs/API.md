@@ -62,8 +62,8 @@ scope root, or absolute inside it.
 | `fs.readOutside` | `{ linkedId?, remoteId?, path, maxBytes? }` | `{ path, size, mtime, binary, truncated, content }` (only under an `extraRoots` prefix; audited) |
 | `fs.writeOutside` | `{ linkedId?, remoteId?, path, content, ifModifiedSince? }` | `{ path, size, mtime, created }` (8 MB limit; only under an `extraRoots` prefix; audited) |
 | `fs.listOutside` | `{ linkedId?, remoteId?, path }` | `{ path, entries }` (only under an `extraRoots` prefix; audited) |
-| `hosts.forward` | `{ hostId, remotePort, remoteHost?, localPort? }` | `{ forward: { id, hostId, hostName, remoteHost, remotePort, localPort, startedAt, url } }` (localhost TCP tunnel; reuses an identical one) |
-| `hosts.forwards` | `{}` | `{ forwards: [...] }` |
+| `hosts.forward` | `{ hostId, remotePort, remoteHost?, localPort? }` | `{ forward: { id, hostId, hostName, remoteHost, remotePort, localPort, startedAt, url } }` (localhost TCP tunnel; reuses an identical one; the definition is written to `forwards.json`, so a restarted Host re-binds the same port) |
+| `hosts.forwards` | `{}` | `{ forwards: [...] }` — a tunnel that could not get its port back after a restart is listed with `localPort: 0`, `url: ""` and an `error`; Stop removes it |
 | `hosts.unforward` | `{ id }` | `{ removed }` |
 | `hosts.reconnect` | `{ hostId }` | `{ hostId, state, reason?, message?, latencyMs?, checkedAt? }` (drops the pooled socket and dials again; returns the resulting status instead of throwing, so the UI can show the reason) |
 | `hosts.mkdir` | `{ hostId, path?, name }` | `{ path }` (creates `name` inside `path`; defaults to the login home; `409`/`FS_EXISTS` when it already exists) |
@@ -147,6 +147,7 @@ Under `$DSH_HOME/linked-workspace/`:
 
 - `linked.json` — linked workspaces (no credentials).
 - `remote-workspaces.json` — remote workspaces (no credentials).
+- `forwards.json` — `{ version, forwards: [{ id, hostId, hostName, remoteHost, remotePort, localPort, startedAt }] }`. Since 0.25.0 the tunnels opened from 设置 → 端口转发 are standing arrangements: the listener is re-bound on start (with a new local port if the old one is taken, and the record updated), and only `hosts.unforward` removes an entry.
 - `settings.json` — `{ editorTheme, editorThemeFamily, editorThemeMode, fileOpenMode, autoSave, execEnabled, execHostIds, execWorkspaceIds, execTimeoutMs, execMaxOutputChars, execShell, hostKeyPolicy, outputEncoding, extraRoots }`. The four `autoPush*` keys are still accepted so an old file loads unchanged, but since 0.24.0 auto push is configured per workspace (`linked.json` → each record's `autoPush`), and those keys no longer drive any watcher.
 - `linked.json` — every record carries `autoPush: { enabled, debounceMs, include[], exclude[] }` (`debounceMs` clamped to 300–60000, default 1500). `linked.list` returns it, `linked.update { id, autoPush }` writes it, and the Host starts/stops one `fs.watch` per enabled workspace.
   The exec keys are off unless you turn them on: `execEnabled` defaults to
