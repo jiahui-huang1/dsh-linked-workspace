@@ -735,9 +735,7 @@ window.__ModuleLoader__.load({
       ctxCopy: '复制',
       ctxPaste: '粘贴',
       ctxCopyPath: '复制绝对地址',
-      remoteRefSection: '远程工作区',
-      addressRefSection: '按地址链接',
-      addressLinkHint: '把这个地址变成引用',
+      remoteRefSection: '远程目录',
       ctxRename: '重命名',
       ctxDelete: '删除',
       ctxChmod: '更改权限',
@@ -1324,9 +1322,7 @@ window.__ModuleLoader__.load({
       ctxCopy: 'Copy',
       ctxPaste: 'Paste',
       ctxCopyPath: 'Copy absolute address',
-      remoteRefSection: 'Remote workspace',
-      addressRefSection: 'Link an address',
-      addressLinkHint: 'Turn this address into a reference',
+      remoteRefSection: 'Remote files',
       ctxRename: 'Rename',
       ctxDelete: 'Delete',
       ctxChmod: 'Change permissions',
@@ -1483,7 +1479,7 @@ window.__ModuleLoader__.load({
      * Host methods the running DSH process does not have yet, the directory
      * pane says so instead of surfacing an unrelated error.
      */
-    var HOST_API_REVISION = 10;
+    var HOST_API_REVISION = 11;
     var hostInfoProbe = null;
 
     function probeHostInfo() {
@@ -10425,6 +10421,22 @@ function rememberShowHidden(value) {
     function referenceScopeFor(session) {
       var cwd = sessionCwdOf(session);
       var workspaceId = sessionWorkspaceIdOf(session);
+      var sessionId = String((session && (session.sessionId || session.id)) || '');
+      // The session object handed to a trigger source only carries its id, so ask
+      // the Host which workspace owns it; fall back to the local scan below.
+      if (sessionId !== '') {
+        return apiCall('linked.sessionScope', { sessionId: sessionId }).then(function (resolved) {
+          var scope = resolved && resolved.scope;
+          if (scope && (scope.linkedId || scope.remoteId)) {
+            return { linkedId: scope.linkedId, remoteId: scope.remoteId, root: scope.root || '' };
+          }
+          return scanReferenceScope(cwd, workspaceId);
+        }).catch(function () { return scanReferenceScope(cwd, workspaceId); });
+      }
+      return scanReferenceScope(cwd, workspaceId);
+    }
+
+    function scanReferenceScope(cwd, workspaceId) {
       return apiCall('linked.list').catch(function () { return { links: [] }; }).then(function (linked) {
         var links = (linked && linked.links) || [];
         for (var index = 0; index < links.length; index += 1) {
@@ -10456,35 +10468,48 @@ function rememberShowHidden(value) {
       if (!service || typeof service.registerSource !== 'function') return;
       var t = makeT(readLocale(ctx));
 
+      // One "@" lists the remote tree next to DSH's own local suggestions; the
+      // section title keeps the two groups apart. Sessions that are not backed
+      // by a linked/remote workspace return nothing, leaving the stock menu as
+      // it is.
+      //
+      // Only ONE directory is listed per keystroke: "dir/prefix" is split and the
+      // folder is listed, so the menu answers immediately. A fuzzy scan of the
+      // whole tree (fs.references) takes 5–20 s over SSH and always lost the race
+      // with the menu.
       function candidates(session, request) {
         var query = String((request && request.query) || '');
-        var remoteIntent = query.charAt(0) === '@';
-        var wanted = remoteIntent ? query.slice(1) : query;
-        // A single "@" keeps the stock menu untouched unless the query already
-        // reads like a path, which is the "type an address, get a reference" case.
-        var looksLikePath = wanted.indexOf('/') >= 0 || wanted.indexOf('\\') >= 0 || wanted.charAt(0) === '~';
-        if (!remoteIntent && !looksLikePath) return Promise.resolve([]);
-        if (wanted === '') {
-          if (!remoteIntent) return Promise.resolve([]);
-        }
+        var signal = request && request.signal;
+        if (signal && signal.aborted) return Promise.resolve([]);
         return referenceScopeFor(session).then(function (scope) {
           if (!scope) return [];
-          var params = { query: wanted, limit: 30 };
+          var slash = query.lastIndexOf('/');
+          var dirPart = slash >= 0 ? query.slice(0, slash) : '';
+          var namePart = slash >= 0 ? query.slice(slash + 1) : query;
+          var params = { path: dirPart === '' ? '.' : dirPart, limit: 500 };
           if (scope.linkedId) params.linkedId = scope.linkedId;
           if (scope.remoteId) params.remoteId = scope.remoteId;
-          return apiCall('fs.references', params).catch(function () { return { candidates: [] }; }).then(function (result) {
-            var items = (result && result.candidates) || [];
-            return items.map(function (item) {
-              var isDir = item.kind === 'directory';
-              return {
-                name: String(item.path || ''),
-                label: (item.name || String(item.path || '').split('/').pop()) + (isDir ? '/' : ''),
-                description: String(item.path || ''),
+          return apiCall('fs.list', params).catch(function () { return { entries: [] }; }).then(function (result) {
+            if (signal && signal.aborted) return [];
+            var needle = namePart.toLowerCase();
+            var entries = (result && result.entries) || [];
+            var out = [];
+            for (var index = 0; index < entries.length && out.length < 30; index += 1) {
+              var entry = entries[index] || {};
+              var name = String(entry.name || '');
+              if (name === '') continue;
+              if (needle !== '' && name.toLowerCase().indexOf(needle) < 0) continue;
+              var isDir = entry.type === 'dir';
+              var relative = String(entry.relative || (dirPart === '' ? name : dirPart.replace(/\/+$/, '') + '/' + name));
+              out.push({
+                name: relative,
+                label: name + (isDir ? '/' : ''),
+                description: relative,
                 icon: isDir ? 'folder' : 'file',
-                section: remoteIntent ? t('remoteRefSection') : t('addressRefSection'),
-                hint: remoteIntent ? undefined : t('addressLinkHint'),
-              };
-            }).filter(function (item) { return item.name !== ''; });
+                section: t('remoteRefSection'),
+              });
+            }
+            return out;
           });
         });
       }
@@ -10511,7 +10536,7 @@ function rememberShowHidden(value) {
       var source = {
         trigger: '@',
         name: 'linked-workspace',
-        order: 40,
+        order: 20,
         showGroupTitle: true,
         candidates: candidates,
         onPick: onPick,
@@ -10535,7 +10560,7 @@ function rememberShowHidden(value) {
     // `sessions` is a core client service (the sidebar shell injects it too):
     // the directory entries need the focused session's cwd/workspaceId to
     // decide whether they belong in the "+" menu.
-    var inject = ['slots', 'locale', 'sessions'];
+    var inject = ['slots', 'locale', 'sessions', 'inputTriggers'];
 
     function apply(ctx) {
       ctx.effect(installStyles, 'dsh-linked-workspace: styles');

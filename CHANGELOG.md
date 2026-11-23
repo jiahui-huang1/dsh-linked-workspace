@@ -2,6 +2,24 @@
 
 English · [简体中文](CHANGELOG.zh.md)
 
+## Unreleased
+
+- The `@` picker now knows which workspace a session belongs to: DSH hands the trigger
+  source only a `sessionId`, so the plugin asks the new `linked.sessionScope` method, which
+  matches the session against the workspace registry (ids are compared with or without the
+  `session-` prefix).
+- Remote candidates are listed one directory at a time through `fs.list` instead of walking the
+  whole tree: the `@` menu answers in a few hundred milliseconds, where `fs.references` took
+  5–20 s (and returns nothing at all for an empty query).
+- One `@` now lists the remote tree: inside a linked or remote workspace the picker grows a
+  **Remote files** group next to DSH's own local suggestions, so the remote tree needs a single
+  keystroke instead of the old double `@`.
+- The `@@` entry point is gone, and with it the separate "link an address" group: an address
+  after `@` (`/shared_data_…`, `~/…` or a workspace-relative path) simply appears as a remote
+  candidate you can pick.
+- Fixed `npm run build` failing on a Windows checkout: the inline-parts marker was matched with
+  an LF-only string, so a CRLF working copy refused to build.
+
 ## 0.25.0 — 2026-11-23
 
 - Three more theme families — **Tokyo Night**, **Gruvbox** and **Ayu** — bring the grid to twelve. Every card now previews both halves of the pair (light band on top, dark underneath) with the palette's keyword/string/function colours, so a family is recognisable without switching the app mode first. It lists four colour dots per band — keyword, string, function name and comment.

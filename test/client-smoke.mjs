@@ -122,7 +122,7 @@ const mod = captured.factory((name) => {
   return moduleTable[name]
 })
 
-assert.deepEqual(mod.inject, ['slots', 'locale', 'sessions'])
+assert.deepEqual(mod.inject, ['slots', 'locale', 'sessions', 'inputTriggers'])
 mod.apply(ctx)
 
 assert.equal(registered.settings.length, 1, 'exactly one settings section registered')

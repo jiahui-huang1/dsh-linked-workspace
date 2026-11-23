@@ -30,7 +30,13 @@ Host code (lib/) reloads live with `plugin_manager set_plugin include:linked-wor
 5. 右键任一文件或目录 → 「复制为 @ 引用」→ 剪贴板得到 `@相对路径`（如 `@src/app.py`），提示「已复制 @src/app.py」。
 6. `fs.references { linkedId, query: 'a.txt' }` → `{ candidates: [{ relative, name, kind }], scannedEntries }`，完全同名的排最前；`limit` 生效；空 query 返回空候选而不是报错。
 7. 模型侧：让它「用 linked_workspace 的 references 动作找一下 xxx 文件」→ 工具卡片按「dir/file + 相对路径」列出候选。
-8. 已知限制（需人工确认未变化）：`@` 补全弹窗里不会出现远端路径 —— 宿主 `fileReferences` 服务只有 `list(agent, query, signal)`，没有 provider 注册入口。
+8. 触发字符由 DSH 外壳写死：`detectTrigger` 只认 `@` 与 `/`，`#` 之类的自定义字符即使 `registerSource` 接受也永远不会被匹配（真机确认：输入 `#may` 没有任何菜单，`#` 被直接丢弃）。
+
+
+9. 会话属于联动/远程工作区时，输入框单打一个 **`@`** → 菜单里除了 DSH 原生的「文件与文件夹」「对话」，还有一组「**远程目录**」（列出当前工作区远端根目录的文件与文件夹）；分组排在原生分组之后，多打一两个字符即可收敛过来。
+10. 继续打字过滤：`@co` → 只剩匹配项（如 `.conda/`、`code/`）；写到目录名再加 `/`（如 `@code/`）→ 列出该目录里的内容（每次只列一个目录，几百毫秒返回，远端几千个文件也不卡菜单）。
+11. 选中任一远端候选 → 输入框出现真正的引用 chip（`data-composer-chip="linked-workspace"`，悬停显示相对路径），发送后模型收到该远端路径。
+12. 接口自检：`linked.sessionScope { sessionId }` → `{ scope: { linkedId | remoteId, root, cwd } }`；会话 id 带不带 `session-` 前缀都能解析；不属于任何联动/远程工作区时返回 `{ scope: null }`，此时 `@` 只剩 DSH 原生分组。
 
 ## 远端命令执行（0.17.0）
 
@@ -365,9 +371,9 @@ DSH_HOME/linked-workspace/exec-audit.jsonl` 追加一行 JSON，含 `auditId`、
 2. 点「编辑」进入编辑，向下滚动一段，切到另一个文件再切回来：仍是编辑模式，且滚动位置没有跳回顶部。
 3. 再点回「预览」，切走再切回：仍是预览，阅读位置保留。
 4. 打开 `.xlsx` / `.pptx` / `.pdf`，切到第 2 个工作表 / 幻灯片 / 页面，切走再切回：仍停在原处。
-5. 在输入框里输入 `@@`：菜单出现「远程工作区」分组，列出远端文件与文件夹；选中一个后变成引用 chip。
+5. 在联动/远程工作区的会话里输入单个 `@`：除了 DSH 原生的本地候选，还会出现「远程目录」分组，列出远端文件与文件夹；选中一个后变成引用 chip。
 6. 输入 `@` 再输入 `README.md` 之类的名字：菜单仍是原有的本地文件/文件夹/对话，没有被远程条目污染。
-7. 输入 `@@/shared_data_ssd1/huangjh` 或 `@code/projects_wpf`：菜单出现「按地址链接」分组，选中该地址即插入引用。
+7. 输入 `@/shared_data_ssd1/huangjh` 或 `@code/projects_wpf`：「远程目录」分组会把这个地址本身列为候选，选中即插入引用。
 8. 右键任一文件或文件夹：
    - 「复制绝对地址」→ 得到完整路径（远端形如 `/shared_data_ssd1/huangjh/code/a.txt`，本地形如 `D:\…\a.txt`）；
    - 「复制相对地址」→ 左树得到相对**本地根**的路径（如 `code/a.txt`），右树得到相对**远端根**的路径；

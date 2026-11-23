@@ -143,11 +143,12 @@ Every attempt — including refused ones — appends a line to `$DSH_HOME/linked
 
 - The `references` action (backed by `fs.references`) matches **path names** case-insensitively with the best match first (exact name → prefix → substring) and directories flagged `dir`, so the model can turn a file name you mention into a real remote path.
 - `@` in the composer still opens DSH's own menu (local files, folders, conversations). The plugin adds its own candidate groups to that menu:
-  - typing **`@@`** lists files and folders of the current workspace's **remote tree** (group “Remote references”); picking one inserts a real reference chip, and the model receives that remote path;
-  - `@` followed by an address (absolute path, `~/…`, or a workspace-relative path containing `/`) resolves that address and offers **the address itself** (group “Address link”), so picking it links the file or folder — in both linked and remote workspaces.
+  - inside a linked or remote workspace a single **`@`** adds a “**Remote files**” group on top of DSH's own local suggestions — it lists the workspace's remote tree; picking one inserts a real reference chip, and the model receives that remote path;
+  - Candidates are listed **one directory at a time**: `@` opens the remote root, further characters filter by name, and a trailing `/` descends into that folder (for example `@code/` lists what is inside the remote `code/`), so a huge tree never stalls the menu;
 - The context menu still copies addresses: **Copy relative address** / **Copy absolute address** give the path itself, without an `@` prefix.
 - Content search gained two switches — “search usually ignored folders” (`node_modules`/`.venv`/`dist` included, `.git` always out) and “file names only” — plus a “Stop” button that cancels a running sweep; the scan stats (“Scanned N files · X”) appear above the results.
-- Known limitation: candidates come from the plugin's `fs.references` (name matching, at most 30 rows), so the menu lists “remote paths found by name” rather than the whole tree; browse and click in the sidebar tree for that.
+- At most 30 candidates per listing and hidden files are skipped; keep typing to narrow and descend, and use the sidebar tree when you want to browse.
+- Group order is up to DSH: our “Remote files” group sits after its own “Files and folders” and “Conversations”, so type one more character to collapse the list onto it.
 
 ### Running icon / local skills
 
