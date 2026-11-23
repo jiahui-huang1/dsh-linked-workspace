@@ -162,7 +162,12 @@ for (const flow of registered.flows) {
   assert.equal(typeof flow.component, 'function')
 }
 
-assert.equal(registered.tabs.length, 16, 'both tree tabs, the file tab, 12 file slots and the legacy file alias register eagerly')
+assert.equal(registered.tabs.length, 17, 'both tree tabs, the settings tab, the file tab, 12 file slots and the legacy file alias register eagerly')
+const settingsTab = registered.tabs.find((tab) => tab.id === 'dsh-linked-workspace:settings')
+assert.ok(settingsTab, 'the settings tab descriptor exists so the web build can reach the switches')
+assert.equal(typeof settingsTab.available, 'function')
+assert.equal(settingsTab.available({}, { cwd: 'C:/somewhere/else', workspaceId: 'ws-unrelated' }), true, 'settings stay reachable from any session')
+assert.equal(settingsTab.hidden, undefined, 'the settings page is never hidden from the + menu')
 const tree = registered.tabs.find((tab) => tab.id === 'dsh-linked-workspace')
 assert.ok(tree, 'linked tree tab descriptor exists')
 assert.equal(typeof tree.available, 'function')

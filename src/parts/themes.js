@@ -255,6 +255,150 @@ export const EDITOR_THEMES = [
       punctuation: '#1f1f1f',
       plain: '#1f1f1f'
     }
+  },
+  {
+    id: 'tokyo-night',
+    label: { zh: 'Tokyo Night 深色', en: 'Tokyo Night' },
+    kind: 'dark',
+    colors: {
+      bg: '#1a1b26',
+      fg: '#c0caf5',
+      gutterBg: '#16161e',
+      gutterFg: '#4c5470',
+      border: '#232433',
+      selection: '#33467c',
+      lineHighlight: '#1f2030',
+      caret: '#c0caf5',
+      keyword: '#bb9af7',
+      string: '#9ece6a',
+      comment: '#646e9c',
+      number: '#ff9e64',
+      functionName: '#7aa2f7',
+      typeName: '#2ac3de',
+      operator: '#89ddff',
+      punctuation: '#a9b1d6',
+      plain: '#c0caf5'
+    }
+  },
+  {
+    id: 'tokyo-night-light',
+    label: { zh: 'Tokyo Night 浅色', en: 'Tokyo Night Light' },
+    kind: 'light',
+    colors: {
+      bg: '#e1e2e7',
+      fg: '#3760bf',
+      gutterBg: '#d6d8de',
+      gutterFg: '#848cb5',
+      border: '#c4c8da',
+      selection: '#b7c1e3',
+      lineHighlight: '#d9dbe4',
+      caret: '#3760bf',
+      keyword: '#9854f1',
+      string: '#587539',
+      comment: '#848cb5',
+      number: '#b15c00',
+      functionName: '#2e7de9',
+      typeName: '#007197',
+      operator: '#007197',
+      punctuation: '#6172b0',
+      plain: '#3760bf'
+    }
+  },
+  {
+    id: 'gruvbox-dark',
+    label: { zh: 'Gruvbox 深色', en: 'Gruvbox Dark' },
+    kind: 'dark',
+    colors: {
+      bg: '#282828',
+      fg: '#ebdbb2',
+      gutterBg: '#1d2021',
+      gutterFg: '#7c6f64',
+      border: '#3c3836',
+      selection: '#504945',
+      lineHighlight: '#32302f',
+      caret: '#ebdbb2',
+      keyword: '#fb4934',
+      string: '#b8bb26',
+      comment: '#928374',
+      number: '#d3869b',
+      functionName: '#fabd2f',
+      typeName: '#83a598',
+      operator: '#fe8019',
+      punctuation: '#a89984',
+      plain: '#ebdbb2'
+    }
+  },
+  {
+    id: 'gruvbox-light',
+    label: { zh: 'Gruvbox 浅色', en: 'Gruvbox Light' },
+    kind: 'light',
+    colors: {
+      bg: '#fbf1c7',
+      fg: '#3c3836',
+      gutterBg: '#f2e5bc',
+      gutterFg: '#a89984',
+      border: '#ebdbb2',
+      selection: '#d5c4a1',
+      lineHighlight: '#f2e5bc',
+      caret: '#3c3836',
+      keyword: '#9d0006',
+      string: '#79740e',
+      comment: '#928374',
+      number: '#8f3f71',
+      functionName: '#b57614',
+      typeName: '#076678',
+      operator: '#af3a03',
+      punctuation: '#7c6f64',
+      plain: '#3c3836'
+    }
+  },
+  {
+    id: 'ayu-dark',
+    label: { zh: 'Ayu 深色', en: 'Ayu Dark' },
+    kind: 'dark',
+    colors: {
+      bg: '#0b0e14',
+      fg: '#bfbdb6',
+      gutterBg: '#0d1017',
+      gutterFg: '#475266',
+      border: '#1b1f29',
+      selection: '#273747',
+      lineHighlight: '#131721',
+      caret: '#e6b450',
+      keyword: '#ff8f40',
+      string: '#aad94c',
+      comment: '#626a73',
+      number: '#d2a6ff',
+      functionName: '#ffb454',
+      typeName: '#39bae6',
+      operator: '#f29668',
+      punctuation: '#bfbdb6',
+      plain: '#bfbdb6'
+    }
+  },
+  {
+    id: 'ayu-light',
+    label: { zh: 'Ayu 浅色', en: 'Ayu Light' },
+    kind: 'light',
+    colors: {
+      bg: '#fafafa',
+      fg: '#5c6166',
+      gutterBg: '#f3f4f4',
+      gutterFg: '#a0a6ab',
+      border: '#e7e8e9',
+      selection: '#d1e4f4',
+      lineHighlight: '#f0f1f1',
+      caret: '#ff6a00',
+      keyword: '#fa8d3e',
+      string: '#86b300',
+      comment: '#787b80',
+      number: '#a37acc',
+      functionName: '#f2ae49',
+      typeName: '#55b4d4',
+      operator: '#ed9366',
+      punctuation: '#5c6166',
+      plain: '#5c6166'
+    }
   }
 ]
 
@@ -270,6 +414,9 @@ export const EDITOR_THEME_FAMILIES = [
   { id: 'vscode', label: { zh: 'VS Code Dark+ / Light+', en: 'VS Code Dark+ / Light+' }, light: 'vs-light', dark: 'vs-dark' },
   { id: 'xcode', label: { zh: 'Xcode Light / Dark', en: 'Xcode Light / Dark' }, light: 'xcode-light', dark: 'xcode-dark' },
   { id: 'catppuccin', label: { zh: 'Catppuccin Latte / Mocha', en: 'Catppuccin Latte / Mocha' }, light: 'catppuccin-latte', dark: 'catppuccin-mocha' },
+  { id: 'tokyo', label: { zh: 'Tokyo Night', en: 'Tokyo Night' }, light: 'tokyo-night-light', dark: 'tokyo-night' },
+  { id: 'gruvbox', label: { zh: 'Gruvbox', en: 'Gruvbox' }, light: 'gruvbox-light', dark: 'gruvbox-dark' },
+  { id: 'ayu', label: { zh: 'Ayu', en: 'Ayu' }, light: 'ayu-light', dark: 'ayu-dark' },
 ]
 
 // 0.5.3: every family needs both a light and a dark variant. The extra

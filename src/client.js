@@ -43,7 +43,10 @@ window.__ModuleLoader__.load({
     // Remote workspaces get their own page kind: the two modes show different
     // trees (local ⇄ remote pair vs. a plain remote root), so a session must be
     // able to hold both, and each one filters its own workspace list.
-    var REMOTE_TREE_TAB_TYPE = 'dsh-remote-workspace';
+    var REMOTE_TREE_TAB_TYPE = 'dsh-remote-workspace'
+    // The DSH settings dialog only exists in the desktop shell, so the web build
+    // had no way to reach these switches. This tab is our own surface for them.
+    var SETTINGS_TAB_TYPE = 'dsh-linked-workspace:settings';
     // One tree page; a folder with 20k entries must not render 20k rows.
     var TREE_PAGE_SIZE = 500;
     var TREE_PAGE_MAX = 5000;
@@ -67,7 +70,8 @@ window.__ModuleLoader__.load({
     var remotePlaceholderKeys = new Set();
     var remoteWorkspaceKeys = new Set();
     var linkedTabDisposer = null;
-    var remoteTabDisposer = null;
+    var remoteTabDisposer = null
+    var settingsTabDisposer = null;
     var syncDirectoryTabsRef = null;
     // Set by the sidebar registration block so the availability refresh can ask
     // the sidebar to rebuild its "+" entries after the workspace lists change.
@@ -473,6 +477,9 @@ window.__ModuleLoader__.load({
       themeDark: '深色',
       themeLight: '浅色',
       themeSaved: '主题已保存',
+    themeActiveNow: '当前生效',
+    settingsTabTitle: '联动工作区设置',
+    settingsTabDesc: '主题、远端命令执行、SSH 信任、额外根目录与端口转发，浏览器里也能改。',
       themeModeTitle: '显示模式',
       themeModeHint: '系统模式跟随 DSH 当前的浅色/深色主题；浅色/深色模式强制使用对应配色。',
       themeModeSystem: '系统',
@@ -1059,6 +1066,9 @@ window.__ModuleLoader__.load({
       themeDark: 'Dark',
       themeLight: 'Light',
       themeSaved: 'Theme saved',
+    themeActiveNow: 'Active now',
+    settingsTabTitle: 'Linked workspace settings',
+    settingsTabDesc: 'Themes, remote exec, SSH trust, extra roots and port forwarding — editable in the browser too.',
       themeModeTitle: 'Appearance',
       themeModeHint: 'System follows the current DSH light/dark theme; Light and Dark force the matching palette.',
       themeModeSystem: 'System',
@@ -1794,7 +1804,7 @@ window.__ModuleLoader__.load({
       '.rw-btn-danger{color:var(--dsw-alias-state-error-primary);border-color:color-mix(in srgb,var(--dsw-alias-state-error-primary) 40%,transparent)}',
       '.rw-btn-sm{height:26px;padding:0 9px;font-size:12px;border-radius:7px}',
       '.rw-group{display:flex;flex-direction:column;gap:10px;padding:16px;border:1px solid var(--dsw-alias-border-l2);border-radius:14px;background:var(--dsw-alias-bg-layer-2)}',
-      '.rw-group-head{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}',
+      '.rw-group-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}',
       '.rw-group-title{font-size:14px;line-height:22px;font-weight:600;color:var(--dsw-alias-label-primary)}',
       '.rw-group-hint{font-size:12px;line-height:18px;color:var(--dsw-alias-label-tertiary)}',
       '.rw-list{display:flex;flex-direction:column;gap:10px}',
@@ -1871,6 +1881,8 @@ window.__ModuleLoader__.load({
       '.rw-editor-pane{display:flex;flex-direction:column;flex:1 1 auto;min-width:0;min-height:0;border-left:1px solid var(--dsw-alias-border-l1)}',
       '.rw-tree-scroll{flex:1 1 auto;min-height:0;overflow:auto;padding:8px}',
       '.rw-tree-toolbar{display:flex;align-items:center;gap:6px;padding:8px 10px;border-bottom:1px solid var(--dsw-alias-border-l1);min-width:0}',
+      '.rw-settings-tab{height:100%;overflow:auto;padding:16px;box-sizing:border-box}',
+      '.rw-settings-tab .rw-root{max-width:none}',
       '.rw-tree-toolbar-title{font-size:12px;line-height:18px;font-weight:600;color:var(--dsw-alias-label-secondary);flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
       '.rw-icon-btn{display:inline-flex;align-items:center;justify-content:center;flex:none;width:24px;height:24px;border-radius:6px;border:0;background:transparent;color:var(--dsw-alias-label-secondary);cursor:pointer}',
       '.rw-icon-btn:hover{background:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.12));color:var(--dsw-alias-label-primary)}',
@@ -1933,7 +1945,14 @@ window.__ModuleLoader__.load({
       '.rw-theme-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:10px}',
       '.rw-theme-card{display:flex;flex-direction:column;gap:6px;padding:8px;border:1px solid var(--dsw-alias-border-l2);border-radius:10px;background:var(--dsw-alias-bg-layer-1);cursor:pointer;font:inherit;color:inherit;text-align:left}',
       '.rw-theme-card.is-on{border-color:var(--dsw-alias-brand-primary);box-shadow:0 0 0 1px color-mix(in srgb,var(--dsw-alias-brand-primary) 45%,transparent)}',
-      '.rw-theme-preview{display:flex;align-items:center;justify-content:space-between;gap:6px;height:44px;padding:0 10px;border-radius:7px;font-family:ui-monospace,"Cascadia Code",Consolas,monospace;font-size:11px;overflow:hidden}',
+      '.rw-theme-preview{display:flex;flex-direction:column;gap:3px;height:52px}',
+      '.rw-theme-band{display:flex;align-items:center;gap:5px;flex:1;min-height:0;padding:0 8px;border:1px solid transparent;border-radius:6px;font-family:ui-monospace,"Cascadia Code",Consolas,monospace;font-size:11px;line-height:1;overflow:hidden}',
+      '.rw-theme-aa{font-weight:600;margin-right:auto;letter-spacing:.02em}',
+      '.rw-theme-dot{width:7px;height:7px;border-radius:50%;flex:none;opacity:.9}',
+      '.rw-theme-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+      '.rw-theme-check{color:var(--dsw-alias-brand-primary);font-weight:700;flex:none}',
+      '.rw-theme-card:hover{border-color:var(--dsw-alias-border-l3,rgba(127,127,127,.4));background:var(--dsw-alias-bg-layer-1)}',
+      '.rw-theme-card.is-on:hover{border-color:var(--dsw-alias-brand-primary)}',
       '.rw-theme-label{display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:12px;line-height:18px}',
       '.rw-theme-kind{font-size:10px;line-height:14px;padding:0 4px;border-radius:3px;border:1px solid currentColor;color:var(--dsw-alias-label-tertiary)}',
       '.rw-tabs{display:flex;gap:4px;padding:3px;border-radius:9px;background:var(--dsw-alias-bg-layer-1);border:1px solid var(--dsw-alias-border-l1)}',
@@ -2114,9 +2133,10 @@ window.__ModuleLoader__.load({
       '.rw-placeholder-hint{font-size:11.5px;line-height:17px}',
       '.rw-tree-toolbar-title{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
       '.rw-mode-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}',
-      '.rw-mode-card{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:8px 10px;border:1px solid var(--dsw-alias-border-l2);border-radius:8px;background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);font:inherit;cursor:pointer;text-align:left}',
+      '.rw-mode-card{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:3px;min-height:58px;padding:8px 10px;border:1px solid var(--dsw-alias-border-l2);border-radius:8px;background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);font:inherit;cursor:pointer;text-align:left}',
       '.rw-mode-card:hover{border-color:var(--dsw-alias-border-l3,rgba(127,127,127,.4))}',
       '.rw-mode-card.is-on{border-color:var(--dsw-alias-brand-primary);background:color-mix(in srgb,var(--dsw-alias-brand-primary) 9%,transparent)}',
+      '.rw-mode-card.is-on .rw-mode-name{color:var(--dsw-alias-brand-primary)}',
       '.rw-mode-name{font-size:12px;font-weight:600;line-height:17px}',
       '.rw-mode-desc{font-size:10.5px;line-height:14px;color:var(--dsw-alias-label-tertiary)}',
       '.rw-ctx-menu{position:fixed;min-width:214px;max-height:min(70vh,520px);overflow:auto;padding:4px 0;border:1px solid var(--dsw-alias-border-l2);border-radius:7px;background:var(--dsw-alias-bg-overlay);box-shadow:0 12px 36px rgba(0,0,0,.3);z-index:71;font-size:12px;user-select:none}',
@@ -2883,15 +2903,25 @@ window.__ModuleLoader__.load({
         props.text ? h('span', null, props.text) : null);
     }
 
+    // Each card previews both halves of the pair, so a light theme and its dark
+    // companion are recognisable without switching the app mode first.
     function ThemeSwatch(props) {
-      var theme = props.theme;
-      var c = theme.colors;
-      return h('div', {
-        className: 'rw-theme-preview',
-        style: { background: c.bg, color: c.fg, border: '1px solid ' + c.border },
-      },
-        h('span', { style: { color: c.comment } }, '// remote'),
-        h('span', { style: { color: c.keyword, fontWeight: 600 } }, '✓'));
+      function band(theme, key) {
+        var c = theme.colors;
+        return h('span', {
+          key: key,
+          className: 'rw-theme-band',
+          style: { background: c.bg, color: c.fg, borderColor: c.border },
+        },
+          h('span', { className: 'rw-theme-aa', style: { color: c.fg } }, 'Aa'),
+          h('span', { className: 'rw-theme-dot', style: { background: c.keyword } }),
+          h('span', { className: 'rw-theme-dot', style: { background: c.string } }),
+          h('span', { className: 'rw-theme-dot', style: { background: c.functionName } }),
+          h('span', { className: 'rw-theme-dot', style: { background: c.comment } }));
+      }
+      return h('span', { className: 'rw-theme-preview' },
+        band(props.light, 'light'),
+        band(props.dark, 'dark'));
     }
 
     // ── local / remote path pickers ────────────────────────────────────────
@@ -4336,6 +4366,22 @@ window.__ModuleLoader__.load({
         props.on ? h('span', { style: { display: 'inline-flex' } }, IconCheck(12)) : null);
     }
 
+    function openPluginSettings(ctx) {
+      var sidebar = sidebarService(ctx);
+      if (!sidebar || typeof sidebar.openTab !== 'function') return;
+      sidebar.openTab({
+        type: SETTINGS_TAB_TYPE,
+        id: SETTINGS_TAB_TYPE,
+        title: makeT(readLocale(ctx))('settingsTabTitle'),
+        path: '/',
+        meta: {},
+      });
+    }
+
+    function PluginSettingsTab(props) {
+      return h('div', { className: 'rw-settings-tab' }, h(ConnectionsPage, { ctx: props.ctx }));
+    }
+
     function LinkedDirectoryToolbar(props) {
       var t = props.t;
       var menuState = useState(null);
@@ -4349,6 +4395,12 @@ window.__ModuleLoader__.load({
       return h('div', { className: 'rw-linked-toolbar' },
         h('span', { className: 'rw-tree-toolbar-title' }, props.title || t('tabTitle')),
         h('div', { className: 'rw-actions', style: { marginLeft: 'auto', gap: 2 } },
+          h('button', {
+            type: 'button',
+            className: 'rw-icon-btn',
+            title: t('settingsTabTitle'),
+            onClick: function () { if (props.onSettings) props.onSettings(); },
+          }, IconSettingsNav(14)),
           h('div', { className: 'rw-menu-wrap' },
             h('button', {
               type: 'button',
@@ -7675,6 +7727,7 @@ function rememberShowHidden(value) {
             }
             transferSelection();
           },
+          onSettings: function () { openPluginSettings(props.ctx); },
           onMode: function (next) { setMode(next); },
           onToggleSearch: function () { setSearchOpen(!searchOpen); },
           onOpenMode: updateOpenMode,
@@ -9437,20 +9490,23 @@ function rememberShowHidden(value) {
           })),
         h('div', { className: 'rw-group-head', style: { marginTop: 12 } },
           h('span', { className: 'rw-group-title' }, t('themeSpecific')),
+          h('span', { className: 'rw-chip' }, String(EDITOR_THEME_FAMILIES.length)),
           h('span', { className: 'rw-group-hint' }, t('themeSpecificHint'))),
         h('div', { className: 'rw-theme-grid' },
           EDITOR_THEME_FAMILIES.map(function (family) {
             var active = (settings.editorThemeFamily || 'github') === family.id;
-            var variant = getTheme(mode === 'dark' ? family.dark : mode === 'light' ? family.light : (settings.appThemeDark ? family.dark : family.light));
             return h('button', {
               key: family.id,
               type: 'button',
               className: 'rw-theme-card' + (active ? ' is-on' : ''),
               onClick: function () { chooseFamily(family.id); },
               'aria-pressed': active,
+              title: locale === 'zh' ? family.label.zh : family.label.en,
             },
-              h(ThemeSwatch, { theme: variant }),
-              h('span', { className: 'rw-theme-label' }, h('span', null, locale === 'zh' ? family.label.zh : family.label.en)));
+              h(ThemeSwatch, { light: getTheme(family.light), dark: getTheme(family.dark) }),
+              h('span', { className: 'rw-theme-label' },
+                h('span', { className: 'rw-theme-name' }, locale === 'zh' ? family.label.zh : family.label.en),
+                active ? h('span', { className: 'rw-theme-check', title: t('themeActiveNow') }, '✓') : null));
           })),
         local.message
           ? h(Banner, {
@@ -10728,6 +10784,29 @@ function rememberShowHidden(value) {
           remoteTabDisposer = null;
         }
 
+        function installSettingsTab(track) {
+          if (settingsTabDisposer !== null) return;
+          settingsTabDisposer = sidebar.registerTab({
+            id: SETTINGS_TAB_TYPE,
+            title: function () { return makeT(readLocale(ctx))('settingsTabTitle'); },
+            description: function () { return makeT(readLocale(ctx))('settingsTabDesc'); },
+            icon: function (size) { return IconSettingsNav(size); },
+            order: 60,
+            single: true,
+            available: function () { return true; },
+            component: function (props) {
+              return h(PluginSettingsTab, Object.assign({}, props, { ctx: ctx }));
+            },
+          });
+          if (track !== false) tabDisposers.push(function () { disposeSettingsTab(); });
+        }
+
+        function disposeSettingsTab() {
+          if (settingsTabDisposer === null) return;
+          try { settingsTabDisposer(); } catch (error) { /* ignore */ }
+          settingsTabDisposer = null;
+        }
+
         // Both page kinds stay registered for the whole session: `available`
         // only greys out the "+" entry for a mismatched session, while
         // `openTab` refuses a kind it has never seen. Registering lazily per
@@ -10745,6 +10824,7 @@ function rememberShowHidden(value) {
         refreshTabVisibilityRef = syncTabVisibility;
         installLinkedTab();
         installRemoteTab();
+        installSettingsTab();
         watchSessionScope();
         syncTabVisibility();
         try {

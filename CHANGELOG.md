@@ -4,6 +4,9 @@ English · [简体中文](CHANGELOG.zh.md)
 
 ## Unreleased
 
+- Three more theme families — **Tokyo Night**, **Gruvbox** and **Ayu** — bring the grid to twelve. Every card now previews both halves of the pair (light band on top, dark underneath) with the palette's keyword/string/function colours, so a family is recognisable without switching the app mode first.
+- The plugin now has its **own settings tab** (`联动工作区设置`, opened from the gear in the directory toolbar or the "+" menu). The DSH settings dialog only exists in the desktop shell, so the web build could never reach themes, remote exec, SSH trust, extra roots or port forwarding — now it can.
+- Settings page polish: the mode cards share one height and mark the active choice in the brand colour, the section headings line up with their count chips, and the theme grid reports how many families are available.
 - The **auto push** block on each workspace card is tidier: the title and the switch share one row with the state sentence underneath, the divider sits the same distance from its neighbours as the rest of the card, and the labels finally have a style of their own (that class had been referenced but never defined, so they rendered larger and darker than everything around them).
 - The known-host-keys list is folded by default, like the workspace allow-list: one line says how many keys are remembered, and the expand button reveals the fingerprints.
 - Long context menus no longer spill past the bottom of the window: the menu is measured after it renders and flips above the cursor when there is more room up there, otherwise it shrinks and scrolls inside itself. The last items ("Permissions", "Properties") used to be unreachable on a short window.
