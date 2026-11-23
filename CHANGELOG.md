@@ -4,6 +4,11 @@ English · [简体中文](CHANGELOG.zh.md)
 
 ## Unreleased
 
+- The preview pane keeps its reading position too: the scroll offset is restored
+  after the rendered Markdown comes back, not only in the editing view.
+- The directory panel now survives switching sessions: the open file tabs, the
+  active tab and both trees (expansion plus already listed entries) are kept per
+  session, so coming back to a workspace no longer looks like a fresh panel.
 - Markdown files now open in **preview** in both workspace kinds; the toolbar
   button switches to editing, and the chosen mode plus the reading position
   survive switching to another file and coming back. Word, Excel, PDF and

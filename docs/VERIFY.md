@@ -369,3 +369,7 @@ Host code (lib/) reloads live with `plugin_manager set_plugin include:linked-wor
    - 「复制绝对地址」→ 得到完整路径（远端形如 `/shared_data_ssd1/huangjh/code/a.txt`，本地形如 `D:\…\a.txt`）；
    - 「复制相对地址」→ 左树得到相对**本地根**的路径（如 `code/a.txt`），右树得到相对**远端根**的路径；
    - 提示条会显示实际复制的内容，两者都不带 `@`。
+
+9. 预览模式下把 Markdown 滚到中间，切到另一个文件再切回：仍是预览，且停在原处。
+10. 在一个工作区里打开几个文件标签、展开两棵树的几个目录，切到另一个工作区的会话再切回：
+    标签页与树的展开状态都还在，目录树不会重新从根加载。

@@ -2329,6 +2329,21 @@ window.__ModuleLoader__.load({
       viewMemory.set(key, Object.assign({}, viewMemory.get(key) || {}, next));
     }
 
+    // The directory tab is torn down whenever another session takes focus, so the
+    // open file tabs and the two trees (expansion + already listed entries) are
+    // kept per session here: switching sessions and coming back must look untouched.
+    var panelMemory = typeof Map === 'function' ? new Map() : null;
+
+    function recallPanel(key) {
+      if (!panelMemory || !key) return null;
+      return panelMemory.get(key) || null;
+    }
+
+    function rememberPanel(key, next) {
+      if (!panelMemory || !key || !next) return;
+      panelMemory.set(key, Object.assign({}, panelMemory.get(key) || {}, next));
+    }
+
     function clearHoverLines(card) {
       var injected = card.querySelectorAll('[' + HOVER_LINE_ATTR + ']');
       for (var index = 0; index < injected.length; index += 1) {
@@ -4079,16 +4094,35 @@ window.__ModuleLoader__.load({
       var t = props.t;
       var locale = props.locale;
       var rootPath = props.rootPath;
+      var rememberedTree = recallPanel(props.memoryKey);
       var expandedState = useState(function () {
         var set = new Set();
         set.add(rootPath);
+        if (rememberedTree && Array.isArray(rememberedTree.expanded)) {
+          rememberedTree.expanded.forEach(function (item) { if (item) set.add(item); });
+        }
         return set;
       });
       var expanded = expandedState[0];
       var setExpanded = expandedState[1];
-      var cacheState = useState({ entries: new Map() });
+      var cacheState = useState(function () {
+        var entries = new Map();
+        if (rememberedTree && Array.isArray(rememberedTree.entries)) {
+          rememberedTree.entries.forEach(function (pair) {
+            if (pair && pair.length === 2) entries.set(pair[0], pair[1]);
+          });
+        }
+        return { entries: entries };
+      });
       var cache = cacheState[0];
       var setCache = cacheState[1];
+
+      useEffect(function () {
+        rememberPanel(props.memoryKey, {
+          expanded: Array.from(expanded),
+          entries: Array.from(cache.entries.entries()),
+        });
+      }, [expanded, cache]);
       var pending = useRef(new Set());
       var lastRefreshAt = useRef(new Map());
 
@@ -5338,6 +5372,7 @@ function rememberShowHidden(value) {
       var setState = stateRef[1];
       var docTextareaRef = useRef(null);
       var docBodyRef = useRef(null);
+      var docPreviewRef = useRef(null);
 
       function patch(next) {
         setState(function (previous) { return Object.assign({}, previous, next); });
@@ -5380,9 +5415,11 @@ function rememberShowHidden(value) {
         var top = remembered ? Number(remembered.scrollTop) || 0 : 0;
         var body = docBodyRef.current;
         if (body) body.scrollTop = top;
+        var preview = docPreviewRef.current;
+        if (preview) preview.scrollTop = top;
         var area = docTextareaRef.current;
         if (area) area.scrollTop = top;
-      }, [state.loading, state.preview]);
+      }, [state.loading, state.preview, state.html, state.previewLoading]);
 
       function rememberScroll(event) {
         var node = event && event.currentTarget;
@@ -5607,7 +5644,7 @@ function rememberShowHidden(value) {
         body = state.preview
           ? h('div', { className: 'rw-doc-body', ref: docBodyRef, onScroll: rememberScroll },
             state.previewLoading ? h('div', { className: 'rw-editor-message' }, Spinner(14), t('loading')) : null,
-            state.html ? h('div', { className: 'rw-doc-preview', dangerouslySetInnerHTML: { __html: state.html } }) : null)
+            state.html ? h('div', { ref: docPreviewRef, className: 'rw-doc-preview', onScroll: rememberScroll, dangerouslySetInnerHTML: { __html: state.html } }) : null)
           : h('div', { className: 'rw-doc-body', ref: docBodyRef, onScroll: rememberScroll },
             state.findOpen ? h('div', { className: 'rw-find-bar rw-doc-find' },
               h('input', {
@@ -5978,12 +6015,24 @@ function rememberShowHidden(value) {
         return function () { alive = false; clearInterval(timer); };
       }, [selected && selected.key, selected && selected.autoPush]);
 
-      var openFilesState = useState([]);
+      // Same idea as the trees: the tab strip outlives this component only if it
+      // is remembered per session.
+      var paneMemoryKey = [props.sessionId || '', remoteOnly ? 'remote' : 'linked', pinnedLinkedId, pinnedRemoteId].join('|');
+      var rememberedPane = recallPanel(paneMemoryKey) || {};
+      var openFilesState = useState(function () {
+        return Array.isArray(rememberedPane.openFiles) ? rememberedPane.openFiles.slice() : [];
+      });
       var openFiles = openFilesState[0];
       var setOpenFiles = openFilesState[1];
-      var activeFileKeyState = useState('');
+      var activeFileKeyState = useState(function () {
+        return typeof rememberedPane.activeFileKey === 'string' ? rememberedPane.activeFileKey : '';
+      });
       var activeFileKey = activeFileKeyState[0];
       var setActiveFileKey = activeFileKeyState[1];
+
+      useEffect(function () {
+        rememberPanel(paneMemoryKey, { openFiles: openFiles, activeFileKey: activeFileKey });
+      }, [openFiles, activeFileKey]);
       var directoryOpenState = useState(true);
       var directoryOpen = directoryOpenState[0];
       var setDirectoryOpen = directoryOpenState[1];
@@ -7447,6 +7496,7 @@ function rememberShowHidden(value) {
             scope: scopeRef,
             rootPath: selected.remotePath,
             rootName: t('allFiles'),
+            memoryKey: paneMemoryKey + ':remote',
             t: t,
             locale: locale,
             showHidden: showHidden,
@@ -7471,6 +7521,7 @@ function rememberShowHidden(value) {
               scope: null,
               rootPath: selected.localPath,
               rootName: t('allFiles'),
+              memoryKey: paneMemoryKey + ':local',
               t: t,
               locale: locale,
               showHidden: showHidden,
