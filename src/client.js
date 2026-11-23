@@ -365,7 +365,7 @@ window.__ModuleLoader__.load({
       searchStop: '停止',
       searchStats: '扫描 {{files}} 个文件 · {{size}}',
       searchStatsSkipped: '跳过 {{count}} 个',
-      ctxCopyReference: '复制为 @ 引用',
+      ctxCopyReference: '复制相对地址',
       referenceCopied: '已复制 {{reference}}',
       searchScopeLabel: '范围：{{scope}}',
       findPlaceholder: '查找…',
@@ -721,7 +721,10 @@ window.__ModuleLoader__.load({
       ctxNotepad: '用记事本打开副本（不回写）',
       ctxCopy: '复制',
       ctxPaste: '粘贴',
-      ctxCopyPath: '复制路径',
+      ctxCopyPath: '复制绝对地址',
+      remoteRefSection: '远程工作区',
+      addressRefSection: '按地址链接',
+      addressLinkHint: '把这个地址变成引用',
       ctxRename: '重命名',
       ctxDelete: '删除',
       ctxChmod: '更改权限',
@@ -942,7 +945,7 @@ window.__ModuleLoader__.load({
       searchStop: 'Stop',
       searchStats: 'Scanned {{files}} files · {{size}}',
       searchStatsSkipped: '{{count}} skipped',
-      ctxCopyReference: 'Copy as @ reference',
+      ctxCopyReference: 'Copy relative address',
       referenceCopied: 'Copied {{reference}}',
       searchScopeLabel: 'Scope: {{scope}}',
       findPlaceholder: 'Find…',
@@ -1298,7 +1301,10 @@ window.__ModuleLoader__.load({
       ctxNotepad: 'Open a copy in Notepad (edits are not written back)',
       ctxCopy: 'Copy',
       ctxPaste: 'Paste',
-      ctxCopyPath: 'Copy path',
+      ctxCopyPath: 'Copy absolute address',
+      remoteRefSection: 'Remote workspace',
+      addressRefSection: 'Link an address',
+      addressLinkHint: 'Turn this address into a reference',
       ctxRename: 'Rename',
       ctxDelete: 'Delete',
       ctxChmod: 'Change permissions',
@@ -2307,6 +2313,19 @@ window.__ModuleLoader__.load({
     var HOVER_LINE_ATTR = 'data-lw-hover-line';
     var hoverCardObserver = null;
     var hoverCardState = typeof WeakMap === 'function' ? new WeakMap() : null;
+    // Document panes unmount whenever another tab becomes active, so the view mode
+    // (preview or edit) and the reading position have to live outside the component.
+    var viewMemory = typeof Map === 'function' ? new Map() : null;
+
+    function recallView(key) {
+      if (!viewMemory || !key) return null;
+      return viewMemory.get(key) || null;
+    }
+
+    function rememberView(key, next) {
+      if (!viewMemory || !key || !next) return;
+      viewMemory.set(key, Object.assign({}, viewMemory.get(key) || {}, next));
+    }
 
     function clearHoverLines(card) {
       var injected = card.querySelectorAll('[' + HOVER_LINE_ATTR + ']');
@@ -5301,15 +5320,22 @@ function rememberShowHidden(value) {
       var onSaved = props.onSaved;
       var settings = useRuntimeSettings();
       var kind = documentKindOf(path);
+      var viewKey = (local ? 'local' : ((scope && scope.kind ? scope.kind : 'remote') + ':' + ((scope && scope.id) || ''))) + '|' + path;
+      var rememberedView = recallView(viewKey);
       var stateRef = useState({
         loading: true, error: '', data: null, text: '', dirty: false, saving: false,
-        preview: false, html: '', previewLoading: false, page: 0, sheet: 0, slide: 0,
+        preview: rememberedView ? rememberedView.preview === true : kind === 'markdown',
+        html: '', previewLoading: false,
+        page: rememberedView ? Number(rememberedView.page) || 0 : 0,
+        sheet: rememberedView ? Number(rememberedView.sheet) || 0 : 0,
+        slide: rememberedView ? Number(rememberedView.slide) || 0 : 0,
         updates: {}, pptxUpdates: {}, rotations: {}, deleted: {}, pdfLoading: false, notice: '',
         findOpen: false, findQuery: '', findIndex: 0,
       });
       var state = stateRef[0];
       var setState = stateRef[1];
       var docTextareaRef = useRef(null);
+      var docBodyRef = useRef(null);
 
       function patch(next) {
         setState(function (previous) { return Object.assign({}, previous, next); });
@@ -5323,10 +5349,15 @@ function rememberShowHidden(value) {
       function load() {
         patch({ loading: true, error: '', notice: '' });
         apiCall('docs.read', params()).then(function (result) {
+          var remembered = recallView(viewKey);
           patch({
             loading: false, error: '', data: result,
             text: result.kind === 'markdown' ? String(result.text || '') : '',
-            preview: false, html: '', page: 0, sheet: 0, slide: 0,
+            preview: remembered ? remembered.preview === true : kind === 'markdown',
+            html: '', previewLoading: false,
+            page: remembered ? Number(remembered.page) || 0 : 0,
+            sheet: remembered ? Number(remembered.sheet) || 0 : 0,
+            slide: remembered ? Number(remembered.slide) || 0 : 0,
             updates: {}, pptxUpdates: {}, rotations: {}, deleted: {}, pdfLoading: false, dirty: false,
           });
         }).catch(function (error) {
@@ -5335,6 +5366,37 @@ function rememberShowHidden(value) {
       }
 
       useEffect(function () { load(); }, [path, local, scope && scope.kind, scope && scope.id]);
+
+      useEffect(function () {
+        if (state.loading) return;
+        rememberView(viewKey, { preview: state.preview === true, page: state.page, sheet: state.sheet, slide: state.slide });
+      }, [state.loading, state.preview, state.page, state.sheet, state.slide]);
+
+      useEffect(function () {
+        if (state.loading) return;
+        var remembered = recallView(viewKey);
+        var top = remembered ? Number(remembered.scrollTop) || 0 : 0;
+        var body = docBodyRef.current;
+        if (body) body.scrollTop = top;
+        var area = docTextareaRef.current;
+        if (area) area.scrollTop = top;
+      }, [state.loading, state.preview]);
+
+      function rememberScroll(event) {
+        var node = event && event.currentTarget;
+        if (!node) return;
+        rememberView(viewKey, { scrollTop: node.scrollTop });
+      }
+
+      useEffect(function () {
+        if (state.loading || !state.preview || kind !== 'markdown' || state.html || state.previewLoading) return;
+        patch({ previewLoading: true });
+        apiCall('docs.mdPreview', params({ text: state.text })).then(function (result) {
+          patch({ previewLoading: false, html: sanitizeDocumentHtml(result.html) });
+        }).catch(function (error) {
+          patch({ previewLoading: false, error: messageOf(error, t, locale) });
+        });
+      }, [state.loading, state.preview, state.html, state.previewLoading]);
 
       useEffect(function () {
         if (typeof props.onDirtyChange === 'function') props.onDirtyChange(state.dirty);
@@ -5541,10 +5603,10 @@ function rememberShowHidden(value) {
       var body = null;
       if (kind === 'markdown') {
         body = state.preview
-          ? h('div', { className: 'rw-doc-body' },
+          ? h('div', { className: 'rw-doc-body', ref: docBodyRef, onScroll: rememberScroll },
             state.previewLoading ? h('div', { className: 'rw-editor-message' }, Spinner(14), t('loading')) : null,
             state.html ? h('div', { className: 'rw-doc-preview', dangerouslySetInnerHTML: { __html: state.html } }) : null)
-          : h('div', { className: 'rw-doc-body' },
+          : h('div', { className: 'rw-doc-body', ref: docBodyRef, onScroll: rememberScroll },
             state.findOpen ? h('div', { className: 'rw-find-bar rw-doc-find' },
               h('input', {
                 className: 'rw-input',
@@ -5571,7 +5633,7 @@ function rememberShowHidden(value) {
               : null,
             h('textarea', {
               ref: docTextareaRef,
-              className: 'rw-doc-textarea', value: state.text, spellCheck: false,
+              className: 'rw-doc-textarea', value: state.text, spellCheck: false, onScroll: rememberScroll,
               onChange: function (event) { patch({ text: event.currentTarget.value, dirty: true, html: '' }); },
             }));
       } else if (kind === 'pdf' && state.data) {
@@ -10148,6 +10210,146 @@ function rememberShowHidden(value) {
           h('button', { type: 'button', className: 'rw-btn rw-btn-ghost rw-btn-sm', onClick: remote.reload }, IconRefresh(12), t('refresh'))));
     }
 
+    // ── @ references ───────────────────────────────────────────────────────
+
+    // The composer's own @ menu can only list what the host's fileReferences
+    // service knows about, and it has no provider seat. The client does expose
+    // an input-trigger seat though, so this source widens the same menu: a
+    // leading "@" in the query (the user typed "@@") lists the remote tree, and
+    // a query that looks like a path is offered as a reference for that path.
+    function sessionCwdOf(session) {
+      if (!session) return '';
+      if (typeof session.cwd === 'string') return session.cwd;
+      if (session.snapshot && typeof session.snapshot.cwd === 'string') return session.snapshot.cwd;
+      if (session.meta && typeof session.meta.cwd === 'string') return session.meta.cwd;
+      return '';
+    }
+
+    function sessionWorkspaceIdOf(session) {
+      if (!session) return '';
+      if (typeof session.workspaceId === 'string') return session.workspaceId;
+      if (session.snapshot && typeof session.snapshot.workspaceId === 'string') return session.snapshot.workspaceId;
+      if (session.meta && typeof session.meta.workspaceId === 'string') return session.meta.workspaceId;
+      return '';
+    }
+
+    function samePath(left, right) {
+      function norm(value) {
+        return String(value == null ? '' : value).replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase();
+      }
+      var a = norm(left);
+      var b = norm(right);
+      return a !== '' && a === b;
+    }
+
+    function referenceScopeFor(session) {
+      var cwd = sessionCwdOf(session);
+      var workspaceId = sessionWorkspaceIdOf(session);
+      return apiCall('linked.list').catch(function () { return { links: [] }; }).then(function (linked) {
+        var links = (linked && linked.links) || [];
+        for (var index = 0; index < links.length; index += 1) {
+          if (workspaceId && links[index].workspaceId === workspaceId) return { linkedId: links[index].id, root: links[index].remotePath || '' };
+          if (cwd && links[index].localPath && samePath(cwd, links[index].localPath)) return { linkedId: links[index].id, root: links[index].remotePath || '' };
+        }
+        return apiCall('remote_workspaces.list').catch(function () { return { workspaces: [] }; }).then(function (remote) {
+          var list = (remote && remote.workspaces) || [];
+          for (var cursor = 0; cursor < list.length; cursor += 1) {
+            if (workspaceId && list[cursor].workspaceId === workspaceId) return { remoteId: list[cursor].id, root: list[cursor].remotePath || '' };
+            if (cwd && list[cursor].placeholderPath && samePath(cwd, list[cursor].placeholderPath)) return { remoteId: list[cursor].id, root: list[cursor].remotePath || '' };
+          }
+          return null;
+        });
+      });
+    }
+
+    function mentionRefFor(path, isDir) {
+      var text = String(path == null ? '' : path);
+      if (isDir && text.slice(-1) !== '/') text += '/';
+      if (/[\u0000-\u001f\u007f-\u009f"]/u.test(text)) return null;
+      if (!/\s/u.test(text)) return '@' + text;
+      return isDir ? '@"' + text : '@"' + text + '"';
+    }
+
+    function installReferenceTriggers(ctx) {
+      var service = null;
+      try { service = ctx.get('inputTriggers'); } catch (error) { service = null; }
+      if (!service || typeof service.registerSource !== 'function') return;
+      var t = makeT(readLocale(ctx));
+
+      function candidates(session, request) {
+        var query = String((request && request.query) || '');
+        var remoteIntent = query.charAt(0) === '@';
+        var wanted = remoteIntent ? query.slice(1) : query;
+        // A single "@" keeps the stock menu untouched unless the query already
+        // reads like a path, which is the "type an address, get a reference" case.
+        var looksLikePath = wanted.indexOf('/') >= 0 || wanted.indexOf('\\') >= 0 || wanted.charAt(0) === '~';
+        if (!remoteIntent && !looksLikePath) return Promise.resolve([]);
+        if (wanted === '') {
+          if (!remoteIntent) return Promise.resolve([]);
+        }
+        return referenceScopeFor(session).then(function (scope) {
+          if (!scope) return [];
+          var params = { query: wanted, limit: 30 };
+          if (scope.linkedId) params.linkedId = scope.linkedId;
+          if (scope.remoteId) params.remoteId = scope.remoteId;
+          return apiCall('fs.references', params).catch(function () { return { candidates: [] }; }).then(function (result) {
+            var items = (result && result.candidates) || [];
+            return items.map(function (item) {
+              var isDir = item.kind === 'directory';
+              return {
+                name: String(item.path || ''),
+                label: (item.name || String(item.path || '').split('/').pop()) + (isDir ? '/' : ''),
+                description: String(item.path || ''),
+                icon: isDir ? 'folder' : 'file',
+                section: remoteIntent ? t('remoteRefSection') : t('addressRefSection'),
+                hint: remoteIntent ? undefined : t('addressLinkHint'),
+              };
+            }).filter(function (item) { return item.name !== ''; });
+          });
+        });
+      }
+
+      function onPick(pick) {
+        var candidate = (pick && pick.candidate) || {};
+        var path = String(candidate.name || '');
+        if (path === '') return undefined;
+        var isDir = candidate.icon === 'folder';
+        var ref = mentionRefFor(path, isDir);
+        if (!ref) return undefined;
+        var label = isDir ? String(path).replace(/\/+$/, '').split('/').pop() : String(path).split('/').pop();
+        return {
+          insert: {
+            source: 'linked-workspace',
+            ref: ref,
+            label: label || ref,
+            appearance: isDir ? 'folder' : 'file',
+            clipboardText: path,
+          },
+        };
+      }
+
+      var source = {
+        trigger: '@',
+        name: 'linked-workspace',
+        order: 40,
+        showGroupTitle: true,
+        candidates: candidates,
+        onPick: onPick,
+        codec: {
+          clipboardText: function (ref) { return String(ref == null ? '' : ref).replace(/^@/, ''); },
+          serialize: function (ref) { return Promise.resolve(String(ref == null ? '' : ref).replace(/^@/, '')); },
+        },
+      };
+
+      ctx.effect(function () {
+        try {
+          return service.registerSource(source);
+        } catch (error) {
+          return undefined;
+        }
+      }, 'dsh-linked-workspace: @ reference source');
+    }
+
     // ── apply ──────────────────────────────────────────────────────────────
 
     // `sessions` is a core client service (the sidebar shell injects it too):
@@ -10157,6 +10359,7 @@ function rememberShowHidden(value) {
 
     function apply(ctx) {
       ctx.effect(installStyles, 'dsh-linked-workspace: styles');
+      installReferenceTriggers(ctx);
       ctx.effect(function () {
         var lastDark = null;
         var sync = function () {

@@ -2,6 +2,20 @@
 
 English · [简体中文](CHANGELOG.zh.md)
 
+## Unreleased
+
+- Markdown files now open in **preview** in both workspace kinds; the toolbar
+  button switches to editing, and the chosen mode plus the reading position
+  survive switching to another file and coming back. Word, Excel, PDF and
+  PowerPoint panes remember their page, sheet and slide the same way.
+- `@@` in the composer opens the picker on the **remote** workspace's files and
+  folders; a single `@` keeps the stock local menu.
+- `@`/`@@` followed by an address (absolute, `~/…` or workspace relative) offers
+  that exact path, and picking it inserts a real reference chip that the model
+  receives as a path.
+- The context menu now says **Copy relative address** (was "Copy as @ reference")
+  and **Copy absolute address** (was "Copy path").
+
 ## 0.24.1 — 2026-11-22
 
 - Fix: every directory pane showed "the plugin host is still running older code" right after a full DSH restart. 0.24.0 raised the revision the Client expects to 9 but left `API_REVISION` in the Host at 8, so the two halves disagreed on a process that was perfectly up to date.
