@@ -2,12 +2,16 @@
 
 English · [简体中文](CHANGELOG.zh.md)
 
-## Unreleased
+## 0.26.1 — 2026-11-24
 
-- The remote candidates in the `@` menu now behave like DSH's own file group: each row is an
-  icon plus the bare name (the parent path is gone), folders carry `drill` so they show the
-  "enter directory · Tab" affordance, and picking one with Tab keeps the menu open and lists
-  that folder — the tree is walked level by level instead of being flattened into one list.
+- The remote candidates in the `@` menu now look and behave like DSH's own "Files & folders"
+  group: **an icon plus the bare name** (the extra detail line is gone), a folder carries the
+  "enter directory · Tab" hint, and pressing Tab (or clicking it) keeps the menu open, turns the
+  token into `@folder/` and lists that folder — you walk the tree level by level instead of
+  seeing one flattened list.
+- Being able to descend also means the menu no longer needs to guess: every keystroke filters the
+  current directory, so the group answers in a few hundred milliseconds even when the remote
+  folder holds thousands of entries.
 
 ## 0.26.0 — 2026-11-24
 
