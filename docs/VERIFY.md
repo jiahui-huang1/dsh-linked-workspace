@@ -39,6 +39,8 @@ Host code (lib/) reloads live with `plugin_manager set_plugin include:linked-wor
 12. 接口自检：`linked.sessionScope { sessionId }` → `{ scope: { linkedId | remoteId, root, cwd } }`；会话 id 带不带 `session-` 前缀都能解析；不属于任何联动/远程工作区时返回 `{ scope: null }`，此时 `@` 只剩 DSH 原生分组。
 14. 文件标签跨刷新与重启：打开「联动工作区目录」，点开两个文件（出现两个文件标签，记住当前标签）→ 刷新页面 → 两个标签与当前标签都恢复；再把 DSH（或 Web 实例的 Host 进程）整个重启，重新打开目录标签 → 标签依旧在。`localStorage` 里键为 `dsh-linked-workspace:pane-tabs`，每面板最多 24 个标签、最多记 12 个面板；关掉全部标签后该面板的记录会被删除。
 
+15. 远程组的行样式与下钻：单打 `@` →「远程文件与文件夹」每行只有图标 + 名字（没有整条相对路径的释义），目录行右侧出现「进入目录 · Tab」提示；对目录按 **Tab**（或点该行）→ 菜单不关闭、token 变成 `@目录/` 并列出该目录内容（可再按 Tab 继续下钻）；点文件 → 插入引用 chip、菜单关闭。实测：`@` → Tab → `@r4/`（列出 `sub/`、`content-needle.txt`、`demo.html`…）→ 再 Tab → `@r4/sub/`（列出 `inner.txt`）→ 点 `inner.txt` → chip `inner.txt`。
+
 13. 面板不被轮询冲掉：在会话里打开右侧「联动工作区目录」，展开两层目录并点开一个文件（出现文件标签），然后闲置 50 秒以上 → 文件标签仍在、展开状态不变；期间会话快照短暂缺少 cwd 时两个目录标签也不会被注销（旧实现会 dispose 后重建，正在看的文件随之关闭）。
 
 

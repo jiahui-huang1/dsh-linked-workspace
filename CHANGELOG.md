@@ -2,6 +2,13 @@
 
 English · [简体中文](CHANGELOG.zh.md)
 
+## Unreleased
+
+- The remote candidates in the `@` menu now behave like DSH's own file group: each row is an
+  icon plus the bare name (the parent path is gone), folders carry `drill` so they show the
+  "enter directory · Tab" affordance, and picking one with Tab keeps the menu open and lists
+  that folder — the tree is walked level by level instead of being flattened into one list.
+
 ## 0.26.0 — 2026-11-24
 
 - The `@` picker now knows which workspace a session belongs to: DSH hands the trigger
