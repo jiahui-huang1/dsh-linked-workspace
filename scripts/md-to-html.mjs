@@ -73,7 +73,17 @@ const html = [
   katexCss(),
   '.rw-doc-preview .katex{font-size:1.05em}',
   '.rw-doc-preview .katex-display{overflow-x:auto;overflow-y:hidden;margin:1.1em 0;padding:2px 0}',
-  '.rw-doc-preview .katex-display>.katex{display:inline-block;text-align:initial}',
+  // Keep KaTeX's own block layout: the equation number (`\tag`) is absolutely
+  // positioned at the right edge of the block, so shrinking the block to the
+  // formula's width (inline-block) parks the number on top of the formula.
+  // `min-width:max-content` is what still lets an over-wide formula scroll.
+  '.rw-doc-preview .katex-display>.katex{display:block;min-width:max-content;text-align:center}',
+  // KaTeX pins the equation number with `position:absolute; right:0`, which
+  // lands on top of the formula whenever the formula is (nearly) as wide as the
+  // column. Lay the number out after the formula instead, so it can never
+  // collide; `min-width:max-content` above keeps over-wide lines scrollable.
+  '.rw-doc-preview .katex-display>.katex:has(>.katex-html>.tag)>.katex-html{white-space:nowrap}',
+  '.rw-doc-preview .katex-display>.katex:has(>.katex-html>.tag)>.katex-html>.tag{position:static;right:auto;margin:0 0 0 1.6em;vertical-align:middle;white-space:nowrap}',
   '.rw-doc-preview .katex-error{color:var(--dsw-alias-state-error-primary,#d73a49);font-family:ui-monospace,Consolas,monospace;font-size:.9em}',
   '.rw-doc-preview .rw-md-fallback{white-space:pre-wrap}',
   '</style>',

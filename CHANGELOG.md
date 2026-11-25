@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Equation numbers sit **beside** the formula instead of on top of it. KaTeX pins `\tag{…}` with
+  `position: absolute; right: 0`, which parks the number on the formula itself as soon as the block
+  is narrower than the column — and the preview needed a narrow block so wide formulas could scroll.
+  Tagged formulas now keep KaTeX's block layout and lay the number out in flow (`margin-left: 1.6em`,
+  `position: static`, matched with `:has()` so only tagged formulas are affected), while
+  `min-width: max-content` keeps horizontal scrolling for anything wider than the pane.
 - Markdown previews no longer collapse their formulas. The preview sanitiser used to strip the
   inline `<style>` block that carries the KaTeX stylesheet — and even without that, the HTML parser
   moves a leading `<style>` into `<head>`, so the fragment never survived parsing. The stylesheet is
