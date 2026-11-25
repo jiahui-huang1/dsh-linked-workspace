@@ -25,7 +25,7 @@ Turn an existing SSH connection into a **linked workspace** or a **remote worksp
 - **DSH**: 0.2.1-rc.4 or newer (`engines` allows `>=0.2.0-rc.2 <0.3.0-0`).
 - **SSH**: the host lives in `~/.ssh/config`, or in DSH's SSH Manager (`dsh-ssh-tunnel`, optional). A plain `~/.ssh/config` is enough: the plugin ships its own SSH client and pins the host key on first use into `$DSH_HOME/linked-workspace/known_hosts.json` (a changed key is refused, with instructions to delete that entry). **`dsh-ssh-tunnel` is optional**: a host in `~/.ssh/config` without an `IdentityFile` can be given a password once in the “Add workspace” dialog, and it stays on this machine (see “SSH credentials” under Configuration).
 - **dsh-better-sidebar** (optional): `>=0.24.0`. It renders the sidebar directory pages and the file editor; without it everything else (settings page, directory pickers, agent tools) still works.
-- **Document editing** (optional): Python 3 with `python-docx`, `openpyxl`, `python-pptx` and `PyMuPDF`; set `DSH_OFFICE_PYTHON` to choose the interpreter. Markdown needs no Python.
+- **Document editing** (optional): Python 3 with `python-docx`, `openpyxl`, `python-pptx` and `PyMuPDF`; set `DSH_OFFICE_PYTHON` to choose the interpreter. Markdown previews are rendered inside the plugin process — no Python, and no `node` on your PATH.
 - **Development**: Node.js ≥ 20.
 
 ## Quick start

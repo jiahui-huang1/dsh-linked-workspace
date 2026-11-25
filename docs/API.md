@@ -24,7 +24,7 @@ Codes: `BAD_REQUEST`, `NOT_FOUND`, `SSH_CONNECT`, `AUTH_FAILED`,
 | `docs.text` | `{ path, linkedId?, remoteId?, maxChars? }` | `{ kind, path, size, mtime, pageCount?, text, truncated }` (plain text out of PDF / Word / Excel / PowerPoint; `maxChars` is clamped to 1000–200000, default 40000) |
 | `docs.write` | `{ path, data, expectedMtime?, linkedId?, remoteId? }` | `{ kind, path, size, mtime }` |
 | `docs.create` | `{ path, kind?, linkedId?, remoteId? }` | `{ kind, path, size, mtime }` |
-| `docs.mdPreview` | `{ path, text?, linkedId?, remoteId? }` | `{ kind, html }` |
+| `docs.mdPreview` | `{ path, text?, linkedId?, remoteId? }` | `{ kind, html }` (rendered in-process; the fragment carries the KaTeX stylesheet and expects the plugin's `/dsh-linked-workspace/assets/katex/` fonts) |
 | `docs.mdPdf` | `{ path, text?, linkedId?, remoteId? }` | `{ kind: "pdf", path, size, mtime }` |
 
 ## Records

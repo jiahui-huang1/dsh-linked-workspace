@@ -25,7 +25,7 @@
 - **DSH**：0.2.1-rc.4 或更高（`engines` 允许 `>=0.2.0-rc.2 <0.3.0-0`）。
 - **SSH**：主机写在 `~/.ssh/config`，或加入 DSH 的 SSH Manager（`dsh-ssh-tunnel`，可选）。裸 `~/.ssh/config` 也够用：插件自带 SSH 客户端，首次连接**自动信任并记录**主机指纹到 `$DSH_HOME/linked-workspace/known_hosts.json`，指纹变化时拒绝连接并提示删除对应条目。**不安装 `dsh-ssh-tunnel` 也能用**：没有 `IdentityFile` 的主机可在这个插件的「添加工作区」弹窗里填一次密码，密码保存在本机（见「配置 → SSH 凭据」）。
 - **dsh-better-sidebar**（可选）：`>=0.24.0`。装上才有右侧栏目录页与文件编辑页；缺少时其余功能（设置页、目录选择、模型工具）照常可用。
-- **文档编辑**（可选）：Python 3 及 `python-docx`、`openpyxl`、`python-pptx`、`PyMuPDF`；可用 `DSH_OFFICE_PYTHON` 指定解释器。Markdown 不需要 Python。
+- **文档编辑**（可选）：Python 3 及 `python-docx`、`openpyxl`、`python-pptx`、`PyMuPDF`；可用 `DSH_OFFICE_PYTHON` 指定解释器。Markdown 预览在插件进程内渲染，不需要 Python，也不需要在 PATH 里放 `node`。
 - **开发**：Node.js ≥ 20。
 
 ## 快速开始

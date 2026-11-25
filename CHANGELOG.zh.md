@@ -1,6 +1,6 @@
 # 更新日志
 
-## Unreleased
+## 0.27.0 — 2026-11-26
 
 - Markdown 预览改为**在 Host 进程内渲染**，不再 spawn `node scripts/md-to-html.mjs`。
   之前只要 DSH 进程的 PATH 里没有 `node`，子进程就会失败，然后悄悄回退到纯 Python 渲染器 ——
@@ -38,7 +38,7 @@
   不往本地磁盘写任何东西。
 - 文件不在任何工作区目录里时，提示里写出实际路径并复制到剪贴板，不再默默打开错的树。
 - 「定位最近产物」换成独立的十字准星图标，不再和「传输与推送历史」的时钟撞脸。
-- Host API：`settings.revealSide`、`linked.lastArtifact`，`API_REVISION` 13。
+- Host API：`settings.revealSide`、`linked.lastArtifact`、进程内渲染的 `docs.mdPreview`，`API_REVISION` 14。
 
 简体中文 · [English](CHANGELOG.md)
 

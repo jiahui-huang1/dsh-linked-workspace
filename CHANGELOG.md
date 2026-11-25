@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.27.0 — 2026-11-26
 
 - Markdown previews are rendered **inside the Host process** instead of by spawning
   `node scripts/md-to-html.mjs`. When the DSH process had no `node` on its PATH the child run failed
@@ -47,7 +47,7 @@
 - A file outside every workspace is reported with its real path in the notice and
   copied to the clipboard, instead of silently opening the wrong tree.
 - The button has its own crosshair glyph, so it no longer looks like **Transfer history**.
-- Host API: `settings.revealSide`, `linked.lastArtifact`, `API_REVISION` 13.
+- Host API: `settings.revealSide`, `linked.lastArtifact`, in-process `docs.mdPreview`, `API_REVISION` 14.
 
 English · [简体中文](CHANGELOG.zh.md)
 
