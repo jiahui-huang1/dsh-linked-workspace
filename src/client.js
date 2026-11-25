@@ -54,6 +54,9 @@ window.__ModuleLoader__.load({
     // but a full remote listing on a huge folder is expensive; 15 s keeps the
     // tree fresh without hammering the SSH channel.
     var REFRESH_MIN_INTERVAL_MS = 15000;
+    // Long enough for a slow directory on a busy cluster, short enough that a
+    // dead request does not stare back at the user forever.
+    var TREE_LIST_TIMEOUT_MS = 20000;
     // HTML previews read the whole document (a plotly/figure page is one big
     // inlined script), so they ask the Host for the 8 MB read cap instead of
     // the editor's 2 MB one.
@@ -251,7 +254,7 @@ window.__ModuleLoader__.load({
 
     var ZH = {
       settingsNav: '联动工作区',
-      revealSection: '产物打开位置',
+      revealSection: '最近产物打开位置',
       revealHint: '会话里点开会话产物（截图、图表、生成的文件）时，默认落到哪一侧。远程工作区只有远程侧。',
       revealSideRemote: '优先远程目录',
       revealSideLocal: '优先本地目录',
@@ -730,6 +733,9 @@ window.__ModuleLoader__.load({
       execAuditOpen: '打开审计日志',
       execSaved: '远端命令执行设置已保存',
       shortcutTitle: '常用快捷键',
+      shortcutShow: '展开（{{count}} 条）',
+      shortcutHide: '收起',
+      listTimedOut: '加载超时，点击重试',
       shortcutHint: '与 VS Code 类似的默认快捷键；macOS 上把 Ctrl 换成 ⌘。',
       shortcutSave: '保存当前文件',
       shortcutClose: '关闭当前文件',
@@ -849,7 +855,7 @@ window.__ModuleLoader__.load({
 
     var EN = {
       settingsNav: 'Linked workspaces',
-      revealSection: 'Where artifacts open',
+      revealSection: 'Where the last artifact opens',
       revealHint: 'Side used when a chat artifact (screenshot, chart, generated file) is opened from the conversation. Remote workspaces only have the remote side.',
       revealSideRemote: 'Prefer the remote tree',
       revealSideLocal: 'Prefer the local tree',
@@ -1328,6 +1334,9 @@ window.__ModuleLoader__.load({
       execAuditOpen: 'Open the audit log',
       execSaved: 'Remote-execution settings saved',
       shortcutTitle: 'Keyboard shortcuts',
+      shortcutShow: 'Show ({{count}})',
+      shortcutHide: 'Hide',
+      listTimedOut: 'Taking too long — click to retry',
       shortcutHint: 'VS Code-like defaults; use ⌘ instead of Ctrl on macOS.',
       shortcutSave: 'Save the current file',
       shortcutClose: 'Close the current file',
@@ -2175,6 +2184,8 @@ window.__ModuleLoader__.load({
       '.rw-mode-card:hover{border-color:var(--dsw-alias-border-l3,rgba(127,127,127,.4))}',
       '.rw-mode-card.is-on{border-color:var(--dsw-alias-brand-primary);background:color-mix(in srgb,var(--dsw-alias-brand-primary) 9%,transparent)}',
       '.rw-mode-card.is-on .rw-mode-name{color:var(--dsw-alias-brand-primary)}',
+      '.rw-btn.is-on{border-color:var(--dsw-alias-brand-primary);background:color-mix(in srgb,var(--dsw-alias-brand-primary) 10%,transparent);color:var(--dsw-alias-label-primary);font-weight:600}',
+      '.rw-btn.is-on:hover{border-color:var(--dsw-alias-brand-primary)}',
       '.rw-mode-name{font-size:12px;font-weight:600;line-height:17px}',
       '.rw-mode-desc{font-size:10.5px;line-height:14px;color:var(--dsw-alias-label-tertiary)}',
       '.rw-ctx-menu{position:fixed;min-width:214px;max-height:min(70vh,520px);overflow:auto;padding:4px 0;border:1px solid var(--dsw-alias-border-l2);border-radius:7px;background:var(--dsw-alias-bg-overlay);box-shadow:0 12px 36px rgba(0,0,0,.3);z-index:71;font-size:12px;user-select:none}',
@@ -4250,7 +4261,8 @@ window.__ModuleLoader__.load({
         var entries = new Map();
         if (rememberedTree && Array.isArray(rememberedTree.entries)) {
           rememberedTree.entries.forEach(function (pair) {
-            if (pair && pair.length === 2) entries.set(pair[0], pair[1]);
+            if (!pair || pair.length !== 2) return;
+            entries.set(pair[0], Object.assign({}, pair[1] || {}, { loading: false, loadingMore: false }));
           });
         }
         return { entries: entries };
@@ -4259,9 +4271,15 @@ window.__ModuleLoader__.load({
       var setCache = cacheState[1];
 
       useEffect(function () {
+        // A record captured while its request was still in flight comes back
+        // with `loading: true` and nothing will ever clear it (the request died
+        // with the panel), so the tree would spin forever. Persist only what is
+        // settled; the reload below refetches the rest.
         rememberPanel(props.memoryKey, {
           expanded: Array.from(expanded),
-          entries: Array.from(cache.entries.entries()),
+          entries: Array.from(cache.entries.entries()).map(function (pair) {
+            return [pair[0], Object.assign({}, pair[1] || {}, { loading: false, loadingMore: false })];
+          }),
         });
       }, [expanded, cache]);
       var pending = useRef(new Set());
@@ -4362,6 +4380,15 @@ window.__ModuleLoader__.load({
         });
       }
 
+      // `load` refuses to re-ask while a path is pending, which is what keeps
+      // duplicate requests down but also traps a request whose response never
+      // arrived. The retry below drops the guard first.
+      function retry(path) {
+        pending.current.delete(path);
+        lastRefreshAt.current.delete(path);
+        load(path);
+      }
+
       function loadMore(path) {
         var record = cache.entries.get(path);
         if (!record || record.loadingMore || !record.hasMore) return;
@@ -4428,6 +4455,7 @@ window.__ModuleLoader__.load({
         toggle: toggle,
         state: { entries: cache.entries },
         load: load,
+        retry: retry,
         loadMore: loadMore,
         onSelect: props.onSelect,
         onPin: props.onPin,
@@ -8141,7 +8169,18 @@ function rememberShowHidden(value) {
       });
       // Hovering over a collapsed folder during a drag expands it after a short
       // delay, so dropping into a nested folder does not require two passes.
+      // A listing that never settles (dropped socket, aborted request) has to
+      // stop looking like progress at some point.
+      var stalledState = useState(false);
+      var stalled = stalledState[0];
+      var setStalled = stalledState[1];
       var dragOpenTimer = useRef(null);
+
+      useEffect(function () {
+        if (!entry.loading) { setStalled(false); return undefined; }
+        var timer = setTimeout(function () { setStalled(true); }, TREE_LIST_TIMEOUT_MS);
+        return function () { clearTimeout(timer); };
+      }, [entry.loading, path]);
 
       useEffect(function () {
         return function () {
@@ -8150,12 +8189,25 @@ function rememberShowHidden(value) {
       }, []);
 
       useEffect(function () {
-        if (isOpen && !entry.loading && !entry.loaded && !entry.error) props.load(path);
-      }, [isOpen]);
+        // `load` is guarded per path, so asking again while a request is in
+        // flight costs nothing; doing it whenever the record is unsettled also
+        // heals one restored from panel memory still flagged as loading.
+        if (isOpen && !entry.loaded && !entry.error) props.load(path);
+      }, [isOpen, entry.loading, entry.loaded, entry.error]);
 
       var children = [];
       if (isOpen) {
-        if (entry.loading) children.push(h('div', { key: 'loading', className: 'rw-row-msg' }, Spinner(12), t('loading')));
+        if (entry.loading) {
+          children.push(stalled
+            ? h('button', {
+              key: 'loading',
+              type: 'button',
+              className: 'rw-row-msg',
+              style: { width: '100%', border: 0, background: 'transparent', cursor: 'pointer', textAlign: 'left' },
+              onClick: function () { setStalled(false); props.retry(path); },
+            }, IconAlert(12), t('listTimedOut'))
+            : h('div', { key: 'loading', className: 'rw-row-msg' }, Spinner(12), t('loading')));
+        }
         else if (entry.error) children.push(h('button', {
           key: 'error',
           type: 'button',
@@ -8179,6 +8231,7 @@ function rememberShowHidden(value) {
                 toggle: toggle,
                 state: state,
                 load: props.load,
+                retry: props.retry,
                 loadMore: props.loadMore,
                 onSelect: onSelect,
                 onPin: onPin,
@@ -8395,6 +8448,11 @@ function rememberShowHidden(value) {
         });
       }
 
+      function retry(path) {
+        pending.current.delete(path);
+        load(path);
+      }
+
       function loadMore(path) {
         var record = cache.entries.get(path);
         if (!record || record.loadingMore || !record.hasMore) return;
@@ -8439,7 +8497,7 @@ function rememberShowHidden(value) {
           return next;
         });
         var record = cache.entries.get(root);
-        if (!record || (!record.loaded && !record.loading && !record.error)) load(root);
+        if (!record || (!record.loaded && !record.error)) load(root);
       }, [open]);
 
       return h('div', { className: 'rw-tree-ws' },
@@ -8478,6 +8536,7 @@ function rememberShowHidden(value) {
               toggle: toggle,
               state: { entries: cache.entries },
               load: load,
+              retry: retry,
               loadMore: loadMore,
               onSelect: props.onSelect,
               selectedPath: props.selectedPath,
@@ -9664,6 +9723,11 @@ function rememberShowHidden(value) {
       var state = useState({ saving: false, message: null });
       var local = state[0];
       var setLocal = state[1];
+      // The key list is reference material: folded until asked for, like the
+      // second-layer lists below it.
+      var shortcutOpenState = useState(false);
+      var shortcutsOpen = shortcutOpenState[0];
+      var setShortcutsOpen = shortcutOpenState[1];
       var shortcuts = [
         ['Ctrl+S', t('shortcutSave')],
         ['Ctrl+W', t('shortcutClose')],
@@ -9697,14 +9761,22 @@ function rememberShowHidden(value) {
           local.saving ? Spinner(12) : null),
         h('div', { className: 'rw-group-head', style: { marginTop: 14 } },
           h('span', { className: 'rw-group-title' }, t('shortcutTitle')),
-          h('span', { className: 'rw-group-hint' }, t('shortcutHint'))),
-        h('div', { className: 'rw-shortcut-grid' },
-          shortcuts.map(function (item) {
-            return h('div', { key: item[0], className: 'rw-shortcut-row' },
-              h('kbd', { className: 'rw-kbd' }, item[0]),
-              h('span', null, item[1]));
-          })),
-        h('div', { className: 'rw-group-hint', style: { marginTop: 8 } }, t('shortcutWebNote')),
+          h('button', {
+            type: 'button',
+            className: 'rw-btn rw-btn-ghost rw-btn-sm',
+            onClick: function () { setShortcutsOpen(function (open) { return !open; }); },
+          }, t(shortcutsOpen ? 'shortcutHide' : 'shortcutShow', { count: String(shortcuts.length) }))),
+        shortcutsOpen
+          ? h('div', null,
+            h('div', { className: 'rw-group-hint', style: { marginTop: 4 } }, t('shortcutHint')),
+            h('div', { className: 'rw-shortcut-grid' },
+              shortcuts.map(function (item) {
+                return h('div', { key: item[0], className: 'rw-shortcut-row' },
+                  h('kbd', { className: 'rw-kbd' }, item[0]),
+                  h('span', null, item[1]));
+              })),
+            h('div', { className: 'rw-group-hint', style: { marginTop: 8 } }, t('shortcutWebNote')))
+          : null,
         local.message
           ? h(Banner, {
             kind: local.message.kind === 'success' ? 'success' : 'error',
@@ -9730,7 +9802,10 @@ function rememberShowHidden(value) {
       });
       var local = state[0];
       var setLocal = state[1];
-      // The second-layer list is long and rarely touched: start collapsed.
+      // Both lists are long and rarely touched: start collapsed.
+      var hostListState = useState(false);
+      var hostsOpen = hostListState[0];
+      var setHostsOpen = hostListState[1];
       var workspaceListState = useState(false);
       var workspacesOpen = workspaceListState[0];
       var setWorkspacesOpen = workspaceListState[1];
@@ -9842,23 +9917,36 @@ function rememberShowHidden(value) {
       if (local.execEnabled) {
         children.push(h('div', { className: 'rw-group-hint', style: { marginTop: 8, color: 'rgb(210,153,34)' } }, t('execWarn')));
         children.push(h('div', { className: 'rw-group-head', style: { marginTop: 12 } },
-          h('span', { className: 'rw-group-title' }, t('execHostsTitle'))));
-        children.push(hosts.length === 0
-          ? h('div', { className: 'rw-hint' }, t('execHostsEmpty'))
-          : h('div', { className: 'rw-exec-list' }, hosts.map(function (host) {
-            var checked = local.execHostIds.indexOf(host.id) >= 0;
-            return h('label', { key: host.id, className: 'rw-exec-item' },
-              h('input', {
-                type: 'checkbox',
-                checked: checked,
-                onChange: function (event) {
-                  var on = event.currentTarget.checked;
-                  save({ execHostIds: withId(local.execHostIds, host.id, on) }, t('execSaved'));
-                },
-              }),
-              h('span', { className: 'rw-exec-name' }, host.name || host.host || host.id),
-              h('span', { className: 'rw-exec-meta' }, (host.username ? host.username + '@' : '') + (host.host || '') + (host.port ? ':' + host.port : '')));
-          })));
+          h('span', { className: 'rw-group-title' }, t('execHostsTitle')),
+          h('button', {
+            type: 'button',
+            className: 'rw-btn rw-btn-ghost rw-btn-sm',
+            onClick: function () { setHostsOpen(function (open) { return !open; }); },
+          }, t(hostsOpen ? 'execWorkspacesHide' : 'execWorkspacesShow', { count: String(local.execHostIds.length) }))));
+        if (hostsOpen) {
+          children.push(hosts.length === 0
+            ? h('div', { className: 'rw-hint' }, t('execHostsEmpty'))
+            : h('div', { className: 'rw-exec-list' }, hosts.map(function (host) {
+              var checked = local.execHostIds.indexOf(host.id) >= 0;
+              return h('label', { key: host.id, className: 'rw-exec-item' },
+                h('input', {
+                  type: 'checkbox',
+                  checked: checked,
+                  onChange: function (event) {
+                    var on = event.currentTarget.checked;
+                    save({ execHostIds: withId(local.execHostIds, host.id, on) }, t('execSaved'));
+                  },
+                }),
+                h('span', { className: 'rw-exec-name' }, host.name || host.host || host.id),
+                h('span', { className: 'rw-exec-meta' }, (host.username ? host.username + '@' : '') + (host.host || '') + (host.port ? ':' + host.port : '')));
+            })));
+        } else {
+          var pickedNames = hosts.filter(function (host) {
+            return local.execHostIds.indexOf(host.id) >= 0;
+          }).map(function (host) { return host.name || host.host || host.id; });
+          children.push(h('div', { className: 'rw-group-hint', style: { marginTop: 4 } },
+            pickedNames.length === 0 ? t('execHostsEmpty') : pickedNames.join('、')));
+        }
         var picked = local.execWorkspaceIds;
         children.push(h('div', { className: 'rw-group-head', style: { marginTop: 12 } },
           h('span', { className: 'rw-group-title' }, t('execWorkspacesTitle')),

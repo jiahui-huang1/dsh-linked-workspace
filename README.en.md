@@ -69,7 +69,7 @@ The clock button at the left end of the directory toolbar — **Locate last arti
   the host which file the chat presented last, then opens (or raises) the right-hand pane and
   reveals that file as a tab.
 
-Settings → Linked workspaces → *Where chat artifacts open* picks the default side; a remote workspace has no local copy, so it only ever opens the remote file.
+Settings → Linked workspaces → *Where the last artifact opens* picks the default side; a remote workspace has no local copy, so it only ever opens the remote file.
 
 
 ### Sidebar: “Linked Workspace Directory”
