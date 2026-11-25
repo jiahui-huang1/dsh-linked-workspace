@@ -63,6 +63,14 @@ The plugin takes over the DSH sidebar/hero directory-selection hole; the dialog 
 >
 > That also explains why a workspace reads “Not connected” right after DSH starts: it means “this process has not dialled that host yet”, not “it cannot”. To find out immediately, press **Reconnect** on the card in settings — it drops the old socket, dials once, and either reports “Reconnected” with the round-trip time or shows the host's own error message.
 
+### Jump to a chat artifact in the right tree
+
+- **Open in the remote tree** / **Open in the local tree** — right-click a file chip, a tool row or a deliverable card, and the right-hand pane opens with that exact file as a tab.
+- **Copy remote path** — the absolute remote path, ready for the terminal or the chat.
+
+Settings → Linked workspaces → *Where chat artifacts open* picks the default side; a remote workspace has no local copy, so it only ever opens the remote file.
+
+
 ### Sidebar: “Linked Workspace Directory”
 
 The heading shows the free space of the remote volume that holds the workspace;

@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased
+
+- The file context menu of a chat artifact now has **Open in the remote tree** /
+  **Open in the local tree** / **Copy remote path**. Picking a tree opens the
+  right-hand workspace pane (opening it if needed) and shows that exact file
+  inside it, instead of guessing a local path.
+- New setting **Where chat artifacts open** (设置 → 联动工作区 → 产物默认打开位置):
+  `remote` (default) walks the remote tree first, `local` prefers the local copy
+  of a linked workspace. Remote workspaces ignore the preference and only ever
+  open the remote side — nothing is written to the local disk.
+- A file outside every workspace gets one row that copies its real path and says
+  so, with the path in the notice, instead of silently opening the wrong tree.
+- Host API: `settings.revealSide`, `API_REVISION` 12.
+
 English · [简体中文](CHANGELOG.zh.md)
 
 ## 0.26.1 — 2026-11-24

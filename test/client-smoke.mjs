@@ -10,7 +10,7 @@
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 
-const registered = { settings: [], icons: [], overlays: [], flows: [], tabs: [] }
+const registered = { settings: [], icons: [], overlays: [], menus: [], flows: [], tabs: [] }
 let captured = null
 let effectCount = 0
 
@@ -68,6 +68,7 @@ const ctx = {
       if (options.name === 'settings.section') registered.settings.push(entry)
       else if (options.name === 'settings.section.icon') registered.icons.push(entry)
       else if (options.name === 'shell.overlay') registered.overlays.push(entry)
+      else if (options.name === 'contextMenu.content') registered.menus.push(entry)
       else registered.flows.push(entry)
       return () => {}
     },
@@ -98,6 +99,9 @@ assert.match(bundleSource, /hosts\.reconnect/, 'the workspace cards can force a 
 assert.match(bundleSource, /ExecSettingsGroup/, 'remote command execution has its own settings block')
 assert.match(bundleSource, /execHostsTitle/, 'the exec block lists the host allow-list')
 assert.match(bundleSource, /execWorkspacesTitle/, 'the exec block lists the workspace allow-list')
+assert.match(bundleSource, /ctxOpenInRemoteTree/, 'chat artifacts can be opened in the remote tree')
+assert.match(bundleSource, /revealPath/, 'the tree tab accepts a reveal target from the tab meta')
+assert.match(bundleSource, /revealSide/, 'the default reveal side is a stored preference')
 
 // The two halves must agree, or a freshly restarted DSH greets the user with
 // the "the plugin host is still running older code" banner even though nothing
@@ -154,6 +158,12 @@ assert.equal(typeof welcome.options.label, 'function')
 assert.equal(welcome.options.label(), '欢迎使用联动工作区插件', 'the overlay label follows the zh locale')
 assert.equal(typeof welcome.component, 'function')
 
+assert.equal(registered.menus.length, 1, 'the file context menu contribution registered')
+const fileMenu = registered.menus[0]
+assert.equal(fileMenu.options.name, 'contextMenu.content')
+assert.equal(fileMenu.options.key, 'file', 'the rows only show up for file targets')
+assert.equal(typeof fileMenu.component, 'function')
+
 assert.equal(registered.flows.length, 2, 'the sidebar and hero directory flows registered')
 const flowNames = registered.flows.map((entry) => entry.options.name).sort()
 assert.deepEqual(flowNames, ['conversation.hero.workspace.directoryFlow', 'sidebar.workspaces.directoryFlow'])
@@ -199,7 +209,7 @@ console.log('  sidebar tabs:', registered.tabs.map((tab) => tab.id).join(', '))
 // bundle, register the settings page and the directory flows, and simply skip
 // the sidebar pages. `ctx.get` throws for an unknown service, which is exactly
 // what the plugin sees when the companion is not installed.
-const orphan = { settings: [], icons: [], overlays: [], flows: [], tabs: [] }
+const orphan = { settings: [], icons: [], overlays: [], menus: [], flows: [], tabs: [] }
 const orphanCtx = {
   effect(callback) {
     const disposer = callback()
@@ -219,6 +229,7 @@ const orphanCtx = {
       if (options.name === 'settings.section') orphan.settings.push(entry)
       else if (options.name === 'settings.section.icon') orphan.icons.push(entry)
       else if (options.name === 'shell.overlay') orphan.overlays.push(entry)
+      else if (options.name === 'contextMenu.content') orphan.menus.push(entry)
       else orphan.flows.push(entry)
       return () => {}
     },
@@ -232,6 +243,7 @@ assert.equal(orphan.settings[0].options.id, 'linked-workspaces')
 assert.equal(orphan.icons.length, 1, 'the settings nav icon still registers without the sidebar')
 assert.equal(orphan.icons[0].options.id, 'linked-workspaces')
 assert.equal(orphan.overlays.length, 1, 'the welcome overlay still registers without the sidebar')
+assert.equal(orphan.menus.length, 1, 'the file context menu still registers without the sidebar')
 assert.equal(orphan.flows.length, 2, 'both directory flows still register without the sidebar')
 assert.equal(orphan.tabs.length, 0, 'no sidebar page is registered when the companion is absent')
 
