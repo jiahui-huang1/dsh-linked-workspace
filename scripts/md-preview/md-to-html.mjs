@@ -28,14 +28,28 @@ const html = micromark(markdown, {
       // Render math with KaTeX
       renderInline: (text) => {
         try {
-          return katex.renderToString(text, { throwOnError: false, displayMode: false });
+          return katex.renderToString(text, {
+            throwOnError: false,
+            displayMode: false,
+            output: 'html',
+            trust: false,
+            strict: 'warn',
+            fleqn: false,
+          });
         } catch (err) {
           return `<span class="katex-error">${escapeHtml(text)}</span>`;
         }
       },
       renderBlock: (text) => {
         try {
-          return katex.renderToString(text, { throwOnError: false, displayMode: true });
+          return katex.renderToString(text, {
+            throwOnError: false,
+            displayMode: true,
+            output: 'html',
+            trust: false,
+            strict: 'warn',
+            fleqn: false,
+          });
         } catch (err) {
           return `<div class="katex-error">${escapeHtml(text)}</div>`;
         }
@@ -119,6 +133,46 @@ hr {
 .katex-error {
   color: #d73a49;
   font-family: monospace;
+}
+/* Math alignment and spacing fixes */
+.math-inline {
+  display: inline;
+  vertical-align: baseline;
+}
+.math-inline .katex {
+  font-size: 1.08em;
+  vertical-align: -0.05em;
+}
+.math-display {
+  overflow: auto hidden;
+  text-align: center;
+  margin: 1.2em 0;
+}
+.math-display .katex-display {
+  margin: 0;
+  text-align: center;
+}
+.math-display .katex {
+  display: inline-block;
+  text-align: initial;
+}
+/* Tighten spacing in common contexts */
+p .math-inline {
+  margin: 0 0.1em;
+}
+li .math-inline {
+  margin: 0 0.1em;
+}
+/* Ensure display math has breathing room */
+p + .math-display,
+ul + .math-display,
+ol + .math-display {
+  margin-top: 1.2em;
+}
+.math-display + p,
+.math-display + ul,
+.math-display + ol {
+  margin-top: 1.2em;
 }
 </style>
 </head>
