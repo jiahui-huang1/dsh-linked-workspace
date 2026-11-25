@@ -4,6 +4,7 @@
 
 - Linked and remote workspaces whose SSH host is no longer in the DSH config are **skipped from the workspace list** instead of blocking `linked.list` for 20+ seconds trying to reach them.
 - Markdown preview rendering now uses **micromark + KaTeX** to match DSH's native pipeline, so math formulas (`$...$` and `$$...$$`) render correctly in both the preview and the sidebar file viewer.
+- The preview is self-contained: it ships KaTeX's stylesheet **inside the rendered HTML** and the host serves the KaTeX font files under `/dsh-linked-workspace/assets/`, so formulas no longer collapse when the machine is offline or the page has no CDN access. Removing the CDN link also means no third-party request per preview.
 - The workspace directory panel has a **Locate last artifact** button: it asks the host
   which file the chat presented most recently and opens it in the tree: the right-hand workspace pane opens (or comes forward)
   and reveals that exact file, instead of guessing a local path.

@@ -39,6 +39,7 @@ function makeCtx() {
   const disposers = []
   const tools = []
   const prompts = []
+  const listeners = []
   const registry = {
     list: () => fakeWorkspaces.slice(),
     create: async (path, title) => {
@@ -70,6 +71,10 @@ function makeCtx() {
       if (typeof disposer === 'function') disposers.push(disposer)
       return disposer
     },
+    on(event, listener) {
+      listeners.push({ event, listener })
+      return () => {}
+    },
     get(serviceName) {
       // No `connection` service in this harness: the loopback fence applies.
       return services[serviceName]
@@ -81,7 +86,7 @@ function makeCtx() {
       },
     },
   }
-  return { ctx, routes, disposers, tools, prompts }
+  return { ctx, routes, disposers, tools, prompts, listeners }
 }
 
 function makeRequest(body, headers) {
@@ -128,7 +133,7 @@ function step(label, started, extra) {
 }
 
 async function main() {
-  const { ctx, routes, disposers, tools, prompts } = makeCtx()
+  const { ctx, routes, disposers, tools, prompts, listeners } = makeCtx()
   apply(ctx)
   const route = routes.find((entry) => entry.path === '/dsh-linked-workspace/api')
   assert.ok(route, 'the plugin registered its API route')
@@ -704,6 +709,19 @@ async function main() {
     assert.ok(typeof reconnected.checkedAt === 'number', 'the status carries a timestamp')
     await fail('hosts.reconnect', { hostId: 'sshconfig:no-such-host' }, 404)
     step('hosts.reconnect', started, `${reconnected.state} in ${reconnected.latencyMs} ms`)
+
+    // 13a5c. Artifact tracking (0.27.0): remember what `present` showed last
+    started = Date.now()
+    const artifactListener = listeners.find((entry) => entry.event === 'session/event')
+    assert.ok(artifactListener, 'the host subscribes to session events')
+    const shownPath = `${REMOTE_LINK_DIR}/presented.html`
+    artifactListener.listener({ id: 'sess-artifact' }, { name: 'present', data: { files: [{ path: shownPath }] } })
+    const located = await ok('linked.lastArtifact', { sessionId: 'sess-artifact' })
+    assert.equal(located.artifact.path, shownPath, 'the newest presented file is remembered')
+    const missingArtifact = await ok('linked.lastArtifact', { sessionId: 'sess-nothing' })
+    assert.equal(missingArtifact.artifact, null, 'a session without artifacts answers null')
+    await fail('linked.lastArtifact', {}, 400)
+    step('linked.lastArtifact', started, 'present → remembered path')
 
     // 13a6. Remote command execution (0.17.0): three gates and an audit trail
     started = Date.now()
