@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Linked and remote workspaces whose SSH host is no longer in the DSH config are **skipped from the workspace list** instead of blocking `linked.list` for 20+ seconds trying to reach them.
+- Markdown preview rendering now uses **micromark + KaTeX** to match DSH's native pipeline, so math formulas (`$...$` and `$$...$$`) render correctly in both the preview and the sidebar file viewer.
 - The workspace directory panel has a **Locate last artifact** button: it asks the host
   which file the chat presented most recently and opens it in the tree: the right-hand workspace pane opens (or comes forward)
   and reveals that exact file, instead of guessing a local path.

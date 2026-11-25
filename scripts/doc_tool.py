@@ -405,6 +405,32 @@ img{max-width:100%} a{color:#0969da} hr{border:0;border-top:1px solid #d0d7de;ma
 
 
 def markdown_preview(path):
+    # Use Node.js renderer with micromark + KaTeX to match DSH native rendering
+    import subprocess
+    import json
+    from pathlib import Path
+    
+    renderer_dir = Path(__file__).parent / "md-preview"
+    renderer = renderer_dir / "md-to-html.mjs"
+    
+    if renderer.exists():
+        try:
+            result = subprocess.run(
+                ["node", str(renderer), path],
+                capture_output=True,
+                text=True,
+                timeout=30,
+                check=True
+            )
+            # The renderer outputs JSON with { kind, html }
+            data = json.loads(result.stdout)
+            emit(data)
+            return
+        except Exception as e:
+            # Fall back to Python renderer on error
+            pass
+    
+    # Fallback: use Python markdown
     html = markdown_to_html(path)
     emit({"kind": "markdown-preview", "html": html})
 
