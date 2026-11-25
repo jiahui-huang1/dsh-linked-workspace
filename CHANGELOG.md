@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- A file opened from the **active remote workspace placeholder directory** (a markdown link in
+  the chat resolves against the session cwd, which is empty by design) is now handed over to the
+  plugin's own remote tab: the borrowed page is closed and the file opens on the remote host, where
+  it can be edited and saved back. The hand-over polls `nativePathTabs()` once a second because
+  native right-column tabs live outside the sidebar store, so `subscribeState` alone never fires.
 - The workspace tree no longer hangs on **Loading…**: the panel cache stops persisting the
   "currently loading" flag (a tab torn down mid-request used to come back stuck there forever),
   restored records are cleaned on the way in and refetched, and a listing that produces nothing

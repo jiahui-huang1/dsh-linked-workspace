@@ -10940,6 +10940,110 @@ function rememberShowHidden(value) {
       }, 'dsh-linked-workspace: @ reference source');
     }
 
+    // ── placeholder hand-over ─────────────────────────────────────────────
+
+    // A remote workspace's session cwd is an EMPTY local placeholder: the files
+    // only exist on the SSH host. So a relative link in the chat ("docs/plan.md")
+    // is resolved against the placeholder and the native editor tries to read it
+    // from the local disk, where it can never exist — the user gets a "file not
+    // found" page for a file that is right there on the remote machine.
+    //
+    // Whenever the sidebar opens a tab bound to a path under
+    // "remote-placeholders/<uuid>/", reopen that same file in our own remote tab
+    // (which reads AND writes over SSH) and drop the broken one. Only the
+    // placeholder prefix is claimed, so ordinary local files are untouched, and
+    // our own tabs carry the resolved remote path — never a placeholder — so the
+    // hand-over cannot repeat itself.
+    var PLACEHOLDER_PATH = /[\\/]remote-placeholders[\\/]([^\\/]+)([\\/].*)$/i;
+
+    function installPlaceholderHandover(ctx) {
+      var sidebar = sidebarService(ctx);
+      if (!sidebar || typeof sidebar.nativePathTabs !== 'function' || typeof sidebar.subscribeState !== 'function') return;
+      var handled = new Set();
+      var known = null;
+      var knownAt = 0;
+      var scanning = false;
+
+      // The list is asked for at most once every 30 s, and once more (uncached)
+      // when a placeholder path matches nothing — a workspace created while the
+      // page is open then works without a reload.
+      function remoteWorkspaces(fresh) {
+        if (!fresh && known && Date.now() - knownAt < 30000) return Promise.resolve(known);
+        return apiCall('remote_workspaces.list').then(function (result) {
+          known = (result && result.workspaces) || [];
+          knownAt = Date.now();
+          return known;
+        }).catch(function () { return []; });
+      }
+
+      function placeholderOwnerOf(list, normalized) {
+        for (var index = 0; index < list.length; index += 1) {
+          var placeholder = String(list[index].placeholderPath || '').replace(/\\/g, '/').replace(/\/+$/, '');
+          if (placeholder !== '' && normalized.indexOf(placeholder + '/') === 0) return list[index];
+        }
+        return null;
+      }
+
+      function openOnRemote(owner, relative, scope, tab) {
+        var remotePath = String(owner.remotePath || '').replace(/\/+$/, '') + '/' + relative;
+        var source = { kind: 'remote', id: owner.id, name: owner.name };
+        if (!openRemoteFileTab(sidebar, scope, source, remotePath)) return;
+        try { sidebar.closeTab(tab.id, scope); } catch (error) { /* the page is gone already */ }
+      }
+
+      function handOver(tab) {
+        var normalized = String(tab && tab.path ? tab.path : '').replace(/\\/g, '/');
+        var match = PLACEHOLDER_PATH.exec(normalized);
+        if (!match) return;
+        var relative = String(match[2] || '').replace(/^\/+/, '');
+        // Directories and extension-less names are not ours to render.
+        if (relative === '' || /\/$/.test(relative) || !/\.[^./]+$/.test(relative)) return;
+        var key = String(tab.sessionId || '') + '|' + String(tab.id || '');
+        if (handled.has(key)) return;
+        // Tab ids are recycled, so the set only has to outlive the pass that
+        // closed the page — keeping it bounded is enough.
+        if (handled.size > 200) handled.clear();
+        handled.add(key);
+        var scope = { sessionId: tab.sessionId };
+        if (tab.cwd) scope.cwd = tab.cwd;
+        remoteWorkspaces(false).then(function (list) {
+          var owner = placeholderOwnerOf(list, normalized);
+          if (owner) return openOnRemote(owner, relative, scope, tab);
+          return remoteWorkspaces(true).then(function (fresh) {
+            var again = placeholderOwnerOf(fresh, normalized);
+            if (again) openOnRemote(again, relative, scope, tab);
+          });
+        });
+      }
+
+      function scan() {
+        if (scanning) return;
+        scanning = true;
+        try {
+          var tabs = sidebar.nativePathTabs() || [];
+          for (var index = 0; index < tabs.length; index += 1) handOver(tabs[index]);
+        } catch (error) {
+          /* a sidebar without path tabs simply never hands over */
+        } finally {
+          scanning = false;
+        }
+      }
+
+      scan();
+      // Native right-column tabs live in the sidebar's own adapter and never
+      // reach the shared store, so `subscribeState` stays silent when one opens
+      // — the interval is what actually catches them. It only runs the prefix
+      // test, so a tick costs nothing when nothing is open.
+      ctx.effect(function () {
+        var stop = sidebar.subscribeState(scan);
+        var timer = setInterval(scan, 1000);
+        return function () {
+          try { stop(); } catch (error) { /* already disposed */ }
+          clearInterval(timer);
+        };
+      }, 'dsh-linked-workspace: placeholder hand-over');
+    }
+
     // ── apply ──────────────────────────────────────────────────────────────
 
     // `sessions` is a core client service (the sidebar shell injects it too):
@@ -10950,6 +11054,7 @@ function rememberShowHidden(value) {
     function apply(ctx) {
       ctx.effect(installStyles, 'dsh-linked-workspace: styles');
       installReferenceTriggers(ctx);
+      installPlaceholderHandover(ctx);
       ctx.effect(function () {
         var lastDark = null;
         var sync = function () {
