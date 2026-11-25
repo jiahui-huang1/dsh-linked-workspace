@@ -11,6 +11,7 @@
   open the remote side — nothing is written to the local disk.
 - A file outside every workspace is reported with its real path in the notice and
   copied to the clipboard, instead of silently opening the wrong tree.
+- The button has its own crosshair glyph, so it no longer looks like **Transfer history**.
 - Host API: `settings.revealSide`, `linked.lastArtifact`, `API_REVISION` 13.
 
 English · [简体中文](CHANGELOG.zh.md)

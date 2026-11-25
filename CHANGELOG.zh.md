@@ -9,6 +9,7 @@
   `local` 则优先用联动工作区的本地副本。远程工作区不受这个设置影响，只会打开远端，
   不往本地磁盘写任何东西。
 - 文件不在任何工作区目录里时，提示里写出实际路径并复制到剪贴板，不再默默打开错的树。
+- 「定位最近产物」换成独立的十字准星图标，不再和「传输与推送历史」的时钟撞脸。
 - Host API：`settings.revealSide`、`linked.lastArtifact`，`API_REVISION` 13。
 
 简体中文 · [English](CHANGELOG.md)

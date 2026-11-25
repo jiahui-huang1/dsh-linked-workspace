@@ -2819,6 +2819,13 @@ window.__ModuleLoader__.load({
         h('path', { key: 'b', d: 'M11.2 2.2v3h-3M4.8 13.8v-3h3', stroke: 'currentColor', strokeWidth: 1.3, strokeLinecap: 'round', strokeLinejoin: 'round' }),
       ]);
     }
+    function IconLocate(size) {
+      return svg(size || 14, [
+        h('circle', { key: 'a', cx: 8, cy: 8, r: 4.2, stroke: 'currentColor', strokeWidth: 1.3 }),
+        h('path', { key: 'b', d: 'M8 1.4v2.6M8 12v2.6M1.4 8h2.6M12 8h2.6', stroke: 'currentColor', strokeWidth: 1.3, strokeLinecap: 'round' }),
+        h('circle', { key: 'c', cx: 8, cy: 8, r: 0.9, fill: 'currentColor' }),
+      ]);
+    }
     function IconClock(size) {
       return svg(size || 14, [
         h('circle', { key: 'a', cx: 8, cy: 8, r: 5.8, stroke: 'currentColor', strokeWidth: 1.3 }),
@@ -4492,7 +4499,7 @@ window.__ModuleLoader__.load({
             className: 'rw-icon-btn',
             title: props.locateTitle || t('locateArtifact'),
             onClick: function () { if (props.onLocate) props.onLocate(); },
-          }, IconClock(14)),
+          }, IconLocate(14)),
           h('button', {
             type: 'button',
             className: 'rw-icon-btn',
