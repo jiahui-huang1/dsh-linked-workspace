@@ -99,7 +99,8 @@ assert.match(bundleSource, /hosts\.reconnect/, 'the workspace cards can force a 
 assert.match(bundleSource, /ExecSettingsGroup/, 'remote command execution has its own settings block')
 assert.match(bundleSource, /execHostsTitle/, 'the exec block lists the host allow-list')
 assert.match(bundleSource, /execWorkspacesTitle/, 'the exec block lists the workspace allow-list')
-assert.match(bundleSource, /ctxOpenInRemoteTree/, 'chat artifacts can be opened in the remote tree')
+assert.match(bundleSource, /linked\.lastArtifact/, 'the panel button asks the host for the last presented file')
+assert.match(bundleSource, /locateArtifact/, 'the locate button has its own copy')
 assert.match(bundleSource, /revealPath/, 'the tree tab accepts a reveal target from the tab meta')
 assert.match(bundleSource, /revealSide/, 'the default reveal side is a stored preference')
 
@@ -158,11 +159,7 @@ assert.equal(typeof welcome.options.label, 'function')
 assert.equal(welcome.options.label(), '欢迎使用联动工作区插件', 'the overlay label follows the zh locale')
 assert.equal(typeof welcome.component, 'function')
 
-assert.equal(registered.menus.length, 1, 'the file context menu contribution registered')
-const fileMenu = registered.menus[0]
-assert.equal(fileMenu.options.name, 'contextMenu.content')
-assert.equal(fileMenu.options.key, 'file', 'the rows only show up for file targets')
-assert.equal(typeof fileMenu.component, 'function')
+assert.equal(registered.menus.length, 0, 'the plugin no longer contributes file menu rows')
 
 assert.equal(registered.flows.length, 2, 'the sidebar and hero directory flows registered')
 const flowNames = registered.flows.map((entry) => entry.options.name).sort()
@@ -243,7 +240,7 @@ assert.equal(orphan.settings[0].options.id, 'linked-workspaces')
 assert.equal(orphan.icons.length, 1, 'the settings nav icon still registers without the sidebar')
 assert.equal(orphan.icons[0].options.id, 'linked-workspaces')
 assert.equal(orphan.overlays.length, 1, 'the welcome overlay still registers without the sidebar')
-assert.equal(orphan.menus.length, 1, 'the file context menu still registers without the sidebar')
+assert.equal(orphan.menus.length, 0, 'no file menu rows are contributed any more')
 assert.equal(orphan.flows.length, 2, 'both directory flows still register without the sidebar')
 assert.equal(orphan.tabs.length, 0, 'no sidebar page is registered when the companion is absent')
 
