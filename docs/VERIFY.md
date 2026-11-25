@@ -427,6 +427,7 @@ DSH_HOME/linked-workspace/exec-audit.jsonl` 追加一行 JSON，含 `auditId`、
 3. 公式里带中文：`$\text{速度} = \frac{\Delta x}{\Delta t}$` 正常显示；故意写错一个公式（如 `$\frac{a$`）只把那一处显示成红色错误，其余段落照常渲染。
 4. 预览里的样式不应影响应用本身：打开一个含公式的 Markdown 预览后，聊天区与侧栏的正文、按钮样式保持不变。
 5. 同一页里放一个很宽的块级公式：宽度放不下时该行自己横向滚动，不把整页撑出横向滚动条。
+6. 打开一份公式密集的文档（例如 ADR 里几十个块级公式）：**分式的分子分母上下分开、下标在基线下方、公式编号不压在公式上**。用开发者工具检查 `.katex-display` 的 `overflow-x` 应为 `auto`、`.vlist>span` 应为 `position: relative`；页面里应存在一个带 `data-rw-katex` 的 `<style>`（KaTeX 样式表由预览自己渲染，不再依赖宿主或 CDN）。
 
 ## 占位目录里的文件（Unreleased）
 

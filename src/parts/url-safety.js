@@ -54,8 +54,63 @@ export function urlAttributeViolation(name, value, tagName) {
 // Complete attribute policy for the document preview. Inline styles are dropped
 // as well: `position:fixed; inset:0; z-index:99999` can cover the whole Harness
 // window, which turns a preview into a clickjacking / phishing surface without
-// a single line of script.
-export function attributeViolation(name, value, tagName) {
-  if (String(name || '').toLowerCase() === 'style') return 'inline style';
+// a single line of script. Callers may opt in to `allowInlineStyle` for KaTeX
+// subtrees, where the style attribute is the layout (see katexStyleViolation).
+export function attributeViolation(name, value, tagName, options) {
+  if (String(name || '').toLowerCase() === 'style') {
+    if (options && options.allowInlineStyle && katexStyleViolation(value) === '') return '';
+    return 'inline style';
+  }
   return urlAttributeViolation(name, value, tagName);
 }
+
+// KaTeX positions every glyph with an inline style — `height:1.2em` on a vlist,
+// `top:-0.5em` on its children, `vertical-align:-0.2em` on the base — so a
+// preview that drops them turns each formula into a pile of overlapping spans.
+// Only that shape is accepted, and only inside `.katex`: lengths, `position:
+// relative`, and a solid border. Anything that could escape the box
+// (absolute/fixed positioning, inset, z-index, transforms, url()) is refused.
+var KATEX_STYLE_PROPERTIES = {
+  height: 'length',
+  top: 'length',
+  left: 'length',
+  width: 'length',
+  'min-width': 'length',
+  'margin-left': 'length',
+  'margin-right': 'length',
+  'padding-left': 'length',
+  'vertical-align': 'length',
+  'border-width': 'length',
+  'border-bottom-width': 'length',
+  'border-style': 'keyword',
+  position: 'keyword',
+};
+
+var KATEX_LENGTH = /^-?(?:\d+\.?\d*|\.\d+)(?:em|ex|px|pt|rem|%)?$/;
+var KATEX_KEYWORDS = {
+  'border-style': /^(?:solid|dashed|dotted)$/,
+  position: /^relative$/,
+};
+
+export function katexStyleViolation(value) {
+  var text = normalizeUrlValue(value);
+  if (text === '') return '';
+  var declarations = text.split(';');
+  for (var index = 0; index < declarations.length; index += 1) {
+    var declaration = declarations[index].trim();
+    if (declaration === '') continue;
+    var colon = declaration.indexOf(':');
+    if (colon < 0) return 'unsafe style';
+    var property = declaration.slice(0, colon).trim().toLowerCase();
+    var kind = KATEX_STYLE_PROPERTIES[property];
+    if (!kind) return 'unsafe style';
+    var value = declaration.slice(colon + 1).trim();
+    if (kind === 'keyword') {
+      if (!KATEX_KEYWORDS[property].test(value)) return 'unsafe style';
+    } else if (!KATEX_LENGTH.test(value)) {
+      return 'unsafe style';
+    }
+  }
+  return '';
+}
+

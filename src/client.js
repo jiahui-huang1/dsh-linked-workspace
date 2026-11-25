@@ -1661,20 +1661,35 @@ window.__ModuleLoader__.load({
       return semicolons > commas ? ';' : ',';
     }
 
+    // Returns `{ html, css }`. The stylesheet is handed back separately because
+    // the HTML parser moves a <style> start tag into <head>, so it never reached
+    // `body.innerHTML` — and KaTeX needs those rules: without them a formula
+    // collapses into a pile of overlapping spans.
     function sanitizeDocumentHtml(html) {
       try {
         var parsed = new DOMParser().parseFromString(String(html || ''), 'text/html');
-        parsed.querySelectorAll('script,style,iframe,object,embed,link,meta,base,form').forEach(function (node) { node.remove(); });
+        var css = '';
+        // The renderer ships exactly one stylesheet, marked for this purpose;
+        // anything else is removed like before.
+        parsed.querySelectorAll('style').forEach(function (node) {
+          if (node.getAttribute('data-rw-katex') === '1') css += node.textContent || '';
+          node.remove();
+        });
+        parsed.querySelectorAll('script,iframe,object,embed,link,meta,base,form').forEach(function (node) { node.remove(); });
         parsed.querySelectorAll('*').forEach(function (element) {
+          // KaTeX lays a formula out with inline lengths and nothing else, so
+          // that shape survives inside `.katex` while the rest of the document
+          // keeps the `position:fixed; inset:0` defence.
+          var inFormula = typeof element.closest === 'function' && element.closest('.katex') !== null;
           Array.from(element.attributes).forEach(function (attribute) {
-            if (attributeViolation(attribute.name, attribute.value, element.tagName)) {
+            if (attributeViolation(attribute.name, attribute.value, element.tagName, { allowInlineStyle: inFormula })) {
               element.removeAttribute(attribute.name);
             }
           });
         });
-        return parsed.body.innerHTML;
+        return { html: parsed.body.innerHTML, css: css };
       } catch (error) {
-        return '';
+        return { html: '', css: '' };
       }
     }
 
@@ -5590,7 +5605,7 @@ function rememberShowHidden(value) {
       var stateRef = useState({
         loading: true, error: '', data: null, text: '', dirty: false, saving: false,
         preview: rememberedView ? rememberedView.preview === true : kind === 'markdown',
-        html: '', previewLoading: false,
+        html: '', css: '', previewLoading: false,
         page: rememberedView ? Number(rememberedView.page) || 0 : 0,
         sheet: rememberedView ? Number(rememberedView.sheet) || 0 : 0,
         slide: rememberedView ? Number(rememberedView.slide) || 0 : 0,
@@ -5660,7 +5675,8 @@ function rememberShowHidden(value) {
         if (state.loading || !state.preview || kind !== 'markdown' || state.html || state.previewLoading) return;
         patch({ previewLoading: true });
         apiCall('docs.mdPreview', params({ text: state.text })).then(function (result) {
-          patch({ previewLoading: false, html: sanitizeDocumentHtml(result.html) });
+          var clean = sanitizeDocumentHtml(result.html);
+          patch({ previewLoading: false, html: clean.html, css: clean.css });
         }).catch(function (error) {
           patch({ previewLoading: false, error: messageOf(error, t, locale) });
         });
@@ -5777,7 +5793,8 @@ function rememberShowHidden(value) {
         patch({ preview: next, previewLoading: next && !state.html });
         if (!next || state.html) return;
         apiCall('docs.mdPreview', params({ text: state.text })).then(function (result) {
-          patch({ previewLoading: false, html: sanitizeDocumentHtml(result.html) });
+          var clean = sanitizeDocumentHtml(result.html);
+          patch({ previewLoading: false, html: clean.html, css: clean.css });
         }).catch(function (error) {
           patch({ previewLoading: false, error: messageOf(error, t, locale) });
         });
@@ -5873,6 +5890,7 @@ function rememberShowHidden(value) {
         body = state.preview
           ? h('div', { className: 'rw-doc-body', ref: docBodyRef, onScroll: rememberScroll },
             state.previewLoading ? h('div', { className: 'rw-editor-message' }, Spinner(14), t('loading')) : null,
+            state.html ? h('style', { 'data-rw-katex': '1', dangerouslySetInnerHTML: { __html: state.css || '' } }) : null,
             state.html ? h('div', { ref: docPreviewRef, className: 'rw-doc-preview', onScroll: rememberScroll, dangerouslySetInnerHTML: { __html: state.html } }) : null)
           : h('div', { className: 'rw-doc-body', ref: docBodyRef, onScroll: rememberScroll },
             state.findOpen ? h('div', { className: 'rw-find-bar rw-doc-find' },

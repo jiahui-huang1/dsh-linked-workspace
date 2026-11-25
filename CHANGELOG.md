@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Markdown previews no longer collapse their formulas. The preview sanitiser used to strip the
+  inline `<style>` block that carries the KaTeX stylesheet — and even without that, the HTML parser
+  moves a leading `<style>` into `<head>`, so the fragment never survived parsing. The stylesheet is
+  now extracted and rendered next to the preview by React, and the sanitiser allows the small set of
+  length-only inline styles KaTeX uses for vertical layout (`height`, `top`, `vertical-align`,
+  `margin-*`, `border-*`, always `position: relative`). A dense document with 30 display formulas
+  renders with zero overlapping rows.
 - A file opened from the **active remote workspace placeholder directory** (a markdown link in
   the chat resolves against the session cwd, which is empty by design) is now handed over to the
   plugin's own remote tab: the borrowed page is closed and the file opens on the remote host, where

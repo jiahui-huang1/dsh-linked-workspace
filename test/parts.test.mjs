@@ -8,7 +8,7 @@ import assert from 'node:assert/strict'
 import { DEFAULT_THEME_ID, EDITOR_THEMES, getTheme } from '../src/parts/themes.js'
 import { languageOf, tokenize } from '../src/parts/highlight.js'
 import { fileIconSpec } from '../src/parts/file-icons.js'
-import { attributeViolation, normalizeUrlValue, urlAttributeViolation, urlSchemeOf } from '../src/parts/url-safety.js'
+import { attributeViolation, katexStyleViolation, normalizeUrlValue, urlAttributeViolation, urlSchemeOf } from '../src/parts/url-safety.js'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // themes.js
@@ -928,5 +928,24 @@ test('url safety: inline styles are stripped from previews', () => {
   assert.equal(attributeViolation('href', 'https://example.com', 'a'), '')
   assert.ok(attributeViolation('href', 'javascript:alert(1)', 'a'))
   assert.ok(attributeViolation('onclick', 'alert(1)', 'a'))
+})
+
+test('url safety: KaTeX inline layout survives inside a formula', () => {
+  // KaTeX positions every glyph with inline lengths, so dropping them turns a
+  // formula into a pile of overlapping spans. That exact shape is allowed, and
+  // only where the sanitizer reports the element sits inside `.katex`.
+  const formula = { allowInlineStyle: true }
+  assert.equal(attributeViolation('style', 'height:1.2em', 'span', formula), '')
+  assert.equal(attributeViolation('style', 'top:-0.5em;margin-right:0.05em', 'span', formula), '')
+  assert.equal(attributeViolation('style', 'position:relative', 'span', formula), '')
+  assert.equal(attributeViolation('style', 'border-style:solid;border-width:0.04em', 'span', formula), '')
+  assert.ok(attributeViolation('style', 'position:fixed;inset:0;z-index:99999', 'span', formula))
+  assert.ok(attributeViolation('style', 'position:absolute;top:0', 'span', formula))
+  assert.ok(attributeViolation('style', 'height:1em;background:url(https://evil.test/x.png)', 'span', formula))
+  assert.ok(attributeViolation('style', 'color:red', 'span', formula))
+  assert.ok(attributeViolation('style', 'top:calc(100vh)', 'span', formula))
+  assert.equal(attributeViolation('style', 'height:1.2em', 'span'), 'inline style')
+  assert.equal(katexStyleViolation('top:-1.2em'), '')
+  assert.ok(katexStyleViolation('transform:scale(9)'))
 })
 
