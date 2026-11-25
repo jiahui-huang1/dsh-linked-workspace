@@ -50,3 +50,12 @@ test('md preview: GFM tables and inline math share one fragment', () => {
   assert.match(html, /class="katex"/);
   assert.match(html, /math-inline/);
 });
+
+test('md preview: the host renders in-process instead of spawning node', () => {
+  // A DSH process may not have `node` on its PATH; shelling out silently
+  // degraded every formula to raw `$$…$$`. Rendering must stay in-process.
+  const host = readFileSync('lib/index.js', 'utf8');
+  assert.match(host, /from '\.\/markdown\.js'/);
+  assert.match(host, /renderMarkdownFragment\(/);
+  assert.doesNotMatch(host, /runDocTool\(\['md-preview'/);
+});

@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Markdown previews are rendered **inside the Host process** instead of by spawning
+  `node scripts/md-to-html.mjs`. When the DSH process had no `node` on its PATH the child run failed
+  and the preview silently fell back to a plain renderer, so every formula showed up as raw
+  `$$ … $$` text (one such desktop install hit exactly that). The renderer now lives in
+  `lib/markdown.js`, `scripts/md-to-html.mjs` is a thin CLI wrapper over it for standalone use and
+  tests, and no preview path shells out any more.
 - Equation numbers sit **beside** the formula instead of on top of it. KaTeX pins `\tag{…}` with
   `position: absolute; right: 0`, which parks the number on the formula itself as soon as the block
   is narrower than the column — and the preview needed a narrow block so wide formulas could scroll.

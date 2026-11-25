@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Markdown 预览改为**在 Host 进程内渲染**，不再 spawn `node scripts/md-to-html.mjs`。
+  之前只要 DSH 进程的 PATH 里没有 `node`，子进程就会失败，然后悄悄回退到纯 Python 渲染器 ——
+  于是所有公式都变成原样的 `$$ … $$` 文本（有一台桌面端正是这样）。渲染逻辑现在放在
+  `lib/markdown.js`，`scripts/md-to-html.mjs` 变成它的薄 CLI 包装（供独立调用与测试），
+  预览链路不再启动任何子进程。
 - 公式编号不再压在公式上。KaTeX 用 `position: absolute; right: 0` 定位 `\tag{…}` 编号，
   一旦公式块比栏宽窄，编号就正好落在公式右边沿、盖住内容 —— 而预览为了让超宽公式能横向滚动，
   恰好把公式块压窄了。现在带编号的公式保留 KaTeX 的块级布局，编号改为**行内流式**排在公式后面

@@ -1530,7 +1530,7 @@ window.__ModuleLoader__.load({
      * Host methods the running DSH process does not have yet, the directory
      * pane says so instead of surfacing an unrelated error.
      */
-    var HOST_API_REVISION = 13;
+    var HOST_API_REVISION = 14;
     var hostInfoProbe = null;
 
     function probeHostInfo() {
