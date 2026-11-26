@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.28.1 — 2026-11-27
 
 - Links inside a Markdown preview no longer navigate the window — that navigation is what turned the whole
   DSH window white. A link that resolves to a file inside the workspace now opens it in a file tab of the
