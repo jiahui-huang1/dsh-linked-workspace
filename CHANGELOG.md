@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+- The directory tree now follows renames and deletions instead of waiting for a page reload. Every
+  mutation made through the plugin bumps a Host-side `listings` counter that the panel polls every
+  five seconds, a quiet refresh no longer keeps rows the listing stopped returning, the remote tree
+  refreshes on the same tick as the local one, and the refresh button forces a real re-list instead of
+  remounting a panel that restored its cached rows.
+- An open file tab no longer outlives its file: pane tabs re-check their path with `fs.stat` /
+  `local.stat` whenever the trees refresh, sidebar file tabs probe it every ten seconds, and a tab
+  whose file disappeared closes itself, re-lists the tree and says why.
+
 ## 0.27.1 — 2026-11-26
 
 - Markdown previews **refuse documents above 512 Ki characters** instead of rendering them

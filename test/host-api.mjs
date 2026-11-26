@@ -177,7 +177,10 @@ async function main() {
   assert.ok(Number(meta.apiRevision) >= 2, 'apiRevision is at least 2')
   assert.equal(typeof meta.startedAt, 'string', 'startedAt is reported')
   assert.ok(!Number.isNaN(Date.parse(meta.startedAt)), 'startedAt is an ISO timestamp')
+  // The client follows this counter to notice renames made by other sessions.
+  assert.equal(typeof meta.listings, 'number', 'listings counter is reported')
   step('meta.info', started, `apiRevision ${meta.apiRevision}, started ${meta.startedAt}`)
+  const listingsBefore = Number(meta.listings)
 
   // 2. Directory browsing during setup
   started = Date.now()
@@ -378,6 +381,14 @@ async function main() {
     await ok('fs.write', { remoteId, path: `${REMOTE_LINK_DIR}/a.txt`, content: 'alpha\n' })
     await ok('fs.write', { remoteId, path: `${REMOTE_LINK_DIR}/b.txt`, content: 'beta\n' })
     step('prepare remote linked tree', started)
+
+    // 13b. The listings counter moved when those writes invalidated the cache;
+    // the client uses the change to refresh a tree it did not build itself.
+    const listingsAfter = await ok('meta.info', {})
+    assert.ok(
+      Number(listingsAfter.listings) > listingsBefore,
+      'a mutation bumps the listings counter',
+    )
 
     // 14. Linked workspace creation
     started = Date.now()

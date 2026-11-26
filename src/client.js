@@ -547,6 +547,7 @@ window.__ModuleLoader__.load({
       docPreviewFailed: '预览失败',
       previewTooLarge: '这个文件太大（{{chars}} 字符，上限 {{limit}}），没有生成预览；可以在编辑器里查看，或下载后用别的工具打开。',
       previewTooLargeBytes: '这个文件太大（{{bytes}}），没有生成预览；可以在编辑器里查看，或下载后用别的工具打开。',
+      fileGone: '这个文件已不在远端（可能被重命名或删除），已关闭它的标签并刷新目录。',
       linkedTitle: '联动工作区',
       linkedHint: '本地目录与远端目录成对出现：DSH 会话在该本地目录中工作，并通过 linked_workspace 工具直接编辑远端文件。',
       localFlow: '本地目录',
@@ -1150,6 +1151,7 @@ window.__ModuleLoader__.load({
       docPreviewFailed: 'Preview failed',
       previewTooLarge: 'Too large to preview ({{chars}} characters, the ceiling is {{limit}}). Read it in the editor, or download it and open it elsewhere.',
       previewTooLargeBytes: 'Too large to preview ({{bytes}}). Read it in the editor, or download it and open it elsewhere.',
+      fileGone: 'That file is gone from the remote side (renamed or deleted). Closed its tab and refreshed the tree.',
       linkedTitle: 'Linked workspaces',
       linkedHint: 'A local folder paired with a remote folder: DSH sessions work in the local folder and edit remote files through the linked_workspace tool.',
       localFlow: 'Local folder',
@@ -1534,7 +1536,7 @@ window.__ModuleLoader__.load({
      * Host methods the running DSH process does not have yet, the directory
      * pane says so instead of surfacing an unrelated error.
      */
-    var HOST_API_REVISION = 14;
+    var HOST_API_REVISION = 15;
     var hostInfoProbe = null;
 
     function probeHostInfo() {
@@ -3763,6 +3765,7 @@ window.__ModuleLoader__.load({
           setSave({ saving: false, conflict: false, error: '', ok: false });
         }).catch(function (error) {
           setLoad({ loading: false, error: error, file: null });
+          if (error && error.code === 'FS_NOT_FOUND' && typeof props.onMissing === 'function') props.onMissing(props.path);
         });
       }, [scopeKeyOf(scope), filePath, local]);
 
@@ -4318,6 +4321,17 @@ window.__ModuleLoader__.load({
         });
       }, [props.refreshTick]);
 
+      // An explicit refresh (the toolbar button, or a mutation this panel did
+      // not make) must not trust the listing remembered from a previous mount:
+      // the cache is dropped and every expanded directory is read again,
+      // bypassing the REFRESH_MIN_INTERVAL_MS throttle the background tick obeys.
+      useEffect(function () {
+        if (!props.forceTick) return;
+        pending.current.clear();
+        lastRefreshAt.current.clear();
+        setCache({ entries: new Map() });
+      }, [props.forceTick]);
+
       function toggle(path) {
         setExpanded(function (previous) {
           var next = new Set(previous);
@@ -4364,7 +4378,13 @@ window.__ModuleLoader__.load({
             var freshPaths = new Set(fresh.map(function (entry) { return entry.path; }));
             // Keep rows beyond the refreshed page so a silent refresh cannot
             // shrink a list the user scrolled many pages into.
-            var retained = silent
+            // A silent refresh asks for at least as many rows as were already
+            // loaded, so the page it gets back is authoritative: a row that
+            // disappeared because the file was renamed or deleted elsewhere has
+            // to go, or it lingers as a phantom that fails with ENOENT when the
+            // user clicks it.
+            var previousRaw = Number(existing.raw) || 0;
+            var retained = silent && previousRaw > pageRaw
               ? (existing.entries || []).filter(function (entry) { return !freshPaths.has(entry.path); })
               : [];
             var pageRaw = (result.entries || []).length;
@@ -5663,6 +5683,9 @@ function rememberShowHidden(value) {
           });
         }).catch(function (error) {
           patch({ loading: false, error: messageOf(error, t, locale) });
+          // The path no longer exists: say so once and let the panel drop the tab
+          // rather than reopening it on every mount.
+          if (error && error.code === 'FS_NOT_FOUND' && typeof props.onMissing === 'function') props.onMissing(path);
         });
       }
 
@@ -6332,6 +6355,9 @@ function rememberShowHidden(value) {
       var localTickState = useState(0);
       var localTick = localTickState[0];
       var setLocalTick = localTickState[1];
+      var treeForceState = useState(0);
+      var treeForceTick = treeForceState[0];
+      var setTreeForceTick = treeForceState[1];
       var fileDirtyState = useState({});
       var fileDirty = fileDirtyState[0];
       var setFileDirty = fileDirtyState[1];
@@ -6371,6 +6397,25 @@ function rememberShowHidden(value) {
           window.removeEventListener('focus', bump);
         };
       }, [directoryOpen, selectedKey]);
+
+      // A rename or delete made anywhere else (an agent session, another window)
+      // bumps the Host's listings counter. Following it keeps the tree honest
+      // without polling every directory: meta.info answers from memory, no SSH.
+      useEffect(function () {
+        if (!directoryOpen) return undefined;
+        var last = null;
+        var timer = setInterval(function () {
+          if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+          apiCall('meta.info', {}).then(function (info) {
+            var value = info && typeof info.listings === 'number' ? info.listings : null;
+            if (value === null) return; // older Host without the counter
+            if (last === null) { last = value; return; }
+            if (value !== last) { last = value; forceRefreshTrees(); }
+          }).catch(function () { /* meta.info is best effort */ });
+        }, 5000);
+        if (timer && typeof timer.unref === 'function') timer.unref();
+        return function () { clearInterval(timer); };
+      }, [directoryOpen]);
 
       function beginResize(event) {
         if (event.button !== undefined && event.button !== 0) return;
@@ -6416,13 +6461,23 @@ function rememberShowHidden(value) {
         noticeTimer.current = setTimeout(function () { setNotice(null); }, 4200);
       }
 
+      // Everything that changes the tree comes through here: the toolbar button,
+      // every mutation this panel makes, and the listings counter below. Bumping
+      // the tree epoch drops the remembered listings first, so a rename made in
+      // another session cannot leave a phantom row behind.
+      function forceRefreshTrees() {
+        setTreeForceTick(function (value) { return value + 1; });
+      }
+
       function refreshAll() {
+        forceRefreshTrees();
         bumpVersion(function (value) { return value + 1; });
         data.reload();
       }
 
       function refreshTree() {
         clearStaleError();
+        forceRefreshTrees();
         bumpVersion(function (value) { return value + 1; });
         data.reload();
       }
@@ -6537,6 +6592,62 @@ function rememberShowHidden(value) {
         setActiveFileKey(key);
         setDirectoryOpen(true);
       }
+
+      // A file read came back FS_NOT_FOUND: the tab was restored from a listing
+      // that has since changed. Close it and re-read the tree instead of leaving
+      // a tab that can only fail.
+      function dropOpenFile(side, filePath) {
+        var key = side + ':' + (side === 'remote' ? scopeKeyOf(scopeRef) : 'local') + ':' + filePath;
+        setOpenFiles(function (previous) {
+          return previous.filter(function (file) { return file.key !== key; });
+        });
+        setFileDirty(function (dirtyMap) {
+          if (!dirtyMap[key]) return dirtyMap;
+          var copy = Object.assign({}, dirtyMap);
+          delete copy[key];
+          return copy;
+        });
+        showNotice('info', t('fileGone'));
+        forceRefreshTrees();
+      }
+
+      // A pane tab keeps its file open for the whole session, so a rename on the
+      // other side leaves it pointing at a path that no longer exists (the
+      // 0.27.1 report: the tree still listed the old name and clicking it opened
+      // a tab that could only fail with lstat). Re-stat the open pane files
+      // whenever the trees are force-refreshed and drop the ones that are gone,
+      // so the panel heals itself instead of waiting for a read to fail.
+      var openFileKeys = openFiles.map(function (file) { return file.key; }).join('|');
+      var staleProbeRef = useRef(0);
+      function probeOpenFiles() {
+        var cancelled = false;
+        openFiles.forEach(function (file) {
+          var probe = file.side === 'local'
+            ? apiCall('local.stat', { path: file.path })
+            : (selected ? apiCall('fs.stat', Object.assign({}, scopeParams(selected), { path: file.path })) : null);
+          if (!probe) return;
+          probe.then(function () { return null; }, function (error) {
+            if (cancelled || !error || error.code !== 'FS_NOT_FOUND') return;
+            dropOpenFile(file.side, file.path);
+          });
+        });
+        return function () { cancelled = true; };
+      }
+      // A mutation made through the plugin (or the refresh button) is worth an
+      // immediate check; an outside change only needs to be caught eventually, so
+      // the periodic tree tick is throttled to keep the host quiet.
+      useEffect(function () {
+        if (!treeForceTick || openFiles.length === 0) return undefined;
+        staleProbeRef.current = Date.now();
+        return probeOpenFiles();
+      }, [treeForceTick, openFileKeys]);
+      useEffect(function () {
+        if (!localTick || openFiles.length === 0) return undefined;
+        var now = Date.now();
+        if (now - staleProbeRef.current < 10000) return undefined;
+        staleProbeRef.current = now;
+        return probeOpenFiles();
+      }, [localTick, openFileKeys]);
 
       function closeInternalFile(key) {
         setOpenFiles(function (previous) {
@@ -7799,6 +7910,8 @@ function rememberShowHidden(value) {
             onDropOnPath: dropOnPath,
             onSelect: function (filePath) { openByMode('remote', filePath, { pinned: false, preview: true }); },
             onPin: function (filePath) { pinByMode('remote', filePath); },
+            refreshTick: localTick,
+            forceTick: treeForceTick,
             onContextMenu: function (info) { setSelectedEntry(Object.assign({ side: 'remote' }, info)); openContextMenu('remote', info); },
           })),
           selected.kind === 'linked'
@@ -7825,6 +7938,7 @@ function rememberShowHidden(value) {
               onSelect: function (filePath) { openByMode('local', filePath, { pinned: false, preview: true }); },
               onPin: function (filePath) { pinByMode('local', filePath); },
               refreshTick: localTick,
+              forceTick: treeForceTick,
               onContextMenu: function (info) { setSelectedEntry(Object.assign({ side: 'local' }, info)); openContextMenu('local', info); },
             }))
             : null);
@@ -7858,6 +7972,7 @@ function rememberShowHidden(value) {
             path: activeFile.path,
             local: activeFile.side === 'local',
             onSaved: refreshTree,
+            onMissing: function (filePath) { dropOpenFile(activeFile.side, filePath); },
             onSaveReady: function (handler) {
               if (handler) saveHandlersRef.current[activeFile.key] = handler;
               else delete saveHandlersRef.current[activeFile.key];
@@ -7879,6 +7994,7 @@ function rememberShowHidden(value) {
           hideHeader: true,
           focusLine: activeFile.line || 0,
           hitQuery: searchQuery,
+          onMissing: function (filePath) { dropOpenFile(activeFile.side, filePath); },
           onSaveReady: function (handler) {
             if (handler) saveHandlersRef.current[activeFile.key] = handler;
             else delete saveHandlersRef.current[activeFile.key];
@@ -8144,12 +8260,35 @@ function rememberShowHidden(value) {
       // opened here (placeholder paths, references) had no preview while the
       // very same file opened in the directory panel did. Mirror that dispatch.
       var docKind = documentKindOf(filePath);
+      // A file tab whose target vanished closes itself; the panel that opened it
+      // is gone, so the sidebar is the only thing that can reclaim the tab.
+      function closeSelf() {
+        try {
+          var service = sidebarService(ctx);
+          if (service && typeof service.closeTab === 'function' && tab && tab.id) service.closeTab(tab.id, props.scope);
+        } catch (error) { /* no sidebar attached */ }
+      }
+      // A sidebar tab outlives the panel that opened it, so nothing else ever
+      // re-reads this file: probe it now and then and reclaim the tab once the
+      // path is gone (a rename inside a session is the usual cause).
+      useEffect(function () {
+        var cancelled = false;
+        var timer = setInterval(function () {
+          if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+          apiCall('fs.stat', Object.assign({ path: filePath }, scopeParams(scope))).then(function () { return null; }, function (error) {
+            if (cancelled || !error || error.code !== 'FS_NOT_FOUND') return;
+            closeSelf();
+          });
+        }, 10000);
+        return function () { cancelled = true; clearInterval(timer); };
+      }, [filePath, scope.kind, scope.id]);
+
       var pane = docKind === 'image'
         ? h(ImagePreview, { ctx: ctx, t: t, locale: locale, scope: scope, path: filePath, local: false })
         : docKind === 'html'
           ? h(HtmlPreview, { ctx: ctx, t: t, locale: locale, scope: scope, path: filePath, local: false })
           : docKind && docKind !== 'csv'
-            ? h(DocumentPane, { ctx: ctx, t: t, locale: locale, scope: scope, path: filePath, local: false, visible: visible })
+            ? h(DocumentPane, { ctx: ctx, t: t, locale: locale, scope: scope, path: filePath, local: false, visible: visible, onMissing: closeSelf })
             : h(RemoteFileEditor, {
               ctx: ctx, t: t, locale: locale,
               scope: scope,
@@ -8157,6 +8296,7 @@ function rememberShowHidden(value) {
               visible: visible,
               tabId: tab ? tab.id : undefined,
               sessionId: props.scope ? props.scope.sessionId : undefined,
+              onMissing: closeSelf,
             });
       return h('div', { className: 'rw-editor-pane' }, pane);
     }

@@ -84,7 +84,7 @@ scope root, or absolute inside it.
 | `fs.move` | `{ linkedId?/remoteId?, path, targetDir? }` | `{ path }` (same remote tree; collision → 409) |
 | `fs.delete` | `{ linkedId?/remoteId?, path }` | `{}` |
 | `fs.home` | `{ linkedId?/remoteId? }` | `{ home }` |
-| `meta.info` | `{}` | `{ version, apiRevision, startedAt }` (the client warns when `apiRevision` is older than its own, i.e. DSH still runs an older copy of this plugin) |
+| `meta.info` | `{}` | `{ version, apiRevision, startedAt, listings }` (the client warns when `apiRevision` is older than its own, i.e. DSH still runs an older copy of this plugin; `listings` is a counter that every mutation bumps, so the panel can notice changes made elsewhere) |
 | `settings.get` | `{}` | `{ editorTheme, editorThemeFamily, editorThemeMode, fileOpenMode, autoSave }` |
 | `settings.update` | `{ editorTheme?, editorThemeFamily?, editorThemeMode?, fileOpenMode?, autoSave? }` | `{ editorTheme, editorThemeFamily, editorThemeMode, fileOpenMode, autoSave }` |
 | `local.browse` | `{ path? }` | `{ path, parent, home, entries: [{ name, path }] }` |
