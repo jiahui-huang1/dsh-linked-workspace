@@ -77,6 +77,8 @@ Settings → Linked workspaces → *Where the last artifact opens* picks the def
 The heading shows the free space of the remote volume that holds the workspace;
 hover it for the total size and the used percentage.
 
+The tree follows the remote side on its own: a file renamed or deleted in a session is relisted within seconds (the old name never lingers as a clickable ghost), the panel asks the Host for a change counter every five seconds, both trees share one four-second tick, and the refresh button really re-lists. A file tab whose target was renamed or deleted closes itself and says “that file is gone from the remote side”.
+
 - Fixed on the far right of the sidebar: **remote tree on top, local tree below**, both rooted at “All files”; the plugin's `.local`/`.remote` internal folders are hidden from the local tree.
 - **Single-click opens, double-click pins**: single-click a folder to expand/collapse; single-click a file to open it in the content panel, replacing the current unpinned preview. Double-click a file to pin it so later single clicks do not replace it; double-clicking a folder only keeps it expanded.
 - Toolbar (top right of the sidebar):

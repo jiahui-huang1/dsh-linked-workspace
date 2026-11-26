@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.28.0 — 2026-11-26
 
 - The directory tree now follows renames and deletions instead of waiting for a page reload. Every
   mutation made through the plugin bumps a Host-side `listings` counter that the panel polls every
