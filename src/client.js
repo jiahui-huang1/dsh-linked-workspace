@@ -203,6 +203,29 @@ window.__ModuleLoader__.load({
       return undefined;
     }
 
+    // A link inside a remote document has to become an absolute path on the same
+    // host, and the panel that owns the tab does not carry the workspace root.
+    // The two lists change rarely, so one lookup serves every click for 30 s.
+    var scopeRootState = { at: 0, roots: null };
+    function scopeRootOf(scope) {
+      if (!scope || (scope.kind !== 'linked' && scope.kind !== 'remote')) return Promise.resolve('');
+      var key = scope.kind + ':' + (scope.id || '');
+      var now = Date.now();
+      if (scopeRootState.roots && now - scopeRootState.at < 30000) {
+        return Promise.resolve(scopeRootState.roots[key] || '');
+      }
+      return Promise.all([
+        apiCall('linked.list').then(function (result) { return (result && result.links) || []; }, function () { return []; }),
+        apiCall('remote_workspaces.list').then(function (result) { return (result && result.workspaces) || []; }, function () { return []; }),
+      ]).then(function (both) {
+        var roots = {};
+        (both[0] || []).forEach(function (item) { if (item && item.id) roots['linked:' + item.id] = String(item.remotePath || ''); });
+        (both[1] || []).forEach(function (item) { if (item && item.id) roots['remote:' + item.id] = String(item.remotePath || ''); });
+        scopeRootState = { at: Date.now(), roots: roots };
+        return roots[key] || '';
+      });
+    }
+
     function openRemoteFileTab(sidebar, scope, source, filePath) {
       if (!sidebar || typeof sidebar.openTab !== 'function') return false;
       var key = scopeKeyOf(sourceScopeOf(source)) + ':' + filePath;
@@ -548,6 +571,8 @@ window.__ModuleLoader__.load({
       previewTooLarge: '这个文件太大（{{chars}} 字符，上限 {{limit}}），没有生成预览；可以在编辑器里查看，或下载后用别的工具打开。',
       previewTooLargeBytes: '这个文件太大（{{bytes}}），没有生成预览；可以在编辑器里查看，或下载后用别的工具打开。',
       fileGone: '这个文件已不在远端（可能被重命名或删除），已关闭它的标签并刷新目录。',
+    linkOutside: '这个链接指向工作区之外，没有打开：{{path}}',
+    linkFolder: '这是文件夹链接，这里只打开文件：{{path}}',
       linkedTitle: '联动工作区',
       linkedHint: '本地目录与远端目录成对出现：DSH 会话在该本地目录中工作，并通过 linked_workspace 工具直接编辑远端文件。',
       localFlow: '本地目录',
@@ -1152,6 +1177,8 @@ window.__ModuleLoader__.load({
       previewTooLarge: 'Too large to preview ({{chars}} characters, the ceiling is {{limit}}). Read it in the editor, or download it and open it elsewhere.',
       previewTooLargeBytes: 'Too large to preview ({{bytes}}). Read it in the editor, or download it and open it elsewhere.',
       fileGone: 'That file is gone from the remote side (renamed or deleted). Closed its tab and refreshed the tree.',
+    linkOutside: 'That link points outside the workspace, so it was left alone: {{path}}',
+    linkFolder: 'That link is a folder; only files open here: {{path}}',
       linkedTitle: 'Linked workspaces',
       linkedHint: 'A local folder paired with a remote folder: DSH sessions work in the local folder and edit remote files through the linked_workspace tool.',
       localFlow: 'Local folder',
@@ -1536,7 +1563,7 @@ window.__ModuleLoader__.load({
      * Host methods the running DSH process does not have yet, the directory
      * pane says so instead of surfacing an unrelated error.
      */
-    var HOST_API_REVISION = 15;
+    var HOST_API_REVISION = 16;
     var hostInfoProbe = null;
 
     function probeHostInfo() {
@@ -5622,6 +5649,7 @@ function rememberShowHidden(value) {
       var path = props.path;
       var local = props.local === true;
       var onSaved = props.onSaved;
+      var onOpenLink = props.onOpenLink;
       var settings = useRuntimeSettings();
       var kind = documentKindOf(path);
       var viewKey = (local ? 'local' : ((scope && scope.kind ? scope.kind : 'remote') + ':' + ((scope && scope.id) || ''))) + '|' + path;
@@ -5665,6 +5693,35 @@ function rememberShowHidden(value) {
       function params(extra) {
         var base = local ? { path: path } : Object.assign({ path: path }, scopeParams(scope));
         return Object.assign(base, extra || {});
+      }
+
+      // A link in the preview used to navigate the whole window: the client is a
+      // single-page app with no route for a file path, so the page went blank and
+      // the reader lost the panel with it. Every anchor is ours to handle now.
+      function previewLink(event) {
+        var node = event && event.target;
+        var anchor = node && typeof node.closest === 'function' ? node.closest('a') : null;
+        if (!anchor) return;
+        event.preventDefault();
+        event.stopPropagation();
+        var href = String(anchor.getAttribute('href') || '').trim();
+        if (href === '') return;
+        if (href.charAt(0) === '#') {
+          var body = docPreviewRef.current;
+          var id = href.slice(1);
+          var target = body && id ? body.querySelector('[id="' + id.replace(/"/g, '\\"') + '"]') : null;
+          if (target && typeof target.scrollIntoView === 'function') target.scrollIntoView({ block: 'nearest' });
+          return;
+        }
+        var scheme = urlSchemeOf(href);
+        if (scheme === 'http' || scheme === 'https' || scheme === 'mailto' || scheme === 'tel') {
+          apiCall('local.openUrl', { url: href }).catch(function (error) {
+            patch({ warn: t('openFailed') + '：' + messageOf(error, t, locale) });
+          });
+          return;
+        }
+        if (scheme !== '' && !/^[a-zA-Z]:[\\/]/.test(href)) return;
+        if (onOpenLink) onOpenLink(href);
       }
 
       function load() {
@@ -5932,7 +5989,7 @@ function rememberShowHidden(value) {
           ? h('div', { className: 'rw-doc-body', ref: docBodyRef, onScroll: rememberScroll },
             state.previewLoading ? h('div', { className: 'rw-editor-message' }, Spinner(14), t('loading')) : null,
             state.html ? h('style', { 'data-rw-katex': '1', dangerouslySetInnerHTML: { __html: state.css || '' } }) : null,
-            state.html ? h('div', { ref: docPreviewRef, className: 'rw-doc-preview', onScroll: rememberScroll, dangerouslySetInnerHTML: { __html: state.html } }) : null)
+            state.html ? h('div', { ref: docPreviewRef, className: 'rw-doc-preview', onScroll: rememberScroll, onClick: previewLink, dangerouslySetInnerHTML: { __html: state.html } }) : null)
           : h('div', { className: 'rw-doc-body', ref: docBodyRef, onScroll: rememberScroll },
             state.findOpen ? h('div', { className: 'rw-find-bar rw-doc-find' },
               h('input', {
@@ -6532,6 +6589,21 @@ function rememberShowHidden(value) {
         var mode = settings.fileOpenMode || 'editor';
         if (mode !== 'editor') return;
         openByMode(side, filePath, { pinned: true, preview: false });
+      }
+
+      // A link inside the preview resolves against the file that holds it, and
+      // only opens when it stays inside this workspace.
+      function openPreviewLink(href) {
+        if (!selected) return;
+        var file = openFiles.filter(function (item) { return item.key === activeFileKey; })[0];
+        if (!file) return;
+        var side = file.side;
+        var root = side === 'remote' ? String(selected.remotePath || '') : String(selected.localPath || '');
+        var resolved = resolveLinkTarget(file.path, href);
+        if (!resolved) return;
+        if (/[\\/]$/.test(resolved)) { showNotice('info', t('linkFolder', { path: resolved })); return; }
+        if (!isInsideRoot(root, resolved)) { showNotice('info', t('linkOutside', { path: resolved })); return; }
+        openByMode(side, resolved);
       }
 
       function openByMode(side, filePath, options) {
@@ -7972,6 +8044,7 @@ function rememberShowHidden(value) {
             path: activeFile.path,
             local: activeFile.side === 'local',
             onSaved: refreshTree,
+            onOpenLink: openPreviewLink,
             onMissing: function (filePath) { dropOpenFile(activeFile.side, filePath); },
             onSaveReady: function (handler) {
               if (handler) saveHandlersRef.current[activeFile.key] = handler;
@@ -8260,6 +8333,21 @@ function rememberShowHidden(value) {
       // opened here (placeholder paths, references) had no preview while the
       // very same file opened in the directory panel did. Mirror that dispatch.
       var docKind = documentKindOf(filePath);
+      var linkNoteRef = useState('');
+      var linkNote = linkNoteRef[0];
+      var setLinkNote = linkNoteRef[1];
+      function openPreviewLink(href) {
+        scopeRootOf(scope).then(function (root) {
+          var resolved = resolveLinkTarget(filePath, href);
+          if (!resolved) return;
+          if (/[\\/]$/.test(resolved)) { setLinkNote(t('linkFolder', { path: resolved })); return; }
+          if (!isInsideRoot(root, resolved)) { setLinkNote(t('linkOutside', { path: resolved })); return; }
+          var service = sidebarService(ctx);
+          if (!service || typeof service.openTab !== 'function') return;
+          var source = { kind: scope.kind, id: scope.id, name: meta.linkedName || meta.remoteName || '' };
+          openRemoteFileTab(service, props.scope, source, resolved);
+        }, function () { /* a failed lookup leaves the link alone */ });
+      }
       // A file tab whose target vanished closes itself; the panel that opened it
       // is gone, so the sidebar is the only thing that can reclaim the tab.
       function closeSelf() {
@@ -8288,7 +8376,7 @@ function rememberShowHidden(value) {
         : docKind === 'html'
           ? h(HtmlPreview, { ctx: ctx, t: t, locale: locale, scope: scope, path: filePath, local: false })
           : docKind && docKind !== 'csv'
-            ? h(DocumentPane, { ctx: ctx, t: t, locale: locale, scope: scope, path: filePath, local: false, visible: visible, onMissing: closeSelf })
+            ? h(DocumentPane, { ctx: ctx, t: t, locale: locale, scope: scope, path: filePath, local: false, visible: visible, onMissing: closeSelf, onOpenLink: openPreviewLink })
             : h(RemoteFileEditor, {
               ctx: ctx, t: t, locale: locale,
               scope: scope,
@@ -8298,7 +8386,9 @@ function rememberShowHidden(value) {
               sessionId: props.scope ? props.scope.sessionId : undefined,
               onMissing: closeSelf,
             });
-      return h('div', { className: 'rw-editor-pane' }, pane);
+      return h('div', { className: 'rw-editor-pane' },
+        linkNote ? h('div', { style: { padding: '6px 10px 0' } }, h(Banner, { kind: 'warn', onClose: function () { setLinkNote(''); } }, linkNote)) : null,
+        pane);
     }
 
     // ── tree ───────────────────────────────────────────────────────────────

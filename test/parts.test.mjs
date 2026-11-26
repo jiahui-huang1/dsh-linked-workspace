@@ -8,7 +8,7 @@ import assert from 'node:assert/strict'
 import { DEFAULT_THEME_ID, EDITOR_THEMES, getTheme } from '../src/parts/themes.js'
 import { languageOf, tokenize } from '../src/parts/highlight.js'
 import { fileIconSpec } from '../src/parts/file-icons.js'
-import { attributeViolation, katexStyleViolation, normalizeUrlValue, urlAttributeViolation, urlSchemeOf } from '../src/parts/url-safety.js'
+import { attributeViolation, isInsideRoot, katexStyleViolation, normalizeUrlValue, resolveLinkTarget, urlAttributeViolation, urlSchemeOf } from '../src/parts/url-safety.js'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // themes.js
@@ -949,3 +949,33 @@ test('url safety: KaTeX inline layout survives inside a formula', () => {
   assert.ok(katexStyleViolation('transform:scale(9)'))
 })
 
+test('url safety: a link resolves against the document that holds it', () => {
+  const remote = '/shared_data/HUANGjh/docs/report/note.md'
+  assert.equal(resolveLinkTarget(remote, 'other.md'), '/shared_data/HUANGjh/docs/report/other.md')
+  assert.equal(resolveLinkTarget(remote, '../latex/table.tex'), '/shared_data/HUANGjh/docs/latex/table.tex')
+  assert.equal(resolveLinkTarget(remote, './sub/a%20b.md'), '/shared_data/HUANGjh/docs/report/sub/a b.md')
+  assert.equal(resolveLinkTarget(remote, '/shared_data/other/absolute.md'), '/shared_data/other/absolute.md')
+  assert.equal(resolveLinkTarget(remote, 'other.md#step-2?x=1'), '/shared_data/HUANGjh/docs/report/other.md')
+  assert.equal(resolveLinkTarget(remote, '../../../../escape.md'), '/escape.md')
+  // Anything that is not a path stays out of the resolver's hands.
+  assert.equal(resolveLinkTarget(remote, '#section'), '')
+  assert.equal(resolveLinkTarget(remote, '?q=1'), '')
+  assert.equal(resolveLinkTarget(remote, 'https://example.test/a.md'), '')
+  assert.equal(resolveLinkTarget(remote, 'mailto:a@b.test'), '')
+  assert.equal(resolveLinkTarget(remote, 'javascript:alert(1)'), '')
+  assert.equal(resolveLinkTarget(remote, '//cdn.test/a.md'), '')
+  // A Windows document keeps backslashes.
+  const local = 'D:\\work\\proj\\docs\\note.md'
+  assert.equal(resolveLinkTarget(local, 'other.md'), 'D:\\work\\proj\\docs\\other.md')
+  assert.equal(resolveLinkTarget(local, '..\\img\\a.png'), 'D:\\work\\proj\\img\\a.png')
+  assert.equal(resolveLinkTarget(local, 'C:\\abs\\a.txt'), 'C:\\abs\\a.txt')
+})
+
+test('url safety: a link may not leave the workspace', () => {
+  assert.equal(isInsideRoot('/shared_data/huangjh', '/shared_data/huangjh/docs/a.md'), true)
+  assert.equal(isInsideRoot('/shared_data/huangjh/', '/shared_data/huangjh'), true)
+  assert.equal(isInsideRoot('/shared_data/huangjh', '/shared_data/huangjh-sibling/a.md'), false)
+  assert.equal(isInsideRoot('/shared_data/huangjh', '/etc/passwd'), false)
+  assert.equal(isInsideRoot('D:\\work\\proj', 'D:/work/proj/a.md'), true)
+  assert.equal(isInsideRoot('', '/anything'), false)
+})

@@ -98,6 +98,7 @@ scope root, or absolute inside it.
 | `linked.syncCancel` | `{ id }` | `{ cancelled: boolean }` |
 | `local.list` | `{ path, limit?, offset? }` | `{ path, entries: [{ name, path, type, size, mtime }], total, offset, limit, hasMore }` |
 | `local.openExternal` | `{ path }` | `{ opened, path }` |
+| `local.openUrl` | `{ url }` | `{ opened, url }` (only `http:`, `https:`, `mailto:` and `tel:`; the preview hands external links here instead of navigating — anything else is `BAD_REQUEST`) |
 | `terminal.open` | `{ linkedId?/remoteId?, side: 'remote'\|'local', path? }` | `{ opened, side, path, host? }` (`path` must stay inside the workspace; remote workspaces only support `side: 'remote'`) |
 | `fs.openExternal` | `{ linkedId?/remoteId?, path }` | `{ opened, localPath, size }` |
 | `localWorkspace.create` | `{ path, name? }` | `{ workspaceId, title, path }` |

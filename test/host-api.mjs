@@ -734,6 +734,14 @@ async function main() {
     await fail('linked.lastArtifact', {}, 400)
     step('linked.lastArtifact', started, 'present → remembered path')
 
+    // 13a5d. Links in a preview are handed to the browser, never followed by the
+    // window that shows the preview (that navigation blanked the whole app).
+    started = Date.now()
+    for (const badUrl of ['file:///etc/passwd', 'javascript:alert(1)', 'C:\\Windows\\win.ini', '']) {
+      await fail('local.openUrl', { url: badUrl }, 400)
+    }
+    step('local.openUrl', started, 'only http(s), mailto and tel are accepted')
+
     // 13a6. Remote command execution (0.17.0): three gates and an audit trail
     started = Date.now()
     await ok('settings.update', { execEnabled: false, execHostIds: [], execWorkspaceIds: [] })

@@ -114,3 +114,46 @@ export function katexStyleViolation(value) {
   return '';
 }
 
+// Turns a link found inside a document into an absolute path on the document's
+// own side. Returns '' for in-page anchors ("#section") and for anything that
+// is not a path at all (http(s), mailto, tel, protocol-relative), so the caller
+// can decide between scrolling, the system browser and opening a file.
+export function resolveLinkTarget(baseDir, href) {
+  var raw = String(href == null ? '' : href).trim()
+  // Browsers drop the query and the fragment before asking for a file, and so do
+  // we: neither can be part of a name on either side.
+  var cut = raw.indexOf('#')
+  if (cut >= 0) raw = raw.slice(0, cut)
+  cut = raw.indexOf('?')
+  if (cut >= 0) raw = raw.slice(0, cut)
+  if (raw === '') return ''
+  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(raw) && !/^[a-zA-Z]:[\\/]/.test(raw)) return ''
+  if (raw.slice(0, 2) === '//') return ''
+  try { raw = decodeURIComponent(raw) } catch (error) { /* keep the literal text */ }
+  var sep = baseDir && baseDir.indexOf('\\') >= 0 ? '\\' : '/'
+  var text = raw.replace(/[\\/]/g, '/')
+  var parts
+  if (/^[a-zA-Z]:\//.test(text) || text.charAt(0) === '/') {
+    parts = text.split('/')
+  } else {
+    parts = String(baseDir == null ? '' : baseDir).replace(/[\\/]/g, '/').split('/')
+    if (parts.length > 1) parts.pop()
+    text.split('/').forEach(function (part) {
+      if (part === '' || part === '.') return
+      if (part === '..') { if (parts.length > 1) parts.pop(); return }
+      parts.push(part)
+    })
+  }
+  var joined = parts.join('/')
+  return sep === '\\' ? joined.replace(/\//g, '\\') : joined
+}
+
+// True when `target` sits inside `root` (or is the root itself). Comparison is
+// case-sensitive on purpose: both paths come from the same host listing, so the
+// spelling already agrees, and Linux remotes really do distinguish case.
+export function isInsideRoot(root, target) {
+  var base = String(root == null ? '' : root).replace(/[\\/]+$/, '').replace(/\\/g, '/')
+  var full = String(target == null ? '' : target).replace(/[\\/]+$/, '').replace(/\\/g, '/')
+  if (base === '' || full === '') return false
+  return full === base || full.indexOf(base + '/') === 0
+}

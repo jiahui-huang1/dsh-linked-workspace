@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Links inside a Markdown preview no longer navigate the window — that navigation is what turned the whole
+  DSH window white. A link that resolves to a file inside the workspace now opens it in a file tab of the
+  same panel; a link that leaves the workspace is refused with a note instead of being followed; `#anchor`
+  scrolls the preview itself; and `http(s)` / `mailto` / `tel` links go to the system browser through the
+  new `local.openUrl` Host method (those four schemes, nothing else).
+
 ## 0.28.0 — 2026-11-26
 
 - The directory tree now follows renames and deletions instead of waiting for a page reload. Every
