@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.27.1 — 2026-11-26
 
 - Markdown previews **refuse documents above 512 Ki characters** instead of rendering them
   synchronously on the Host's event loop. A 9 MB plan rendered in ~9 s and produced a 97 MB fragment,
