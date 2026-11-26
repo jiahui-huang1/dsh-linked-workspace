@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased
+
+- Markdown previews **refuse documents above 512 Ki characters** instead of rendering them
+  synchronously on the Host's event loop. A 9 MB plan rendered in ~9 s and produced a 97 MB fragment,
+  and every other API call queued behind it. The panel now falls back to the editor with a yellow
+  notice, a file whose byte size alone exceeds the ceiling (three UTF-8 bytes per character) is
+  rejected from a single `stat` without transferring it, and the last three rendered previews are
+  cached by content hash so re-opening a file is instant.
+- Markdown opened in a **file tab** shows the document pane (preview, edit, export) instead of the bare
+  code editor — the same surface the directory panel already used.
+- A missing KaTeX stylesheet no longer breaks the whole preview: the renderer falls back to the base
+  fragment with a plain `<pre>` body.
+- The free-space chip in the directory header refreshes together with the tree instead of keeping the
+  value from the first load until the panel was reopened.
+- The placeholder hand-over now polls `nativePathTabs()` every 2 s (was 1 s) and skips hidden windows,
+  so a background tab costs nothing.
+
 ## 0.27.0 — 2026-11-26
 
 - Markdown previews are rendered **inside the Host process** instead of by spawning

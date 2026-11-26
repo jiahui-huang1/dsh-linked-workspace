@@ -545,6 +545,8 @@ window.__ModuleLoader__.load({
       docPageOf: '第 {page} / {total} 页',
       docExportDone: '已导出 PDF：{path}',
       docPreviewFailed: '预览失败',
+      previewTooLarge: '这个文件太大（{{chars}} 字符，上限 {{limit}}），没有生成预览；可以在编辑器里查看，或下载后用别的工具打开。',
+      previewTooLargeBytes: '这个文件太大（{{bytes}}），没有生成预览；可以在编辑器里查看，或下载后用别的工具打开。',
       linkedTitle: '联动工作区',
       linkedHint: '本地目录与远端目录成对出现：DSH 会话在该本地目录中工作，并通过 linked_workspace 工具直接编辑远端文件。',
       localFlow: '本地目录',
@@ -1146,6 +1148,8 @@ window.__ModuleLoader__.load({
       docPageOf: 'Page {page} / {total}',
       docExportDone: 'Exported PDF: {path}',
       docPreviewFailed: 'Preview failed',
+      previewTooLarge: 'Too large to preview ({{chars}} characters, the ceiling is {{limit}}). Read it in the editor, or download it and open it elsewhere.',
+      previewTooLargeBytes: 'Too large to preview ({{bytes}}). Read it in the editor, or download it and open it elsewhere.',
       linkedTitle: 'Linked workspaces',
       linkedHint: 'A local folder paired with a remote folder: DSH sessions work in the local folder and edit remote files through the linked_workspace tool.',
       localFlow: 'Local folder',
@@ -5609,7 +5613,7 @@ function rememberShowHidden(value) {
         page: rememberedView ? Number(rememberedView.page) || 0 : 0,
         sheet: rememberedView ? Number(rememberedView.sheet) || 0 : 0,
         slide: rememberedView ? Number(rememberedView.slide) || 0 : 0,
-        updates: {}, pptxUpdates: {}, rotations: {}, deleted: {}, pdfLoading: false, notice: '',
+        updates: {}, pptxUpdates: {}, rotations: {}, deleted: {}, pdfLoading: false, notice: '', warn: '',
         findOpen: false, findQuery: '', findIndex: 0,
       });
       var state = stateRef[0];
@@ -5622,13 +5626,29 @@ function rememberShowHidden(value) {
         setState(function (previous) { return Object.assign({}, previous, next); });
       }
 
+      // D1: the Host refuses to render a document above its preview ceiling and
+      // answers with a typed result; drop to the editor and say why.
+      function applyPreviewResult(result) {
+        if (result && result.kind === 'markdown-preview-too-large') {
+          patch({
+            preview: false, previewLoading: false, html: '', css: '',
+            warn: result.bytes
+              ? t('previewTooLargeBytes', { bytes: formatBytes(result.bytes) })
+              : t('previewTooLarge', { chars: String(result.chars), limit: String(result.limit) }),
+          });
+          return;
+        }
+        var clean = sanitizeDocumentHtml(result.html);
+        patch({ previewLoading: false, html: clean.html, css: clean.css });
+      }
+
       function params(extra) {
         var base = local ? { path: path } : Object.assign({ path: path }, scopeParams(scope));
         return Object.assign(base, extra || {});
       }
 
       function load() {
-        patch({ loading: true, error: '', notice: '' });
+        patch({ loading: true, error: '', notice: '', warn: '' });
         apiCall('docs.read', params()).then(function (result) {
           var remembered = recallView(viewKey);
           patch({
@@ -5675,8 +5695,7 @@ function rememberShowHidden(value) {
         if (state.loading || !state.preview || kind !== 'markdown' || state.html || state.previewLoading) return;
         patch({ previewLoading: true });
         apiCall('docs.mdPreview', params({ text: state.text })).then(function (result) {
-          var clean = sanitizeDocumentHtml(result.html);
-          patch({ previewLoading: false, html: clean.html, css: clean.css });
+          applyPreviewResult(result);
         }).catch(function (error) {
           patch({ previewLoading: false, error: messageOf(error, t, locale) });
         });
@@ -5790,11 +5809,10 @@ function rememberShowHidden(value) {
 
       function showPreview() {
         var next = !state.preview;
-        patch({ preview: next, previewLoading: next && !state.html });
+        patch({ preview: next, previewLoading: next && !state.html, warn: '' });
         if (!next || state.html) return;
         apiCall('docs.mdPreview', params({ text: state.text })).then(function (result) {
-          var clean = sanitizeDocumentHtml(result.html);
-          patch({ previewLoading: false, html: clean.html, css: clean.css });
+          applyPreviewResult(result);
         }).catch(function (error) {
           patch({ previewLoading: false, error: messageOf(error, t, locale) });
         });
@@ -6010,6 +6028,7 @@ function rememberShowHidden(value) {
       return h('div', { className: 'rw-doc' }, toolbar,
         state.notice ? h('div', { style: { padding: '6px 10px 0' } }, h(Banner, { kind: 'success' }, state.notice)) : null,
         state.error ? h('div', { style: { padding: '6px 10px 0' } }, h(Banner, { kind: 'error' }, state.error)) : null,
+        state.warn ? h('div', { style: { padding: '6px 10px 0' } }, h(Banner, { kind: 'warn', onClose: function () { patch({ warn: '' }); } }, state.warn)) : null,
         body,
         h('div', { className: 'rw-doc-status' },
           h('span', null, kind.toUpperCase()),
@@ -6230,8 +6249,9 @@ function rememberShowHidden(value) {
 
       var scopeRef = selected ? sourceScopeOf(selected) : null;
 
-      // Free space on the remote volume (F2): fetched once per workspace and
-      // refreshed when the tree is refreshed. Cheap enough to keep on screen.
+      // Free space on the remote volume: fetched once per workspace and again
+      // whenever the tree refreshes (`version` bumps inside refreshTree()), so
+      // the number does not go stale while the panel stays open (D4).
       var diskState = useState(null);
       var disk = diskState[0];
       var setDisk = diskState[1];
@@ -6244,7 +6264,7 @@ function rememberShowHidden(value) {
           if (alive) setDisk(result && result.disk ? result.disk : null);
         }).catch(function () { if (alive) setDisk(null); });
         return function () { alive = false; };
-      }, [diskHostId, diskPath]);
+      }, [diskHostId, diskPath, version]);
 
       // autoPush is host-side and silent, so surface it here: the per-workspace
       // switch state (0.24.0) plus the newest push from the transfer history.
@@ -8119,15 +8139,26 @@ function rememberShowHidden(value) {
           ? { kind: 'remote', id: meta.remoteId }
           : { kind: 'workspace', id: meta.workspaceId };
       var filePath = tab && tab.path ? tab.path : '';
-      return h('div', { className: 'rw-editor-pane' },
-        h(RemoteFileEditor, {
-          ctx: ctx, t: t, locale: locale,
-          scope: scope,
-          path: filePath,
-          visible: props.visible !== false,
-          tabId: tab ? tab.id : undefined,
-          sessionId: props.scope ? props.scope.sessionId : undefined,
-        }));
+      var visible = props.visible !== false;
+      // D2: this tab used to be a plain code editor only, so the same Markdown
+      // opened here (placeholder paths, references) had no preview while the
+      // very same file opened in the directory panel did. Mirror that dispatch.
+      var docKind = documentKindOf(filePath);
+      var pane = docKind === 'image'
+        ? h(ImagePreview, { ctx: ctx, t: t, locale: locale, scope: scope, path: filePath, local: false })
+        : docKind === 'html'
+          ? h(HtmlPreview, { ctx: ctx, t: t, locale: locale, scope: scope, path: filePath, local: false })
+          : docKind && docKind !== 'csv'
+            ? h(DocumentPane, { ctx: ctx, t: t, locale: locale, scope: scope, path: filePath, local: false, visible: visible })
+            : h(RemoteFileEditor, {
+              ctx: ctx, t: t, locale: locale,
+              scope: scope,
+              path: filePath,
+              visible: visible,
+              tabId: tab ? tab.id : undefined,
+              sessionId: props.scope ? props.scope.sessionId : undefined,
+            });
+      return h('div', { className: 'rw-editor-pane' }, pane);
     }
 
     // ── tree ───────────────────────────────────────────────────────────────
@@ -11036,6 +11067,9 @@ function rememberShowHidden(value) {
 
       function scan() {
         if (scanning) return;
+        // F1: a hidden window cannot be looking at a file, so do not poll for
+        // nothing — the visibility handler below catches up on return.
+        if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
         scanning = true;
         try {
           var tabs = sidebar.nativePathTabs() || [];
@@ -11054,10 +11088,17 @@ function rememberShowHidden(value) {
       // test, so a tick costs nothing when nothing is open.
       ctx.effect(function () {
         var stop = sidebar.subscribeState(scan);
-        var timer = setInterval(scan, 1000);
+        var timer = setInterval(scan, 2000);
+        // A hand-over skipped while the window was hidden has to happen as soon
+        // as it is back, otherwise the click looks like it did nothing.
+        function onVisibility() {
+          if (typeof document !== 'undefined' && document.visibilityState === 'visible') scan();
+        }
+        if (typeof document !== 'undefined') document.addEventListener('visibilitychange', onVisibility);
         return function () {
           try { stop(); } catch (error) { /* already disposed */ }
           clearInterval(timer);
+          if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', onVisibility);
         };
       }, 'dsh-linked-workspace: placeholder hand-over');
     }

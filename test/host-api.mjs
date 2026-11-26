@@ -913,6 +913,14 @@ async function main() {
     assert.ok(mdRead.text.includes('# Hello'))
     const mdPreview = await ok('docs.mdPreview', { path: mdPath })
     assert.ok(mdPreview.html.includes('中文'))
+    // The second call must be served from the preview cache (same bytes, no work).
+    const mdPreviewAgain = await ok('docs.mdPreview', { path: mdPath })
+    assert.equal(mdPreviewAgain.html, mdPreview.html, 'a repeated preview is served from the cache')
+    // A document above the ceiling is refused instead of frozen into the event loop.
+    const tooBigPreview = await ok('docs.mdPreview', { path: mdPath, text: 'x'.repeat(600 * 1024) })
+    assert.equal(tooBigPreview.kind, 'markdown-preview-too-large')
+    assert.equal(tooBigPreview.limit, 512 * 1024)
+    assert.ok(tooBigPreview.chars >= 600 * 1024)
     const mdPdf = await ok('docs.mdPdf', { path: mdPath })
     assert.equal(existsSync(mdPdf.path), true)
     assert.equal(mdPdf.kind, 'pdf')
