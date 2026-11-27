@@ -11510,8 +11510,10 @@ function rememberShowHidden(value) {
                   var opened = openTreeTabAt(ctx, { kind: kind, id: owner.id, side: 'remote', relative: absolute, dir: true }, scope);
                   if (!opened) return;
                 } else {
-                  var source = { kind: kind, id: owner.id, name: owner.name };
-                  if (!openRemoteFileTab(sidebar, scope, source, absolute)) return;
+                  // A file belongs under the workspace's own tree tab, as one of
+                  // its file tabs — not as a sibling of the directory tab.
+                  var shown = openTreeTabAt(ctx, { kind: kind, id: owner.id, side: 'remote', relative: absolute }, scope);
+                  if (!shown) return;
                 }
                 try { sidebar.closeTab(tab.id, scope); } catch (error) { /* the page is gone already */ }
               });
