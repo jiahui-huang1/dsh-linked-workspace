@@ -103,6 +103,9 @@ assert.match(bundleSource, /linked\.lastArtifact/, 'the panel button asks the ho
 assert.match(bundleSource, /locateArtifact/, 'the locate button has its own copy')
 assert.match(bundleSource, /revealPath/, 'the tree tab accepts a reveal target from the tab meta')
 assert.match(bundleSource, /revealSide/, 'the default reveal side is a stored preference')
+assert.match(bundleSource, /ownedNativeTabs/, 'the hand-over remembers which native tabs are its own')
+assert.match(bundleSource, /takeRemotePath/, 'a chat link to a remote path is handed over to the workspace')
+assert.match(bundleSource, /revealKind/, 'the tree tab can reveal a folder instead of opening a file')
 
 // The two halves must agree, or a freshly restarted DSH greets the user with
 // the "the plugin host is still running older code" banner even though nothing

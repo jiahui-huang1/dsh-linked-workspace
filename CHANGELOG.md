@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- A file link in a chat message that points into a remote workspace now opens in the directory panel's own
+  file tab, instead of a native tab that could only report "file not found". DSH resolves `/data/x.md`
+  against the drive, so the path arrives as `\data\x.md`; the hand-over recognises it, opens the real file
+  and closes the broken tab. Asking for the same file again focuses the tab that is already open, and a link
+  to a folder expands the tree and scrolls to it without opening a file tab at all.
+
 ## 0.29.0 — 2026-11-27
 
 - A folder link in a Markdown preview no longer opens a file tab that could only fail. A trailing separator
