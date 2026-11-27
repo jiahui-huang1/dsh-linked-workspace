@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.29.0 — 2026-11-27
 
 - A folder link in a Markdown preview no longer opens a file tab that could only fail. A trailing separator
   settles it immediately; a link without one (say `sub`) is probed with `fs.stat` / `local.stat` first, and a
