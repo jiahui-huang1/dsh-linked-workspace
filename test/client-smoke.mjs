@@ -106,6 +106,8 @@ assert.match(bundleSource, /revealSide/, 'the default reveal side is a stored pr
 assert.match(bundleSource, /ownedNativeTabs/, 'the hand-over remembers which native tabs are its own')
 assert.match(bundleSource, /takeRemotePath/, 'a chat link to a remote path is handed over to the workspace')
 assert.match(bundleSource, /revealKind/, 'the tree tab can reveal a folder instead of opening a file')
+assert.match(bundleSource, /__lwClaimed/, 'the sidebar editor tab is claimed before it opens, not moved afterwards')
+assert.match(bundleSource, /focusSigRef/, 'the workspace dialog focuses once per tab instead of on every keystroke')
 
 // The two halves must agree, or a freshly restarted DSH greets the user with
 // the "the plugin host is still running older code" banner even though nothing

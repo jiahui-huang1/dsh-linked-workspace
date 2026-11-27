@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+- A chat file link now opens straight in its workspace tab: the sidebar's `openTab({ type: 'editor' })` call is
+  claimed **before** the native tab exists, so the "file not found" page no longer flashes for a second or two
+  while the hand-over catches up. Paths outside the workspaces (the user's own disk, POSIX paths elsewhere)
+  fall back to the native viewer unchanged.
+- Typing a workspace name no longer jumps the caret back into the directory field. The dialog's portal ref was
+  re-created on every render, so React detached it with `null` and re-attached it each commit; that state change
+  re-ran the "focus the first field" effect after every keystroke. The ref callback is stable now, and the
+  effect focuses once per opened dialog and once per tab switch.
+
 ## 0.30.0 — 2026-11-27
 
 - A file link in a chat message that points into a remote workspace now opens **inside that workspace's tree
