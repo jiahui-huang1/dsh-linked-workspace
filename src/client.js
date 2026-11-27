@@ -1629,6 +1629,10 @@ window.__ModuleLoader__.load({
       // so name the usual cause and the way back whenever this code shows up.
       var hint = error.code === 'FS_PERMISSION' ? t('permissionHint') : '';
       if (!detail || detail === known) return known + hint;
+      // The host often starts its own message with the generic text ("is a
+      // directory; open it as a folder"), so prefixing the code text said the
+      // same thing twice: "is a directory: is a directory, ...".
+      if (detail.indexOf(known) === 0) return detail + hint;
       return known + (locale === 'zh' ? '：' : ': ') + detail + hint;
     }
 
@@ -4359,6 +4363,40 @@ window.__ModuleLoader__.load({
         setCache({ entries: new Map() });
       }, [props.forceTick]);
 
+      // F1: a folder link in a preview should land the reader on that folder, and
+      // a row only exists once its parents are expanded and listed — so expand the
+      // whole chain, ask for every level, then scroll the row into view.
+      useEffect(function () {
+        if (!props.revealDirPath || !props.revealDirTick) return undefined;
+        var base = String(rootPath || '').replace(/[\\/]+$/, '');
+        var wanted = String(props.revealDirPath).replace(/[\\/]+$/, '');
+        if (base === '' || wanted === '') return undefined;
+        var sep = base.indexOf('\\') >= 0 ? '\\' : '/';
+        var baseSlash = base.replace(/\\/g, '/');
+        var wantedSlash = wanted.replace(/\\/g, '/');
+        if (wantedSlash !== baseSlash && wantedSlash.indexOf(baseSlash + '/') !== 0) return undefined;
+        var chain = [baseSlash];
+        if (wantedSlash !== baseSlash) {
+          wantedSlash.slice(baseSlash.length + 1).split('/').forEach(function (part) {
+            if (!part || part === '.' || part === '..') return;
+            chain.push(chain[chain.length - 1] + '/' + part);
+          });
+        }
+        var paths = chain.map(function (item) { return sep === '\\' ? item.replace(/\//g, '\\') : item; });
+        setExpanded(function (previous) {
+          var next = new Set(previous);
+          paths.forEach(function (item) { next.add(item); });
+          return next;
+        });
+        paths.forEach(function (item) { load(item); });
+        var targetPath = paths[paths.length - 1];
+        var timer = setTimeout(function () {
+          var row = document.querySelector('button.rw-row[data-dir-path="' + targetPath.replace(/"/g, '\\"') + '"]');
+          if (row && typeof row.scrollIntoView === 'function') row.scrollIntoView({ block: 'center' });
+        }, 700);
+        return function () { clearTimeout(timer); };
+      }, [props.revealDirTick]);
+
       function toggle(path) {
         setExpanded(function (previous) {
           var next = new Set(previous);
@@ -5697,13 +5735,15 @@ function rememberShowHidden(value) {
 
       // A link in the preview used to navigate the whole window: the client is a
       // single-page app with no route for a file path, so the page went blank and
-      // the reader lost the panel with it. Every anchor is ours to handle now.
-      function previewLink(event) {
+      // the reader lost the panel with it. Every anchor is ours to handle now,
+      // including the two gestures that never reach onClick: the middle button
+      // (auxclick) and dragging a link out of the page.
+      function anchorOf(event) {
         var node = event && event.target;
-        var anchor = node && typeof node.closest === 'function' ? node.closest('a') : null;
-        if (!anchor) return;
-        event.preventDefault();
-        event.stopPropagation();
+        return node && typeof node.closest === 'function' ? node.closest('a') : null;
+      }
+
+      function followAnchor(anchor, options) {
         var href = String(anchor.getAttribute('href') || '').trim();
         if (href === '') return;
         if (href.charAt(0) === '#') {
@@ -5721,7 +5761,30 @@ function rememberShowHidden(value) {
           return;
         }
         if (scheme !== '' && !/^[a-zA-Z]:[\\/]/.test(href)) return;
-        if (onOpenLink) onOpenLink(href);
+        if (onOpenLink) onOpenLink(href, options || {});
+      }
+
+      function previewLink(event) {
+        var anchor = anchorOf(event);
+        if (!anchor) return;
+        event.preventDefault();
+        event.stopPropagation();
+        followAnchor(anchor, { newTab: Boolean(event.ctrlKey || event.metaKey) });
+      }
+
+      // The middle button is the browser's own "open elsewhere" gesture: swallow
+      // it and open the target in its own tab instead of letting the app navigate.
+      function previewAuxClick(event) {
+        if (!event || event.button !== 1) return;
+        var anchor = anchorOf(event);
+        if (!anchor) return;
+        event.preventDefault();
+        event.stopPropagation();
+        followAnchor(anchor, { newTab: true });
+      }
+
+      function previewDragStart(event) {
+        if (anchorOf(event)) event.preventDefault();
       }
 
       function load() {
@@ -5989,7 +6052,7 @@ function rememberShowHidden(value) {
           ? h('div', { className: 'rw-doc-body', ref: docBodyRef, onScroll: rememberScroll },
             state.previewLoading ? h('div', { className: 'rw-editor-message' }, Spinner(14), t('loading')) : null,
             state.html ? h('style', { 'data-rw-katex': '1', dangerouslySetInnerHTML: { __html: state.css || '' } }) : null,
-            state.html ? h('div', { ref: docPreviewRef, className: 'rw-doc-preview', onScroll: rememberScroll, onClick: previewLink, dangerouslySetInnerHTML: { __html: state.html } }) : null)
+            state.html ? h('div', { ref: docPreviewRef, className: 'rw-doc-preview', onScroll: rememberScroll, onClick: previewLink, onAuxClick: previewAuxClick, onDragStart: previewDragStart, dangerouslySetInnerHTML: { __html: state.html } }) : null)
           : h('div', { className: 'rw-doc-body', ref: docBodyRef, onScroll: rememberScroll },
             state.findOpen ? h('div', { className: 'rw-find-bar rw-doc-find' },
               h('input', {
@@ -6415,6 +6478,10 @@ function rememberShowHidden(value) {
       var treeForceState = useState(0);
       var treeForceTick = treeForceState[0];
       var setTreeForceTick = treeForceState[1];
+      // F1: a folder link asks the trees to open the way down to that folder.
+      var revealDirState = useState(null);
+      var revealDir = revealDirState[0];
+      var setRevealDir = revealDirState[1];
       var fileDirtyState = useState({});
       var fileDirty = fileDirtyState[0];
       var setFileDirty = fileDirtyState[1];
@@ -6593,7 +6660,7 @@ function rememberShowHidden(value) {
 
       // A link inside the preview resolves against the file that holds it, and
       // only opens when it stays inside this workspace.
-      function openPreviewLink(href) {
+      function openPreviewLink(href, options) {
         if (!selected) return;
         var file = openFiles.filter(function (item) { return item.key === activeFileKey; })[0];
         if (!file) return;
@@ -6601,9 +6668,47 @@ function rememberShowHidden(value) {
         var root = side === 'remote' ? String(selected.remotePath || '') : String(selected.localPath || '');
         var resolved = resolveLinkTarget(file.path, href);
         if (!resolved) return;
-        if (/[\\/]$/.test(resolved)) { showNotice('info', t('linkFolder', { path: resolved })); return; }
+        // F1: a folder link is not a failure, it is a place. Expand the tree down
+        // to it and locate the row, then say why nothing was opened.
+        if (/[\\/]$/.test(resolved)) {
+          if (isInsideRoot(root, resolved)) setRevealDir({ side: side, path: resolved, at: Date.now() });
+          showNotice('info', t('linkFolder', { path: resolved }));
+          return;
+        }
         if (!isInsideRoot(root, resolved)) { showNotice('info', t('linkOutside', { path: resolved })); return; }
-        openByMode(side, resolved);
+        // "sub" without a trailing slash may still be a folder, and the separator
+        // alone cannot tell. Ask the host before opening a tab that could only
+        // fail with "is a directory".
+        var probe = side === 'local'
+          ? apiCall('local.stat', { path: resolved })
+          : apiCall('fs.stat', Object.assign({}, scopeParams(scopeRef), { path: resolved }));
+        probe.then(function (result) {
+          var type = result && result.type ? String(result.type) : '';
+          if (type === 'dir' || type === 'directory') {
+            setRevealDir({ side: side, path: resolved, at: Date.now() });
+            showNotice('info', t('linkFolder', { path: resolved }));
+            return;
+          }
+          // F2: Ctrl/⌘-click asks for both documents at once, which only a sidebar
+          // tab can give: the pane shows one file at a time.
+          if (options && options.newTab && openInSidebarTab(side, resolved)) return;
+          openByMode(side, resolved);
+        }, function (error) {
+          showNotice('error', t('openFailed') + '：' + messageOf(error, t, locale));
+        });
+      }
+
+      // F2: a second view of the same workspace, opened from a link.
+      function openInSidebarTab(side, filePath) {
+        var service = sidebarService(ctx);
+        if (!service) return false;
+        if (side === 'remote') {
+          return Boolean(selected) && openRemoteFileTab(service, props.scope, selected, filePath);
+        }
+        if (typeof service.openFile === 'function') {
+          try { service.openFile(props.scope, filePath, basename(filePath)); return true; } catch (error) { return false; }
+        }
+        return false;
       }
 
       function openByMode(side, filePath, options) {
@@ -6629,9 +6734,22 @@ function rememberShowHidden(value) {
         openInternalFile(side, filePath, options || { pinned: true });
       }
 
+      // Windows and macOS resolve paths case-insensitively, so one file can reach
+      // us as "pics/note.md" from one link and "PICS/note.md" from another; both
+      // used to become their own tab. Normalise the local side only — the remote
+      // side is POSIX, where case is meaningful.
+      function panelFileKey(side, filePath) {
+        var path = String(filePath || '');
+        if (side !== 'remote') {
+          if (path.indexOf('\\') >= 0 || /^[a-zA-Z]:[\\/]/.test(path)) path = path.replace(/\//g, '\\');
+          path = path.toLowerCase();
+        }
+        return side + ':' + (side === 'remote' ? scopeKeyOf(scopeRef) : 'local') + ':' + path;
+      }
+
       function openInternalFile(side, filePath, options) {
         var opts = options || { pinned: true };
-        var key = side + ':' + (side === 'remote' ? scopeKeyOf(scopeRef) : 'local') + ':' + filePath;
+        var key = panelFileKey(side, filePath);
         setOpenFiles(function (previous) {
           var existing = previous.filter(function (file) { return file.key === key; })[0];
           if (existing) {
@@ -6669,7 +6787,7 @@ function rememberShowHidden(value) {
       // that has since changed. Close it and re-read the tree instead of leaving
       // a tab that can only fail.
       function dropOpenFile(side, filePath) {
-        var key = side + ':' + (side === 'remote' ? scopeKeyOf(scopeRef) : 'local') + ':' + filePath;
+        var key = panelFileKey(side, filePath);
         setOpenFiles(function (previous) {
           return previous.filter(function (file) { return file.key !== key; });
         });
@@ -7984,6 +8102,8 @@ function rememberShowHidden(value) {
             onPin: function (filePath) { pinByMode('remote', filePath); },
             refreshTick: localTick,
             forceTick: treeForceTick,
+            revealDirPath: revealDir && revealDir.side === 'remote' ? revealDir.path : '',
+            revealDirTick: revealDir && revealDir.side === 'remote' ? revealDir.at : 0,
             onContextMenu: function (info) { setSelectedEntry(Object.assign({ side: 'remote' }, info)); openContextMenu('remote', info); },
           })),
           selected.kind === 'linked'
@@ -8011,6 +8131,8 @@ function rememberShowHidden(value) {
               onPin: function (filePath) { pinByMode('local', filePath); },
               refreshTick: localTick,
               forceTick: treeForceTick,
+              revealDirPath: revealDir && revealDir.side === 'local' ? revealDir.path : '',
+              revealDirTick: revealDir && revealDir.side === 'local' ? revealDir.at : 0,
               onContextMenu: function (info) { setSelectedEntry(Object.assign({ side: 'local' }, info)); openContextMenu('local', info); },
             }))
             : null);
@@ -11358,9 +11480,21 @@ function rememberShowHidden(value) {
           } catch (error) { /* theme service unavailable */ }
         };
         sync();
-        var timer = setInterval(sync, 1500);
-        if (timer && typeof timer.unref === 'function') timer.unref();
-        return function () { clearInterval(timer); };
+        // The theme contract asks for event-driven sync ("continuous sync only
+        // through the theme/change event"); a 1.5 s poll was only a stand-in.
+        var off = null;
+        if (typeof ctx.on === 'function') {
+          try { off = ctx.on('theme/change', function () { sync(); }); } catch (error) { off = null; }
+        }
+        if (!off) {
+          var timer = setInterval(sync, 1500);
+          if (timer && typeof timer.unref === 'function') timer.unref();
+          return function () { clearInterval(timer); };
+        }
+        return function () {
+          if (typeof off !== 'function') return;
+          try { off(); } catch (error) { /* already disposed */ }
+        };
       }, 'dsh-linked-workspace: app theme sync');
       ctx.effect(function () {
         if (syncDirectoryTabsRef) syncDirectoryTabsRef();

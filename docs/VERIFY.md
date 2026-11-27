@@ -2,6 +2,19 @@
 
 Host code (lib/) reloads live with `plugin_manager set_plugin include:linked-workspace-ui`; client changes load with **应用 → 重新加载界面** (a full restart is only needed after re-installing the package). Then verify:
 
+## 预览链接的文件夹与并行打开（未发布）
+
+1. 在一份 Markdown 里写 `[sub/](sub/)` 与 `[sub](sub)`（`sub` 是真实存在的目录），预览里先后点这两条：都只出
+   「这是文件夹链接，这里只打开文件」提示，目录树展开并把该目录滚到视野中，标签条不新增死标签。
+2. 再写 `[gone](gone.md)`（不存在的文件）并点击：给出一次读取失败的提示，不会有悬停不掉的半开标签。
+3. 把一个目录直接开进文件标签（或让某个打开的视图指向目录）：错误文案只出现一次「目标是目录」，
+   不应出现「目标是目录：目标是目录」。
+4. 预览里 **Ctrl/⌘ + 点击**一个文件链接：右侧栏多出一个「远程文件」标签、面板自身的标签不变，地址栏不变；
+   **中键点击**同样开一个标签且不发生导航；**拖拽**链接到页面其它位置不产生导航。
+5. 在 Windows 本地目录里准备 `pics/note.md`，文档里分别写 `[a](pics/note.md)` 与 `[b](PICS/note.md)`，
+   先后点击两者：只应存在一个 `note.md` 标签。
+6. 切换系统深浅色主题：界面跟随，控制台无报错（宿主提供 `theme/change` 事件时不依赖 1.5 秒轮询）。
+
 ## 主机密钥与输出编码（0.20.0）
 
 1. 设置 → 联动工作区 → 「SSH 主机密钥与输出编码」应能看到「主机密钥策略」（tofu / strict）、「远端命令输出编码」（utf8 / gbk），以及已记住的主机列表（每行显示 `host:port` 与 `SHA256:…` 指纹）。

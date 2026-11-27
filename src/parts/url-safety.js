@@ -144,7 +144,12 @@ export function resolveLinkTarget(baseDir, href) {
       parts.push(part)
     })
   }
+  // A trailing separator is information, not noise: the caller tells "docs/"
+  // (a folder) from "docs" (a file) with it, before anything is stat'ed.
+  var trailing = /[\\/]$/.test(raw)
   var joined = parts.join('/')
+  // An absolute path already ends with the separator it was written with.
+  if (trailing && joined !== '' && joined.charAt(joined.length - 1) !== '/') joined += '/'
   return sep === '\\' ? joined.replace(/\//g, '\\') : joined
 }
 

@@ -971,6 +971,19 @@ test('url safety: a link resolves against the document that holds it', () => {
   assert.equal(resolveLinkTarget(local, 'C:\\abs\\a.txt'), 'C:\\abs\\a.txt')
 })
 
+test('url safety: a folder link keeps its trailing separator', () => {
+  const remote = '/shared_data/HUANGjh/docs/report/note.md'
+  // "sub/" is a folder before anything is stat'ed; the caller relies on the
+  // separator to offer the folder action instead of opening a file.
+  assert.equal(resolveLinkTarget(remote, 'sub/'), '/shared_data/HUANGjh/docs/report/sub/')
+  assert.equal(resolveLinkTarget(remote, './sub/'), '/shared_data/HUANGjh/docs/report/sub/')
+  assert.equal(resolveLinkTarget(remote, '/shared_data/HUANGjh/code/'), '/shared_data/HUANGjh/code/')
+  assert.equal(resolveLinkTarget(remote, 'sub'), '/shared_data/HUANGjh/docs/report/sub')
+  const local = 'D:\\work\\proj\\docs\\note.md'
+  assert.equal(resolveLinkTarget(local, 'sub\\'), 'D:\\work\\proj\\docs\\sub\\')
+  assert.equal(resolveLinkTarget(local, 'D:/work/proj/code/'), 'D:\\work\\proj\\code\\')
+})
+
 test('url safety: a link may not leave the workspace', () => {
   assert.equal(isInsideRoot('/shared_data/huangjh', '/shared_data/huangjh/docs/a.md'), true)
   assert.equal(isInsideRoot('/shared_data/huangjh/', '/shared_data/huangjh'), true)

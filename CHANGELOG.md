@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased
+
+- A folder link in a Markdown preview no longer opens a file tab that could only fail. A trailing separator
+  settles it immediately; a link without one (say `sub`) is probed with `fs.stat` / `local.stat` first, and a
+  directory is revealed in the tree with a short note instead of a dead tab.
+- The same error is no longer printed twice: a folder opened as a file used to say "is a directory: is a
+  directory, not something that can be read as a file", and now says it once.
+- Ctrl/⌘-click and a middle click on a preview link open the target in its own tab, so two documents can be
+  compared side by side; dragging a link no longer navigates the window.
+- Local file tabs on Windows are keyed case-insensitively, so `pics/note.md` and `PICS/note.md` no longer
+  produce two tabs for one file.
+- Theme changes arrive through the host's `theme/change` event instead of a 1.5-second `getTheme()` poll
+  (the poll remains only as a fallback when no event is available).
+
 ## 0.28.1 — 2026-11-27
 
 - Links inside a Markdown preview no longer navigate the window — that navigation is what turned the whole
