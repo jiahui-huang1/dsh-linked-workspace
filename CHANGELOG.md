@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.30.0 — 2026-11-27
 
 - A file link in a chat message that points into a remote workspace now opens **inside that workspace's tree
   tab**, as one of its file tabs — not as a sibling of the directory tab, and not as a native tab that could
