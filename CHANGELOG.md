@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- A chat link that points **outside every workspace root** but at a file on the same host no longer
+  ends as a native "file not found" tab. The plugin claims it like the other links and opens a read-only
+  tab that reads through the "extra roots" gate; when the path is not allow-listed yet the tab offers
+  one-click "add this folder to the extra roots and open it". Folders and the user's own disk keep the
+  native viewer.
+
+
 - The claim now survives a late `dsh-better-sidebar`: its client service can register **after** this plugin
   (that is what happens on the desktop profile), and the hand-over used to give up at apply time. It is retried
   once a second instead, so chat links stop falling through to the native tab even when the companion loads

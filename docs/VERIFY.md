@@ -2,6 +2,16 @@
 
 Host code (lib/) reloads live with `plugin_manager set_plugin include:linked-workspace-ui`; client changes load with **应用 → 重新加载界面** (a full restart is only needed after re-installing the package). Then verify:
 
+## 工作区外的聊天链接（未发布）
+
+1. 联动工作区根目录在 `/shared_data_ssd1/huangjh`，准备一个 `/shared_data_hdd1/huangjh/probe.txt`，
+   在会话里点击指向它的链接：**不应**出现原生「文件不存在」标签，而是一个标题带「工作区外」的只读标签。
+2. 该标签在额外根目录还为空时显示「把 … 加入额外根目录并打开」按钮；点一下，文件内容立刻出现，
+   「设置 → 联动工作区 → 额外根目录」里也多出该前缀。
+3. 再加一个已允许路径下的文件链接：直接显示内容，没有按钮。
+4. 指向**文件夹**的工作区外链接（含尾斜杠，或指向一个真实目录）只给一句「这是文件夹链接…」，不提供按钮。
+5. 工作区内的文件链接仍落在目录树标签内部的文件标签；本地磁盘路径仍由原生标签打开。
+
 ## 聊天链接直达与表单焦点（未发布）
 
 1. 在联动工作区会话里，让模型输出一个远端文件的绝对路径（例如 `/data/proj/a.md`），点击聊天里的那个链接：

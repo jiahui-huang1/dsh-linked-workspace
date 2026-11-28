@@ -232,6 +232,9 @@ window.__ModuleLoader__.load({
     // we open land in that very list too. Remember the ids we created so the
     // hand-over below never mistakes its own work for something to take over.
     var ownedNativeTabs = new Set();
+    // sessionId -> cwd, learned from the native path tabs, so an outside link
+    // can be mapped to its workspace before any tab of ours exists.
+    var sessionCwds = new Map();
 
     function nativeTabKeys(sidebar) {
       try {
@@ -281,6 +284,36 @@ window.__ModuleLoader__.load({
       return true;
     }
 
+    // The folder that has to be allow-listed before an outside path is readable.
+    function outsideDirOf(filePath) {
+      var cut = filePath.lastIndexOf('/')
+      return cut > 0 ? filePath.slice(0, cut) : filePath
+    }
+
+    // A chat link may point at a file that is not inside any workspace root yet
+    // still lives on the same host (artefacts written next to the working copy).
+    // The workspace tree cannot reach it, so open a read-only tab that reads
+    // through the "extra roots" gate instead of letting the native viewer report
+    // "file not found" for a path it never could read.
+    function openOutsideFileTab(sidebar, scope, scoped, filePath) {
+      if (!sidebar || typeof sidebar.openTab !== 'function') return false;
+      var source = scoped.linkedId
+        ? { kind: 'linked', id: scoped.linkedId, name: '' }
+        : scoped.remoteId
+          ? { kind: 'remote', id: scoped.remoteId, name: '' }
+          : null;
+      if (!source) return false;
+      var key = 'outside:' + scopeKeyOf(sourceScopeOf(source)) + ':' + filePath;
+      var kind = remoteFileSlotFor(key);
+      if (kind === undefined) return false;
+      var meta = sourceMetaOf(source);
+      meta.outside = true;
+      var known = nativeTabKeys(sidebar);
+      sidebar.openTab({ type: kind, id: kind, title: basename(filePath), path: filePath, meta: meta }, scope);
+      claimNewNativeTabs(sidebar, known);
+      return true;
+    }
+
     // Chat artifacts live outside our tabs, so opening one has to travel
     // through the tab meta: the tab component reads revealPath on every render.
     function openTreeTabAt(ctx, options, scope) {
@@ -296,7 +329,12 @@ window.__ModuleLoader__.load({
       // A folder has no file to open, so the panel reveals it in the tree.
       if (options.dir) meta.revealKind = 'dir';
       try {
+        // Mark it as ours right away: the tree tab stores the workspace root as
+        // its path, and the hand-over would otherwise mistake it for a file that
+        // needs rescuing.
+        var known = typeof nativeTabKeys === 'function' ? nativeTabKeys(sidebar) : null;
         sidebar.openTab({ type: type, id: type, title: t(remoteOnly ? 'remoteTabTitle' : 'tabTitle'), path: '/', meta: meta }, scope);
+        if (known) claimNewNativeTabs(sidebar, known);
         return true;
       } catch (error) {
         return false;
@@ -613,6 +651,11 @@ window.__ModuleLoader__.load({
       previewTooLarge: '这个文件太大（{{chars}} 字符，上限 {{limit}}），没有生成预览；可以在编辑器里查看，或下载后用别的工具打开。',
       previewTooLargeBytes: '这个文件太大（{{bytes}}），没有生成预览；可以在编辑器里查看，或下载后用别的工具打开。',
       fileGone: '这个文件已不在远端（可能被重命名或删除），已关闭它的标签并刷新目录。',
+      outsideNote: '这个路径在工作区之外，插件还没有读取它的权限。',
+      outsideAddRoot: '把 {{dir}} 加入额外根目录并打开',
+      outsideBadge: '工作区外',
+      outsideBinary: '二进制文件，无法在这里预览（{{size}}）。',
+      outsideTruncated: '文件较大，只显示前 {{size}}。',
     linkOutside: '这个链接指向工作区之外，没有打开：{{path}}',
     linkFolder: '这是文件夹链接，这里只打开文件：{{path}}',
       linkedTitle: '联动工作区',
@@ -1219,6 +1262,11 @@ window.__ModuleLoader__.load({
       previewTooLarge: 'Too large to preview ({{chars}} characters, the ceiling is {{limit}}). Read it in the editor, or download it and open it elsewhere.',
       previewTooLargeBytes: 'Too large to preview ({{bytes}}). Read it in the editor, or download it and open it elsewhere.',
       fileGone: 'That file is gone from the remote side (renamed or deleted). Closed its tab and refreshed the tree.',
+      outsideNote: 'That path sits outside the workspace, so the plugin is not allowed to read it yet.',
+      outsideAddRoot: 'Add {{dir}} to the extra roots and open it',
+      outsideBadge: 'Outside',
+      outsideBinary: 'Binary file, so it cannot be previewed here ({{size}}).',
+      outsideTruncated: 'Large file: only the first {{size}} is shown.',
     linkOutside: 'That link points outside the workspace, so it was left alone: {{path}}',
     linkFolder: 'That link is a folder; only files open here: {{path}}',
       linkedTitle: 'Linked workspaces',
@@ -8485,6 +8533,77 @@ function rememberShowHidden(value) {
         dialog ? renderDialog() : null);
     }
 
+    // Read-only view for a path outside every workspace root. The host only
+    // hands out such files when their prefix is in the extra roots, so an
+    // unreadable path offers to add its folder instead of showing a raw error.
+    function OutsideFileView(props) {
+      var t = props.t;
+      var locale = props.locale;
+      var scope = props.scope;
+      var filePath = props.filePath;
+      var loadRef = useState({ loading: true, error: null, data: null });
+      var load = loadRef[0];
+      var setLoad = loadRef[1];
+      var busyRef = useState(false);
+      var busy = busyRef[0];
+      var setBusy = busyRef[1];
+
+      function read() {
+        setLoad(function (previous) { return { loading: true, error: null, data: previous.data }; });
+        apiCall('fs.readOutside', Object.assign({ path: filePath, maxBytes: 262144 }, scopeParams(scope)))
+          .then(function (result) {
+            setLoad({ loading: false, error: null, data: result });
+          }, function (error) {
+            setLoad({ loading: false, error: error, data: null });
+          });
+      }
+
+      useEffect(function () { read(); }, [filePath, scope.kind, scope.id]);
+
+      function addRoot() {
+        if (busy) return;
+        setBusy(true);
+        apiCall('settings.get').then(function (settings) {
+          var roots = settings && Array.isArray(settings.extraRoots) ? settings.extraRoots.slice() : [];
+          var dir = outsideDirOf(filePath);
+          if (dir && roots.indexOf(dir) < 0) roots.push(dir);
+          return apiCall('settings.update', { extraRoots: roots });
+        }).then(function () {
+          setBusy(false);
+          read();
+        }, function (error) {
+          setBusy(false);
+          setLoad({ loading: false, error: error, data: null });
+        });
+      }
+
+      var toolbar = h('div', { className: 'rw-doc-toolbar' },
+        h('span', { className: 'rw-doc-badge' }, t('outsideBadge')),
+        h('span', { className: 'rw-editor-path', title: filePath }, filePath));
+      var body;
+      if (load.loading) {
+        body = h('div', { className: 'rw-doc-loading' }, h('div', { className: 'rw-spinner' }), h('span', null, t('loading')));
+      } else if (load.error) {
+        // A folder outside the workspace is not a permission problem: nothing
+        // here can open it, so say so instead of offering an allow-list entry.
+        var isDir = load.error.code === 'FS_IS_DIR' || load.error.code === 'FS_NOT_DIRECTORY';
+        body = h('div', { className: 'rw-doc-body' },
+          h(Banner, { kind: 'warn' }, messageOf(load.error, t, locale)),
+          h('div', { className: 'rw-outside-actions' },
+            isDir ? null : h('button', { className: 'rw-btn rw-btn-sm rw-btn-primary', disabled: busy, onClick: addRoot },
+              t('outsideAddRoot', { dir: outsideDirOf(filePath) })),
+            h('div', { className: 'rw-hint' }, isDir ? t('linkFolder', { path: filePath }) : t('outsideNote'))));
+      } else {
+        var data = load.data || {};
+        body = h('div', { className: 'rw-doc-body' },
+          data.truncated ? h(Banner, { kind: 'info' }, t('outsideTruncated', { size: formatBytes(data.size) })) : null,
+          data.binary
+            ? h('div', { className: 'rw-outside-actions' }, h('div', { className: 'rw-hint' }, t('outsideBinary', { size: formatBytes(data.size) })))
+            : h('pre', { className: 'rw-outside-text' }, typeof data.content === 'string' ? data.content : ''));
+      }
+      return h('div', { className: 'rw-editor-pane' }, toolbar, body);
+    }
+
     function RemoteFileTab(props) {
       var ctx = props.ctx;
       var t = props.t;
@@ -8529,6 +8648,9 @@ function rememberShowHidden(value) {
       // re-reads this file: probe it now and then and reclaim the tab once the
       // path is gone (a rename inside a session is the usual cause).
       useEffect(function () {
+        // An outside file has no workspace scope to stat; its own view handles
+        // the reads and their errors.
+        if (meta.outside === true) return function () { /* nothing to probe */ };
         var cancelled = false;
         var timer = setInterval(function () {
           if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
@@ -8540,7 +8662,9 @@ function rememberShowHidden(value) {
         return function () { cancelled = true; clearInterval(timer); };
       }, [filePath, scope.kind, scope.id]);
 
-      var pane = docKind === 'image'
+      var pane = meta.outside === true
+        ? h(OutsideFileView, { t: t, locale: locale, scope: scope, filePath: filePath })
+        : docKind === 'image'
         ? h(ImagePreview, { ctx: ctx, t: t, locale: locale, scope: scope, path: filePath, local: false })
         : docKind === 'html'
           ? h(HtmlPreview, { ctx: ctx, t: t, locale: locale, scope: scope, path: filePath, local: false })
@@ -11540,7 +11664,12 @@ function rememberShowHidden(value) {
                 // The sidebar may have stored a workspace-relative path.
                 absolute = root.replace(/[\/]+$/, '') + (root.charAt(0) === '/' ? '/' : '\\') + candidate.replace(/^[\/]+/, '');
               }
-              if (!isInsideRoot(root, absolute)) return undefined;
+              if (!isInsideRoot(root, absolute)) {
+                // Outside this workspace but on the same host: keep the tab by
+                // opening it read-only rather than leaving the native error.
+                if (outsideOpenable(absolute)) openOutside(scoped, absolute);
+                return undefined;
+              }
               if (handled.size > 200) handled.clear();
               handled.add(key);
               var kind = scoped.linkedId ? 'linked' : 'remote';
@@ -11592,6 +11721,55 @@ function rememberShowHidden(value) {
         return best;
       }
 
+      // Native path tabs are the only place DSH shows us a session's cwd, so
+      // remember it: an outside link has to be attributed to a host even before
+      // its first tab exists.
+      function currentSessionId() {
+        try {
+          var snapshot = typeof sidebar.getSnapshot === 'function' ? sidebar.getSnapshot() : null;
+          return snapshot && snapshot.sessionId ? String(snapshot.sessionId) : '';
+        } catch (error) {
+          return '';
+        }
+      }
+
+      // The sidebar is not the only source of that cwd: the session list knows it
+      // from the first moment, which is what makes an outside link land on the
+      // right host before any tab of ours has ever been seen.
+      function sessionCwdOf(sessionId) {
+        var rememberedCwd = sessionId !== '' ? sessionCwds.get(sessionId) || '' : '';
+        if (rememberedCwd !== '') return rememberedCwd;
+        try {
+          var service = ctx.sessions;
+          var listing = service && service.list && typeof service.list.getSnapshot === 'function'
+            ? service.list.getSnapshot()
+            : null;
+          var record = listing && listing.byId ? listing.byId[sessionId] : null;
+          var cwd = record && typeof record.cwd === 'string' ? record.cwd : '';
+          if (cwd !== '') sessionCwds.set(sessionId, cwd);
+          return cwd;
+        } catch (error) {
+          return '';
+        }
+      }
+
+      // Only a file path can become an outside tab. A bare "/" is how the
+      // sidebar stores its own directory tabs, and a trailing slash names a
+      // folder the tree can reveal instead.
+      function outsideOpenable(absolute) {
+        if (typeof absolute !== 'string' || absolute.length < 2) return false;
+        if (absolute.charAt(0) !== '/') return false;
+        if (/\/$/.test(absolute)) return false;
+        var base = absolute.slice(absolute.lastIndexOf('/') + 1);
+        return base !== '' && base !== '.' && base !== '..';
+      }
+
+      function openOutside(scoped, absolute) {
+        var sessionId = currentSessionId();
+        var scope = sessionId !== '' ? { sessionId: sessionId } : {};
+        return openOutsideFileTab(sidebar, scope, scoped, absolute) === true;
+      }
+
       function claimScope(owner) {
         var scope = {};
         var sessionId = '';
@@ -11618,7 +11796,19 @@ function rememberShowHidden(value) {
             var owner = ownerOfPath(index, candidates[cursor]);
             if (owner) found = { owner: owner, absolute: candidates[cursor] };
           }
-          if (!found) return false;
+          if (!found) {
+            // Not inside any workspace root: the link may still name a file on
+            // the same host, which the workspace tree can never show.
+            var outside = candidates[0];
+            if (!outsideOpenable(outside)) return false;
+            var sessionId = currentSessionId();
+            var cwd = sessionCwdOf(sessionId);
+            if (cwd === '') return false;
+            return scanReferenceScope(cwd, '').then(function (scoped) {
+              if (!scoped || !scoped.root) return false;
+              return openOutside(scoped, outside);
+            }, function () { return false; });
+          }
           var record = found.owner.record;
           var absolute = found.absolute;
           // A trailing separator or a file extension settles the kind without
@@ -11717,6 +11907,12 @@ function rememberShowHidden(value) {
         scanning = true;
         try {
           var tabs = sidebar.nativePathTabs() || [];
+          for (var remember = 0; remember < tabs.length; remember += 1) {
+            var remembered = tabs[remember];
+            if (remembered && remembered.sessionId && remembered.cwd) {
+              sessionCwds.set(String(remembered.sessionId), String(remembered.cwd));
+            }
+          }
           if (ownedNativeTabs.size > 0) {
             var live = new Set();
             for (var cursor = 0; cursor < tabs.length; cursor += 1) {
