@@ -232,6 +232,11 @@ window.__ModuleLoader__.load({
     // we open land in that very list too. Remember the ids we created so the
     // hand-over below never mistakes its own work for something to take over.
     var ownedNativeTabs = new Set();
+    // The hand-over is re-installed whenever the sidebar service is replaced, so
+    // its memory has to live out here: forgetting which tabs were already taken
+    // makes a closed tab come back on the next tick.
+    var handedNativeTabs = new Set();
+    var outsideSeenPaths = new Set();
     // sessionId -> cwd, learned from the native path tabs, so an outside link
     // can be mapped to its workspace before any tab of ours exists.
     var sessionCwds = new Map();
@@ -11575,7 +11580,11 @@ function rememberShowHidden(value) {
     }
 
     function installHandover(ctx, sidebar) {
-      var handled = new Set();
+      var handled = handedNativeTabs;
+      // Paths for which we already opened an "outside" tab. If the user closes
+      // that tab we must not open it again from the scan: the stale native tab
+      // is closed, nothing reopens, and a later click goes through the claim.
+      var outsideSeen = outsideSeenPaths;
       var known = null;
       var knownAt = 0;
       var scanning = false;
@@ -11667,7 +11676,19 @@ function rememberShowHidden(value) {
               if (!isInsideRoot(root, absolute)) {
                 // Outside this workspace but on the same host: keep the tab by
                 // opening it read-only rather than leaving the native error.
-                if (outsideOpenable(absolute)) openOutside(scoped, absolute);
+                if (!outsideOpenable(absolute)) return undefined;
+                var outsideKey = String(tab.sessionId || '') + '|' + absolute;
+                if (!outsideSeen.has(outsideKey)) {
+                  if (outsideSeen.size > 200) outsideSeen.clear();
+                  outsideSeen.add(outsideKey);
+                  openOutside(scoped, absolute);
+                }
+                // The native tab cannot show this path, so it goes away for good
+                // — otherwise closing our tab would resurrect it on the next
+                // scan, and activating another native tab would bring it back.
+                if (handled.size > 200) handled.clear();
+                handled.add(key);
+                try { sidebar.closeTab(tab.id, scope); } catch (error) { /* already gone */ }
                 return undefined;
               }
               if (handled.size > 200) handled.clear();
@@ -11806,6 +11827,11 @@ function rememberShowHidden(value) {
             if (cwd === '') return false;
             return scanReferenceScope(cwd, '').then(function (scoped) {
               if (!scoped || !scoped.root) return false;
+              // Remember it here too: a native duplicate that shows up later must
+              // be closed rather than turned into a second copy of this tab.
+              var outsideKey = sessionId + '|' + outside;
+              if (outsideSeen.size > 200) outsideSeen.clear();
+              outsideSeen.add(outsideKey);
               return openOutside(scoped, outside);
             }, function () { return false; });
           }

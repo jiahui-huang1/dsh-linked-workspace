@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Closing a chat-linked tab no longer brings it back, and activating another native tab no longer
+  resurrects the old "file not found" page: once an outside path has its read-only tab, the hand-over stops
+  opening it again and closes the stale native duplicate instead. The claim's memory now survives a replaced
+  sidebar service, which is what made the tab reappear after switching tabs.
+
+
 - A chat link that points **outside every workspace root** but at a file on the same host no longer
   ends as a native "file not found" tab. The plugin claims it like the other links and opens a read-only
   tab that reads through the "extra roots" gate; when the path is not allow-listed yet the tab offers
