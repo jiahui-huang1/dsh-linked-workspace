@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.31.0 — 2026-11-28
 
 - Closing a chat-linked tab no longer brings it back, and activating another native tab no longer
   resurrects the old "file not found" page: once an outside path has its read-only tab, the hand-over stops
