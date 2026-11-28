@@ -11417,8 +11417,40 @@ function rememberShowHidden(value) {
     var PLACEHOLDER_PATH = /[\\/]remote-placeholders[\\/]([^\\/]+)([\\/].*)$/i;
 
     function installPlaceholderHandover(ctx) {
-      var sidebar = sidebarService(ctx);
-      if (!sidebar || typeof sidebar.nativePathTabs !== 'function' || typeof sidebar.subscribeState !== 'function') return;
+      var installedFor = null;
+      var stopHandover = null;
+
+      // better-sidebar registers its client service lazily, and on the desktop
+      // profile it can come up after this plugin. A single check at apply time
+      // used to leave chat links unclaimed for the whole session, which looked
+      // exactly like the old "moved after two seconds" behaviour.
+      function attach() {
+        var sidebar = sidebarService(ctx);
+        if (!sidebar || typeof sidebar.nativePathTabs !== 'function' || typeof sidebar.subscribeState !== 'function') return;
+        if (installedFor === sidebar) return;
+        if (stopHandover) {
+          try { stopHandover(); } catch (error) { /* already torn down */ }
+        }
+        installedFor = sidebar;
+        stopHandover = installHandover(ctx, sidebar);
+      }
+
+      attach();
+      // One object lookup per second; it also picks up a sidebar that is
+      // replaced after a plugin reload.
+      ctx.effect(function () {
+        var timer = setInterval(attach, 1000);
+        return function () {
+          clearInterval(timer);
+          if (stopHandover) {
+            try { stopHandover(); } catch (error) { /* already torn down */ }
+            stopHandover = null;
+          }
+        };
+      }, 'dsh-linked-workspace: late sidebar hand-over');
+    }
+
+    function installHandover(ctx, sidebar) {
       var handled = new Set();
       var known = null;
       var knownAt = 0;
@@ -11588,16 +11620,25 @@ function rememberShowHidden(value) {
           }
           if (!found) return false;
           var record = found.owner.record;
-          var stat = found.owner.kind === 'linked'
-            ? apiCall('fs.stat', { linkedId: record.id, path: found.absolute })
-            : apiCall('fs.stat', { remoteId: record.id, path: found.absolute });
-          return stat.then(function (result) {
-            var type = result && result.type ? String(result.type) : '';
-            var dir = type === 'dir' || type === 'directory';
+          var absolute = found.absolute;
+          // A trailing separator or a file extension settles the kind without
+          // a round trip; only an extension-less name has to be asked.
+          var looksDir = /\/$/.test(absolute);
+          var looksFile = !looksDir && /\.[^./]+$/.test(absolute);
+          var open = function (dir) {
             return openTreeTabAt(ctx, {
               kind: found.owner.kind, id: record.id, side: 'remote',
-              relative: found.absolute, dir: dir,
+              relative: absolute, dir: dir,
             }, claimScope(found.owner)) === true;
+          };
+          if (looksFile) return open(false);
+          if (looksDir) return open(true);
+          var stat = found.owner.kind === 'linked'
+            ? apiCall('fs.stat', { linkedId: record.id, path: absolute })
+            : apiCall('fs.stat', { remoteId: record.id, path: absolute });
+          return stat.then(function (result) {
+            var type = result && result.type ? String(result.type) : '';
+            return open(type === 'dir' || type === 'directory');
           }, function () { return false; });
         });
       }
@@ -11625,6 +11666,21 @@ function rememberShowHidden(value) {
           }, function () { original.call(sidebar, seed, scope); });
           return undefined;
         };
+        // References open through openFile, not openTab; the same remote
+        // path has to land in the tree there as well.
+        var openFileOriginal = sidebar.openFile;
+        if (typeof openFileOriginal === 'function') {
+          sidebar.openFile = function (scope, path, title, options) {
+            var args = arguments;
+            var normalizedFile = typeof path === 'string' ? path.split(String.fromCharCode(92)).join('/') : '';
+            var rooted = normalizedFile !== '' && (normalizedFile.charAt(0) === '/' || /^[A-Za-z]:\//.test(normalizedFile));
+            if (!rooted) return openFileOriginal.apply(sidebar, args);
+            takeSeed(normalizedFile).then(function (claimed) {
+              if (!claimed) openFileOriginal.apply(sidebar, args);
+            }, function () { openFileOriginal.apply(sidebar, args); });
+            return undefined;
+          };
+        }
         return true;
       }
 
@@ -11685,9 +11741,13 @@ function rememberShowHidden(value) {
       // reach the shared store, so `subscribeState` stays silent when one opens
       // — the interval is what actually catches them. It only runs the prefix
       // test, so a tick costs nothing when nothing is open.
-      ctx.effect(function () {
+      // Warm the index now: the first click should not wait for two host
+      // calls, and linked.list can take seconds over SSH.
+      workspaceIndex();
+
+      return ctx.effect(function () {
         var stop = sidebar.subscribeState(scan);
-        var timer = setInterval(scan, 2000);
+        var timer = setInterval(scan, 800);
         // A hand-over skipped while the window was hidden has to happen as soon
         // as it is back, otherwise the click looks like it did nothing.
         function onVisibility() {

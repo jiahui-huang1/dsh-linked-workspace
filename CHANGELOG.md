@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- The claim now survives a late `dsh-better-sidebar`: its client service can register **after** this plugin
+  (that is what happens on the desktop profile), and the hand-over used to give up at apply time. It is retried
+  once a second instead, so chat links stop falling through to the native tab even when the companion loads
+  late. `openFile` — the path `@` references use — is claimed the same way, and the workspace index is warmed
+  at install so the first click does not wait for `linked.list` over SSH.
 - A chat file link now opens straight in its workspace tab: the sidebar's `openTab({ type: 'editor' })` call is
   claimed **before** the native tab exists, so the "file not found" page no longer flashes for a second or two
   while the hand-over catches up. Paths outside the workspaces (the user's own disk, POSIX paths elsewhere)

@@ -13,6 +13,21 @@ import { readFile } from 'node:fs/promises'
 const registered = { settings: [], icons: [], overlays: [], menus: [], flows: [], tabs: [] }
 let captured = null
 let effectCount = 0
+// Cordis disposes every effect it created when the plugin unloads; the fake
+// context has to do the same, otherwise a plugin that polls with a timer keeps
+// the test process alive forever.
+const disposers = []
+
+function disposeAll() {
+  while (disposers.length > 0) {
+    const disposer = disposers.pop()
+    try {
+      disposer()
+    } catch (error) {
+      /* a disposer that throws is not this test's business */
+    }
+  }
+}
 
 globalThis.window = {
   __ModuleLoader__: {
@@ -51,6 +66,7 @@ const ctx = {
   effect(callback) {
     effectCount += 1
     const disposer = callback()
+    if (typeof disposer === 'function') disposers.push(disposer)
     return typeof disposer === 'function' ? disposer : () => {}
   },
   get(name) {
@@ -108,6 +124,8 @@ assert.match(bundleSource, /takeRemotePath/, 'a chat link to a remote path is ha
 assert.match(bundleSource, /revealKind/, 'the tree tab can reveal a folder instead of opening a file')
 assert.match(bundleSource, /__lwClaimed/, 'the sidebar editor tab is claimed before it opens, not moved afterwards')
 assert.match(bundleSource, /focusSigRef/, 'the workspace dialog focuses once per tab instead of on every keystroke')
+assert.match(bundleSource, /late sidebar hand-over/, 'the claim is retried when dsh-better-sidebar registers late')
+assert.match(bundleSource, /openFileOriginal/, 'references that open through openFile are claimed too')
 
 // The two halves must agree, or a freshly restarted DSH greets the user with
 // the "the plugin host is still running older code" banner even though nothing
@@ -201,6 +219,8 @@ assert.equal(typeof file.dedupeKey, 'function')
 assert.equal(file.dedupeKey({ id: 'rw-file:x' }), 'rw-file:x')
 assert.ok(effectCount >= 2, 'resources were registered through ctx.effect')
 
+disposeAll()
+
 console.log('PASS — client bundle factory + registrations')
 console.log('  settings section:', section.options.id, '/', section.options.label())
 console.log('  directory flows:', flowNames.join(', '))
@@ -215,6 +235,7 @@ const orphan = { settings: [], icons: [], overlays: [], menus: [], flows: [], ta
 const orphanCtx = {
   effect(callback) {
     const disposer = callback()
+    if (typeof disposer === 'function') disposers.push(disposer)
     return typeof disposer === 'function' ? disposer : () => {}
   },
   get(name) {
@@ -248,5 +269,7 @@ assert.equal(orphan.overlays.length, 1, 'the welcome overlay still registers wit
 assert.equal(orphan.menus.length, 0, 'no file menu rows are contributed any more')
 assert.equal(orphan.flows.length, 2, 'both directory flows still register without the sidebar')
 assert.equal(orphan.tabs.length, 0, 'no sidebar page is registered when the companion is absent')
+
+disposeAll()
 
 console.log('PASS — the plugin runs without dsh-better-sidebar')
